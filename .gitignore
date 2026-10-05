@@ -1,0 +1,7 @@
+/backend/target/
+/frontend/node_modules/
+/ai-service/__pycache__/
+/ai-service/.venv/
+*.class
+*.log
+.DS_Store

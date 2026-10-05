@@ -18,17 +18,20 @@ public class DataInitializer implements CommandLineRunner {
     private final SportSessionRepository sessionRepository;
     private final SensorDataRepository sensorDataRepository;
     private final PerformanceStatisticRepository statisticRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     public DataInitializer(UserRepository userRepository,
                            DeviceRepository deviceRepository,
                            SportSessionRepository sessionRepository,
                            SensorDataRepository sensorDataRepository,
-                           PerformanceStatisticRepository statisticRepository) {
+                           PerformanceStatisticRepository statisticRepository,
+                           org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.deviceRepository = deviceRepository;
         this.sessionRepository = sessionRepository;
         this.sensorDataRepository = sensorDataRepository;
         this.statisticRepository = statisticRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -38,7 +41,7 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         // 1. Create Default User
-        User user = new User("Alex Johnson", "alex.athlete@secondskin.io", "Basketball");
+        User user = new User("Alex Johnson", "alex.athlete@secondskin.io", passwordEncoder.encode("password"), Role.USER, "Basketball");
         userRepository.save(user);
 
         // 2. Create Devices

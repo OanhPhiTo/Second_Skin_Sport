@@ -10,6 +10,77 @@ const apiClient = axios.create({
   },
 });
 
+// Add JWT Interceptor
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+// Response interceptor for Auto-Refresh Token
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) throw new Error('No refresh token available');
+        
+        // Use a new instance to avoid interceptor loop
+        const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, {
+          headers: { Authorization: `Bearer ${refreshToken}` }
+        });
+        
+        const newAccessToken = refreshResponse.data.token;
+        localStorage.setItem('token', newAccessToken);
+        if (refreshResponse.data.refreshToken) {
+           localStorage.setItem('refreshToken', refreshResponse.data.refreshToken);
+        }
+        
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        authService.logout();
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export const authService = {
+  login: async (credentials) => {
+    const response = await apiClient.post('/auth/login', credentials);
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('refreshToken', response.data.refreshToken);
+    }
+    return response.data;
+  },
+  register: async (userData) => {
+    const response = await apiClient.post('/auth/register', userData);
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('refreshToken', response.data.refreshToken);
+    }
+    return response.data;
+  },
+  logout: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+  },
+  isAuthenticated: () => {
+    return !!localStorage.getItem('token');
+  }
+};
+
 // Fallback Mock Data in case backend is loading/offline
 const fallbackStats = {
   totalSessions: 24,
@@ -268,6 +339,28 @@ export const deviceService = {
       return { status: 'success', message: 'Device synchronized successfully' };
     }
   },
+};
+
+export const adminService = {
+  getUsers: async () => {
+    try {
+      const response = await apiClient.get('/admin/users');
+      return response.data;
+    } catch (err) {
+      console.error('Failed to fetch users', err);
+      throw err;
+    }
+  },
+  
+  banUser: async (id) => {
+    const response = await apiClient.put(`/admin/users/${id}/ban`);
+    return response.data;
+  },
+
+  unbanUser: async (id) => {
+    const response = await apiClient.put(`/admin/users/${id}/unban`);
+    return response.data;
+  }
 };
 
 export default apiClient;
