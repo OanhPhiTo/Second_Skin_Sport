@@ -15,13 +15,22 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await authService.login({ email, password });
-      navigate('/'); // Redirect to dashboard
+      const data = await authService.login({ email, password });
+      if (data?.role === 'ADMIN' || (typeof authService.isAdmin === 'function' && authService.isAdmin())) {
+        navigate('/admin/users');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản hoặc mật khẩu.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleQuickLogin = (quickEmail, quickPassword) => {
+    setEmail(quickEmail);
+    setPassword(quickPassword);
   };
 
   return (
@@ -32,6 +41,47 @@ export default function Login() {
         
         {error && <div className="auth-error">{error}</div>}
         
+        {/* Quick Demo Credentials */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '8px',
+          marginBottom: '16px'
+        }}>
+          <button
+            type="button"
+            onClick={() => handleQuickLogin('admin@secondskin.com', 'admin123')}
+            style={{
+              padding: '7px 10px',
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              borderRadius: '8px',
+              color: '#f87171',
+              fontSize: '0.8rem',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            🛡️ Role: ADMIN
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuickLogin('alex.athlete@secondskin.io', 'password')}
+            style={{
+              padding: '7px 10px',
+              background: 'rgba(0, 242, 254, 0.12)',
+              border: '1px solid rgba(0, 242, 254, 0.35)',
+              borderRadius: '8px',
+              color: '#00f2fe',
+              fontSize: '0.8rem',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            🏃 Role: ATHLETE
+          </button>
+        </div>
+
         <form onSubmit={handleLogin} className="auth-form">
           <div className="form-group">
             <label>Email</label>

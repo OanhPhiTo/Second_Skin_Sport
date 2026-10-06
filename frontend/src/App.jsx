@@ -106,14 +106,17 @@ export default function App() {
                 </Suspense>
               }
             />
-            <Route
-              path="admin/users"
-              element={
-                <Suspense fallback={<PageFallback />}>
-                  <AdminUsers />
-                </Suspense>
-              }
-            />
+            {/* Admin Only Route */}
+            <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
+              <Route
+                path="admin/users"
+                element={
+                  <Suspense fallback={<PageFallback />}>
+                    <AdminUsers />
+                  </Suspense>
+                }
+              />
+            </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Route>

@@ -1,10 +1,20 @@
 import React from 'react';
-import { Menu, Bell, Radio, BatteryCharging, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Menu, Bell, Radio, BatteryCharging, User, Shield, LogOut } from 'lucide-react';
+import { authService } from '../services/api';
 import './Navbar.css';
 
 export default function Navbar({ onToggleSidebar, patchStatus }) {
+  const navigate = useNavigate();
   const isConnected = patchStatus?.connected ?? true;
   const battery = patchStatus?.batteryLevel ?? 82;
+  const user = authService.getCurrentUser();
+  const isAdmin = user.role === 'ADMIN';
+
+  const handleLogout = () => {
+    authService.logout();
+    navigate('/login');
+  };
 
   return (
     <header className="navbar">
@@ -15,7 +25,7 @@ export default function Navbar({ onToggleSidebar, patchStatus }) {
         <div className="navbar-heading">
           <div className="system-pill">
             <span className="live-dot" />
-            LIVE TELEMETRY
+            {isAdmin ? 'ADMIN CONTROL CENTER' : 'LIVE TELEMETRY'}
           </div>
         </div>
       </div>
@@ -44,14 +54,26 @@ export default function Navbar({ onToggleSidebar, patchStatus }) {
 
         {/* User Profile */}
         <div className="user-profile-widget">
-          <div className="avatar-circle">
-            <User size={18} />
+          <div className={`avatar-circle ${isAdmin ? 'admin-avatar' : ''}`}>
+            {isAdmin ? <Shield size={18} /> : <User size={18} />}
           </div>
           <div className="user-info-text">
-            <span className="user-name">Alex Johnson</span>
-            <span className="user-role">Pro Athlete • Basketball</span>
+            <span className="user-name">{user.name}</span>
+            <span className={`user-role-badge ${isAdmin ? 'badge-admin' : 'badge-athlete'}`}>
+              {isAdmin ? '🛡️ QUẢN TRỊ VIÊN' : '🏃 VẬN ĐỘNG VIÊN'}
+            </span>
           </div>
         </div>
+
+        {/* Logout Button */}
+        <button
+          className="logout-action-btn"
+          onClick={handleLogout}
+          title="Đăng xuất khỏi hệ thống"
+        >
+          <LogOut size={16} />
+          <span className="logout-text">Thoát</span>
+        </button>
       </div>
     </header>
   );

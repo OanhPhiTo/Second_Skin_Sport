@@ -32,6 +32,17 @@ public class AdminService {
         userRepository.save(user);
     }
 
+    public void updateUserRole(Long userId, com.secondskin.sport.entity.Role role) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại"));
+        user.setRole(role);
+        userRepository.save(user);
+    }
+
+    public void deleteUser(Long userId) {
+        userRepository.deleteById(userId);
+    }
+
     private UserDTO mapToDTO(User user) {
         return UserDTO.builder()
                 .id(user.getId())

@@ -9,6 +9,7 @@ import { authService } from '../services/api';
 vi.mock('../services/api', () => ({
   authService: {
     login: vi.fn(),
+    isAdmin: vi.fn(() => false),
   }
 }));
 
@@ -38,18 +39,31 @@ describe('Login Component', () => {
     expect(screen.getByPlaceholderText('Nhập mật khẩu')).toBeInTheDocument();
   });
 
-  test('calls authService.login on form submit and navigates', async () => {
-    authService.login.mockResolvedValueOnce({ token: 'mock-token' });
+  test('calls authService.login on form submit and navigates athlete to /', async () => {
+    authService.login.mockResolvedValueOnce({ token: 'mock-token', role: 'USER' });
     renderWithRouter(<Login />);
     
     fireEvent.change(screen.getByPlaceholderText('Nhập email của bạn'), { target: { value: 'test@example.com' } });
     fireEvent.change(screen.getByPlaceholderText('Nhập mật khẩu'), { target: { value: 'password123' } });
-    fireEvent.click(screen.getByRole('button', { name: /đăng nhập/i }));
+    fireEvent.click(screen.getByRole('button', { name: /đăng nhập$/i }));
     
     expect(authService.login).toHaveBeenCalledWith({ email: 'test@example.com', password: 'password123' });
     
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/');
+    });
+  });
+
+  test('navigates admin to /admin/users on login', async () => {
+    authService.login.mockResolvedValueOnce({ token: 'admin-token', role: 'ADMIN' });
+    renderWithRouter(<Login />);
+    
+    fireEvent.change(screen.getByPlaceholderText('Nhập email của bạn'), { target: { value: 'admin@secondskin.com' } });
+    fireEvent.change(screen.getByPlaceholderText('Nhập mật khẩu'), { target: { value: 'admin123' } });
+    fireEvent.click(screen.getByRole('button', { name: /đăng nhập$/i }));
+    
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/admin/users');
     });
   });
 

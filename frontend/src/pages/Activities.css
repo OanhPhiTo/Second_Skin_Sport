@@ -208,3 +208,210 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ====================================================
+   AI COACH & INJURY RISK ASSESSMENT STYLES
+   ==================================================== */
+.detail-ai-section {
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, rgba(16, 24, 39, 0.8) 0%, rgba(10, 15, 26, 0.9) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  border-radius: var(--radius-lg, 12px);
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.detail-ai-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--accent-gradient, linear-gradient(180deg, #00f2fe 0%, #4facfe 100%));
+}
+
+.ai-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ai-badge-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md, 8px);
+  background: rgba(0, 242, 254, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 242, 254, 0.3);
+}
+
+.ai-section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.ai-section-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-muted, #94a3b8);
+}
+
+.ai-loading-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-md, 8px);
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+
+.ai-summary-card {
+  background: rgba(0, 242, 254, 0.04);
+  border: 1px solid rgba(0, 242, 254, 0.15);
+  border-radius: var(--radius-md, 8px);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.ai-summary-text {
+  font-size: 0.92rem;
+  color: #e2e8f0;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.ai-cards-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.ai-mini-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md, 8px);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.ai-mini-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.mini-card-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  letter-spacing: 0.5px;
+}
+
+.risk-pill {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: var(--radius-full, 20px);
+}
+
+.risk-pill.low {
+  background: rgba(0, 255, 135, 0.15);
+  color: #00ff87;
+  border: 1px solid rgba(0, 255, 135, 0.3);
+}
+
+.risk-pill.medium {
+  background: rgba(234, 179, 8, 0.15);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.risk-pill.high {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.risk-explanation {
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.calories-val {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.calories-num {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ff9800;
+  font-family: 'Outfit', sans-serif;
+}
+
+.calories-unit {
+  font-size: 0.8rem;
+  color: var(--text-muted, #94a3b8);
+}
+
+.highlight-orange {
+  color: #ff9800;
+}
+
+.ai-advice-columns {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.advice-col {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md, 8px);
+  padding: 12px 14px;
+}
+
+.advice-col-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent-cyan, #00f2fe);
+  margin-bottom: 8px;
+}
+
+.advice-col ul {
+  padding-left: 18px;
+  margin: 0;
+}
+
+.advice-col li {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+  margin-bottom: 6px;
+}
+
+.advice-col li:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .ai-cards-grid, .ai-advice-columns {
+    grid-template-columns: 1fr;
+  }
+}
+

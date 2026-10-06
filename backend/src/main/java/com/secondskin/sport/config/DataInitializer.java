@@ -40,9 +40,14 @@ public class DataInitializer implements CommandLineRunner {
             return; // Data already exists
         }
 
-        // 1. Create Default User
+        // 1. Create Default Admin & Athletes in Database
+        User admin = new User("System Administrator", "admin@secondskin.com", passwordEncoder.encode("admin123"), Role.ADMIN, "All");
         User user = new User("Alex Johnson", "alex.athlete@secondskin.io", passwordEncoder.encode("password"), Role.USER, "Basketball");
-        userRepository.save(user);
+        User user2 = new User("Sarah Jenkins", "sarah.runner@secondskin.io", passwordEncoder.encode("password"), Role.USER, "Running");
+        User user3 = new User("Mike Torres", "mike.coach@secondskin.io", passwordEncoder.encode("password"), Role.USER, "Football");
+        User user4 = new User("Emma Watson", "emma.fitness@secondskin.io", passwordEncoder.encode("password"), Role.USER, "Gym");
+        User user5 = new User("David Beckham", "david.swimmer@secondskin.io", passwordEncoder.encode("password"), Role.USER, "Basketball");
+        userRepository.saveAll(List.of(admin, user, user2, user3, user4, user5));
 
         // 2. Create Devices
         Device patch1 = new Device("Second Skin Patch #001", "SSS-PATCH-001", true, 82, "v2.4.1", "BLE 5.2");

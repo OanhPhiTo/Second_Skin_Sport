@@ -231,3 +231,302 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ====================================================
+   BLE CONTROLLER CARD & WI-FI PROVISIONING
+   ==================================================== */
+.ble-controller-card {
+  border: 1px solid rgba(0, 242, 254, 0.2);
+  background: linear-gradient(135deg, rgba(16, 20, 31, 0.85) 0%, rgba(9, 11, 18, 0.95) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.ble-controller-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-gradient, linear-gradient(90deg, #00f2fe 0%, #4facfe 100%));
+}
+
+.ble-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.ble-header-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ble-icon-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md, 12px);
+  background: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-cyan, #00f2fe);
+}
+
+.ble-icon-badge.pulse {
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+  animation: blePulse 2s infinite ease-in-out;
+}
+
+@keyframes blePulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(0, 242, 254, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(0, 242, 254, 0.7); }
+}
+
+.ble-card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.ble-card-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.ble-connect-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 22px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md, 10px);
+  flex-wrap: wrap;
+}
+
+.ble-prompt-text p {
+  color: #e2e8f0;
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+}
+
+.ble-supported-note {
+  font-size: 0.8rem;
+  color: var(--accent-cyan, #00f2fe);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-ble-connect {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.25);
+}
+
+.ble-telemetry-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.meta-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md, 10px);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meta-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  color: var(--text-muted, #64748b);
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.meta-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  font-family: 'Outfit', sans-serif;
+}
+
+.meta-value.highlight-cyan {
+  color: var(--accent-cyan, #00f2fe);
+}
+
+.meta-value.green {
+  color: var(--status-success, #00ff87);
+}
+
+.ble-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  flex-wrap: wrap;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+}
+
+.toggle-label input[type='checkbox'] {
+  accent-color: var(--accent-cyan, #00f2fe);
+  width: 17px;
+  height: 17px;
+  cursor: pointer;
+}
+
+.ble-error-box {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  padding: 10px 16px;
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.88rem;
+}
+
+/* Wi-Fi Provisioning section */
+.wifi-provisioning-section {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(0, 242, 254, 0.15);
+}
+
+.wifi-section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.wifi-section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.wifi-section-desc {
+  font-size: 0.82rem;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.wifi-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field.full-width {
+  grid-column: span 2;
+}
+
+.form-field label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.form-field input {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm, 6px);
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.form-field input:focus {
+  border-color: var(--accent-cyan, #00f2fe);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.25);
+}
+
+.wifi-form-submit {
+  grid-column: span 2;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.wifi-feedback-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.88rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.wifi-feedback-box.feedback-success {
+  background: rgba(0, 255, 135, 0.12);
+  border: 1px solid rgba(0, 255, 135, 0.35);
+  color: #86efac;
+}
+
+.wifi-feedback-box.feedback-error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.wifi-feedback-box.feedback-info {
+  background: rgba(0, 242, 254, 0.1);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  color: #bae6fd;
+}
+
+@media (max-width: 768px) {
+  .ble-telemetry-meta-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .wifi-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-field.full-width {
+    grid-column: span 1;
+  }
+  .wifi-form-submit {
+    grid-column: span 1;
+  }
+}
+

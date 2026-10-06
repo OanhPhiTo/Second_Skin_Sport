@@ -35,4 +35,18 @@ public class AdminController {
         adminService.unbanUser(id);
         return ResponseEntity.ok("Tài khoản đã được mở khóa.");
     }
+
+    @PutMapping("/users/{id}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> updateUserRole(@PathVariable Long id, @RequestParam com.secondskin.sport.entity.Role role) {
+        adminService.updateUserRole(id, role);
+        return ResponseEntity.ok("Cập nhật quyền thành công.");
+    }
+
+    @DeleteMapping("/users/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> deleteUser(@PathVariable Long id) {
+        adminService.deleteUser(id);
+        return ResponseEntity.ok("Đã xóa người dùng khỏi hệ thống.");
+    }
 }

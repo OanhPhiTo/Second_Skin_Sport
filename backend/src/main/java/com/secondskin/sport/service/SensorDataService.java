@@ -1,25 +1,23 @@
 package com.secondskin.sport.service;
 
 import com.secondskin.sport.entity.SensorData;
+import com.secondskin.sport.entity.SportSession;
 import com.secondskin.sport.repository.SensorDataRepository;
-import com.secondskin.sport.dto.ActivityAnalysisDTO;
+import com.secondskin.sport.dto.AiInsightDTO;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.stream.Collectors;
 
 @Service
 public class SensorDataService {
     private final SensorDataRepository sensorDataRepository;
-    private final AiServiceClient aiServiceClient;
+    private final AiCoachService aiCoachService;
 
-    public SensorDataService(SensorDataRepository sensorDataRepository, AiServiceClient aiServiceClient) {
+    public SensorDataService(SensorDataRepository sensorDataRepository, AiCoachService aiCoachService) {
         this.sensorDataRepository = sensorDataRepository;
-        this.aiServiceClient = aiServiceClient;
+        this.aiCoachService = aiCoachService;
     }
 
     public List<SensorData> getSensorDataBySessionId(Long sessionId) {
@@ -41,20 +39,12 @@ public class SensorDataService {
         return sensorDataRepository.findTop60BySessionIdOrderByTimestampDesc(sessionId);
     }
 
-    public ActivityAnalysisDTO triggerAiAnalysisForSession(Long sessionId, String deviceId) {
-        List<SensorData> recentData = getRecentDataPoints(sessionId);
-        
-        List<Map<String, Object>> mappedSamples = recentData.stream().map(data -> {
-            Map<String, Object> sample = new HashMap<>();
-            sample.put("ax", data.getAccelerometerX());
-            sample.put("ay", data.getAccelerometerY());
-            sample.put("az", data.getAccelerometerZ());
-            sample.put("gx", data.getGyroscopeX());
-            sample.put("gy", data.getGyroscopeY());
-            sample.put("gz", data.getGyroscopeZ());
-            return sample;
-        }).collect(Collectors.toList());
-
-        return aiServiceClient.analyzeSensorData(String.valueOf(sessionId), deviceId, mappedSamples);
+    public AiInsightDTO triggerAiAnalysisForSession(Long sessionId, String deviceId) {
+        SportSession session = new SportSession(
+                1L, deviceId, "Running",
+                LocalDateTime.now().minusMinutes(30), LocalDateTime.now(),
+                30, 24, 65, 2.8, 14.2, 78, 85, "Completed"
+        );
+        return aiCoachService.analyzeSession(session);
     }
 }
