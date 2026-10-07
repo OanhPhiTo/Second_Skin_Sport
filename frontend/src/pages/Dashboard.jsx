@@ -250,10 +250,8 @@ export default function Dashboard() {
                   onChange={(e) => setNewSport(e.target.value)}
                   className="form-select"
                 >
-                  <option value="Basketball">Basketball</option>
-                  <option value="Running">Running</option>
-                  <option value="Football">Football</option>
-                  <option value="Gym">Gym / Functional Training</option>
+                  <option value="Running">Running (Chạy bộ)</option>
+                  <option value="Basketball">Basketball (Bóng rổ)</option>
                 </select>
               </div>
 

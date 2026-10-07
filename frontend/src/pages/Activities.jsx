@@ -168,11 +168,9 @@ export default function Activities() {
               className="form-select toolbar-select"
               aria-label="Filter by sport"
             >
-              <option value="All">All Sports</option>
-              <option value="Basketball">Basketball</option>
-              <option value="Running">Running</option>
-              <option value="Football">Football</option>
-              <option value="Gym">Gym</option>
+              <option value="All">All Sports (Tất cả)</option>
+              <option value="Running">Running (Chạy bộ)</option>
+              <option value="Basketball">Basketball (Bóng rổ)</option>
             </select>
           </div>
 

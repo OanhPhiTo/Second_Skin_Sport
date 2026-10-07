@@ -12,7 +12,7 @@ public class SportSession {
 
     private Long userId;
     private String deviceId;
-    private String sport; // Basketball, Running, Football, Gym
+    private String sport; // Running, Basketball
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private int durationMinutes;

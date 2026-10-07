@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
+import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import './styles/global.css';
 
@@ -13,6 +14,7 @@ const Reports = lazy(() => import('./pages/Reports'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
 
 function PageFallback() {
@@ -22,20 +24,20 @@ function PageFallback() {
       alignItems: 'center',
       justifyContent: 'center',
       minHeight: '45vh',
-      color: '#00f2fe',
-      fontSize: '0.95rem',
-      fontWeight: '600'
+      color: '#38bdf8',
+      fontSize: '0.9rem',
+      fontWeight: '600',
+      gap: '10px'
     }}>
       <div style={{
-        width: '36px',
-        height: '36px',
-        border: '3px solid rgba(0,242,254,0.15)',
-        borderTopColor: '#00f2fe',
+        width: '28px',
+        height: '28px',
+        border: '3px solid rgba(56, 189, 248, 0.2)',
+        borderTopColor: '#38bdf8',
         borderRadius: '50%',
-        animation: 'spin 0.8s linear infinite',
-        marginRight: '12px'
+        animation: 'spin 0.8s linear infinite'
       }} />
-      Đang tải hệ thống...
+      <span>Đang tải hệ thống...</span>
     </div>
   );
 }
@@ -55,7 +57,7 @@ export default function App() {
           </Suspense>
         } />
         
-        {/* Protected Routes */}
+        {/* Athlete Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<DashboardLayout />}>
             <Route
@@ -106,20 +108,32 @@ export default function App() {
                 </Suspense>
               }
             />
-            {/* Admin Only Route */}
-            <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
-              <Route
-                path="admin/users"
-                element={
-                  <Suspense fallback={<PageFallback />}>
-                    <AdminUsers />
-                  </Suspense>
-                }
-              />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Route>
+
+        {/* Dedicated Admin Protected Routes (Simple, High Performance) */}
+        <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route
+              index
+              element={
+                <Suspense fallback={<PageFallback />}>
+                  <AdminDashboard />
+                </Suspense>
+              }
+            />
+            <Route
+              path="users"
+              element={
+                <Suspense fallback={<PageFallback />}>
+                  <AdminUsers />
+                </Suspense>
+              }
+            />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -92,8 +92,7 @@ export default function Reports() {
                 className="form-select with-icon"
               >
                 <option value="Alex Johnson">Alex Johnson (Pro Basketball)</option>
-                <option value="David Miller">David Miller (Running Club)</option>
-                <option value="Marcus Ray">Marcus Ray (Football Division)</option>
+                <option value="Sarah Jenkins">Sarah Jenkins (Running Club)</option>
               </select>
             </div>
           </div>
@@ -107,10 +106,8 @@ export default function Reports() {
                 onChange={(e) => setSport(e.target.value)}
                 className="form-select with-icon"
               >
-                <option value="Basketball">Basketball</option>
-                <option value="Running">Running</option>
-                <option value="Football">Football</option>
-                <option value="Gym">Gym / Conditioning</option>
+                <option value="Basketball">Basketball (Bóng rổ)</option>
+                <option value="Running">Running (Chạy bộ)</option>
               </select>
             </div>
           </div>

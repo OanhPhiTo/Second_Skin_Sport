@@ -50,7 +50,7 @@ class AuthControllerTest {
 
     @Test
     void testRegister() throws Exception {
-        RegisterRequest request = new RegisterRequest("Test", "test@example.com", "pass", "Gym");
+        RegisterRequest request = new RegisterRequest("Test", "test@example.com", "pass", "Running");
         AuthResponse response = AuthResponse.builder()
                 .token("mockJwtToken")
                 .refreshToken("mockRefreshToken")

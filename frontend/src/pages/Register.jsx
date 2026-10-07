@@ -7,7 +7,7 @@ export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [preferredSport, setPreferredSport] = useState('Basketball');
+  const [preferredSport, setPreferredSport] = useState('Running');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -66,12 +66,10 @@ export default function Register() {
             />
           </div>
           <div className="form-group">
-            <label>Môn thể thao yêu thích</label>
+            <label>Môn thể thao trọng tâm</label>
             <select value={preferredSport} onChange={(e) => setPreferredSport(e.target.value)}>
-              <option value="Basketball">Bóng rổ</option>
-              <option value="Football">Bóng đá</option>
-              <option value="Running">Chạy bộ</option>
-              <option value="Gym">Gym</option>
+              <option value="Running">Chạy bộ (Running)</option>
+              <option value="Basketball">Bóng rổ (Basketball)</option>
             </select>
           </div>
           <button type="submit" className="auth-button" disabled={loading}>

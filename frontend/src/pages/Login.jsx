@@ -17,7 +17,7 @@ export default function Login() {
     try {
       const data = await authService.login({ email, password });
       if (data?.role === 'ADMIN' || (typeof authService.isAdmin === 'function' && authService.isAdmin())) {
-        navigate('/admin/users');
+        navigate('/admin');
       } else {
         navigate('/');
       }

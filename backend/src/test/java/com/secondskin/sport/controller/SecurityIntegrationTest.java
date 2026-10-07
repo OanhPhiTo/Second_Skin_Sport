@@ -85,7 +85,7 @@ public class SecurityIntegrationTest {
         registerRequest.setName("John Doe");
         registerRequest.setEmail("john@example.com");
         registerRequest.setPassword("correctPassword");
-        registerRequest.setPreferredSport("Cycling");
+        registerRequest.setPreferredSport("Basketball");
 
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)

@@ -54,7 +54,7 @@ describe('Login Component', () => {
     });
   });
 
-  test('navigates admin to /admin/users on login', async () => {
+  test('navigates admin to /admin on login', async () => {
     authService.login.mockResolvedValueOnce({ token: 'admin-token', role: 'ADMIN' });
     renderWithRouter(<Login />);
     
@@ -63,7 +63,7 @@ describe('Login Component', () => {
     fireEvent.click(screen.getByRole('button', { name: /đăng nhập$/i }));
     
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/admin/users');
+      expect(mockNavigate).toHaveBeenCalledWith('/admin');
     });
   });
 

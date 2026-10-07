@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Users,
-  ShieldCheck,
-  UserCheck,
-  UserX,
   Search,
   RefreshCw,
   Trash2,
-  ShieldAlert,
-  Activity,
+  ShieldCheck,
   CheckCircle2,
   AlertTriangle,
+  ShieldAlert,
   Flame,
+  UserX,
+  UserCheck,
 } from 'lucide-react';
 import { adminService } from '../services/api';
 import './AdminUsers.css';
@@ -26,8 +24,8 @@ export default function AdminUsers() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [actionNotice, setActionNotice] = useState(null);
 
-  const fetchUsers = async (isManualRefresh = false) => {
-    if (isManualRefresh) setRefreshing(true);
+  const fetchUsers = async (isManual = false) => {
+    if (isManual) setRefreshing(true);
     else setLoading(true);
     setError('');
     try {
@@ -50,30 +48,30 @@ export default function AdminUsers() {
     setActionNotice({ message, type });
     setTimeout(() => {
       setActionNotice(null);
-    }, 3500);
+    }, 3000);
   };
 
   const handleToggleBan = async (user) => {
     try {
       if (user.enabled) {
         await adminService.banUser(user.id);
-        showToast(`Đã khóa tài khoản của ${user.name}`, 'warning');
+        showToast(`Đã khóa tài khoản: ${user.name}`, 'warning');
       } else {
         await adminService.unbanUser(user.id);
-        showToast(`Đã mở khóa tài khoản của ${user.name}`, 'success');
+        showToast(`Đã mở khóa tài khoản: ${user.name}`, 'success');
       }
       setUsers((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, enabled: !user.enabled } : u))
       );
     } catch (err) {
-      showToast('Thao tác khóa/mở khóa thất bại', 'error');
+      showToast('Thao tác thất bại', 'error');
     }
   };
 
   const handleToggleRole = async (user) => {
     const nextRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN';
     const confirmChange = window.confirm(
-      `Bạn có chắc chắn muốn chuyển vai trò của ${user.name} sang ${nextRole}?`
+      `Bạn có chắc muốn chuyển vai trò của ${user.name} sang ${nextRole}?`
     );
     if (!confirmChange) return;
 
@@ -82,7 +80,7 @@ export default function AdminUsers() {
       setUsers((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, role: nextRole } : u))
       );
-      showToast(`Đã cập nhật quyền của ${user.name} thành ${nextRole}`, 'success');
+      showToast(`Đã đổi quyền ${user.name} thành ${nextRole}`, 'success');
     } catch (err) {
       showToast('Cập nhật quyền thất bại', 'error');
     }
@@ -94,29 +92,19 @@ export default function AdminUsers() {
       return;
     }
     const confirmDelete = window.confirm(
-      `Hành động này sẽ xóa vĩnh viễn vận động viên "${user.name}" (${user.email}) khỏi cơ sở dữ liệu SQL. Tiếp tục?`
+      `Xác nhận xóa vĩnh viễn người dùng "${user.name}" khỏi cơ sở dữ liệu?`
     );
     if (!confirmDelete) return;
 
     try {
       await adminService.deleteUser(user.id);
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
-      showToast(`Đã xóa vĩnh viễn người dùng ${user.name}`, 'warning');
+      showToast(`Đã xóa vĩnh viễn ${user.name}`, 'warning');
     } catch (err) {
       showToast('Xóa người dùng thất bại', 'error');
     }
   };
 
-  // Metrics Calculation
-  const metrics = useMemo(() => {
-    const total = users.length;
-    const active = users.filter((u) => u.enabled).length;
-    const banned = users.filter((u) => !u.enabled).length;
-    const admins = users.filter((u) => u.role === 'ADMIN').length;
-    return { total, active, banned, admins };
-  }, [users]);
-
-  // Filtered Users
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       const matchQuery =
@@ -139,279 +127,178 @@ export default function AdminUsers() {
   }, [users, searchQuery, roleFilter, statusFilter]);
 
   return (
-    <div className="admin-page-container">
-      {/* Toast Notification */}
+    <div className="admin-users-wrap">
+      {/* Toast Alert */}
       {actionNotice && (
-        <div className={`admin-toast-banner ${actionNotice.type}`}>
-          {actionNotice.type === 'success' && <CheckCircle2 size={18} />}
-          {actionNotice.type === 'warning' && <AlertTriangle size={18} />}
-          {actionNotice.type === 'error' && <ShieldAlert size={18} />}
+        <div className={`admin-toast ${actionNotice.type}`}>
+          {actionNotice.type === 'success' && <CheckCircle2 size={16} />}
+          {actionNotice.type === 'warning' && <AlertTriangle size={16} />}
+          {actionNotice.type === 'error' && <ShieldAlert size={16} />}
           <span>{actionNotice.message}</span>
         </div>
       )}
 
-      {/* Header Bar */}
-      <div className="admin-header-row">
+      {/* Header */}
+      <div className="admin-users-top">
         <div>
-          <div className="admin-eyebrow">
-            <span className="live-badge-dot" />
-            HỆ THỐNG QUẢN TRỊ DỮ LIỆU SQL
-          </div>
-          <h1 className="admin-main-title">Quản Lý Người Dùng & Vận Động Viên</h1>
-          <p className="admin-main-subtitle">
-            Bảng điều khiển quản trị người dùng cấp quyền cao nhất. Dữ liệu được đồng bộ trực tiếp từ Database.
+          <h1 className="admin-page-title">Quản Lý Người Dùng</h1>
+          <p className="admin-page-desc">
+            Danh sách người dùng và phân quyền vận động viên trong hệ thống (Đồng bộ SQL).
           </p>
         </div>
 
-        <div className="admin-header-actions">
-          <button
-            className="btn-admin-refresh"
-            onClick={() => fetchUsers(true)}
-            disabled={refreshing || loading}
-            title="Làm mới dữ liệu từ Database"
-          >
-            <RefreshCw size={16} className={refreshing ? 'spin-icon' : ''} />
-            <span>{refreshing ? 'Đang đồng bộ...' : 'Làm mới SQL'}</span>
-          </button>
-        </div>
+        <button
+          className="btn-refresh-simple"
+          onClick={() => fetchUsers(true)}
+          disabled={loading || refreshing}
+        >
+          <RefreshCw size={14} className={refreshing ? 'spin-icon' : ''} />
+          <span>{refreshing ? 'Đang tải...' : 'Làm mới'}</span>
+        </button>
       </div>
 
-      {/* Metric Cards Row */}
-      <div className="admin-metrics-grid">
-        <div className="metric-box-card">
-          <div className="metric-header">
-            <span className="metric-label">Tổng người dùng</span>
-            <div className="metric-icon-wrap cyan">
-              <Users size={18} />
-            </div>
-          </div>
-          <div className="metric-number-val">{metrics.total}</div>
-          <div className="metric-footer-text">Đã ghi nhận trong cơ sở dữ liệu</div>
-        </div>
-
-        <div className="metric-box-card">
-          <div className="metric-header">
-            <span className="metric-label">Vận động viên hoạt động</span>
-            <div className="metric-icon-wrap green">
-              <UserCheck size={18} />
-            </div>
-          </div>
-          <div className="metric-number-val highlight-green">{metrics.active}</div>
-          <div className="metric-footer-text">Tài khoản được phép truy cập</div>
-        </div>
-
-        <div className="metric-box-card">
-          <div className="metric-header">
-            <span className="metric-label">Tài khoản bị khóa</span>
-            <div className="metric-icon-wrap red">
-              <UserX size={18} />
-            </div>
-          </div>
-          <div className="metric-number-val highlight-red">{metrics.banned}</div>
-          <div className="metric-footer-text">Bị đình chỉ quyền truy cập</div>
-        </div>
-
-        <div className="metric-box-card">
-          <div className="metric-header">
-            <span className="metric-label">Quản trị viên (Admin)</span>
-            <div className="metric-icon-wrap amber">
-              <ShieldCheck size={18} />
-            </div>
-          </div>
-          <div className="metric-number-val highlight-amber">{metrics.admins}</div>
-          <div className="metric-footer-text">Quyền hạn cao nhất hệ thống</div>
-        </div>
-      </div>
-
-      {/* Control Filter Bar */}
-      <div className="admin-filter-bar card">
-        <div className="search-input-wrap">
-          <Search size={18} className="search-icon" />
+      {/* Filter and Search Bar */}
+      <div className="admin-toolbar">
+        <div className="admin-search-box">
+          <Search size={16} className="search-ico" />
           <input
             type="text"
             placeholder="Tìm theo họ tên, email hoặc môn thể thao..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="admin-search-input"
           />
         </div>
 
-        <div className="filter-dropdowns">
-          <div className="filter-select-wrap">
-            <span className="select-label">Vai trò:</span>
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="admin-select"
-            >
-              <option value="ALL">Tất cả vai trò</option>
-              <option value="USER">Vận động viên (USER)</option>
-              <option value="ADMIN">Quản trị viên (ADMIN)</option>
-            </select>
-          </div>
+        <div className="admin-filters-group">
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="filter-select"
+          >
+            <option value="ALL">Tất cả vai trò</option>
+            <option value="USER">Vận động viên (USER)</option>
+            <option value="ADMIN">Quản trị viên (ADMIN)</option>
+          </select>
 
-          <div className="filter-select-wrap">
-            <span className="select-label">Trạng thái:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="admin-select"
-            >
-              <option value="ALL">Tất cả trạng thái</option>
-              <option value="ACTIVE">Đang hoạt động</option>
-              <option value="BANNED">Đã bị khóa</option>
-            </select>
-          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="filter-select"
+          >
+            <option value="ALL">Tất cả trạng thái</option>
+            <option value="ACTIVE">Đang hoạt động</option>
+            <option value="BANNED">Đã khóa</option>
+          </select>
         </div>
       </div>
 
-      {/* Error Banner */}
+      {/* Error Message */}
       {error && (
-        <div className="admin-error-banner">
-          <ShieldAlert size={20} />
+        <div className="admin-err-box">
+          <ShieldAlert size={18} />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Users Table */}
-      <div className="admin-table-card card">
+      {/* Table Container */}
+      <div className="admin-table-container">
         {loading ? (
-          <div className="admin-loading-state">
-            <div className="admin-spinner" />
-            <p>Đang truy vấn danh sách người dùng từ SQL database...</p>
+          <div className="admin-loading-indicator">
+            <div className="spinner-simple" />
+            <span>Đang truy vấn dữ liệu từ SQL...</span>
           </div>
         ) : filteredUsers.length === 0 ? (
-          <div className="admin-empty-state">
-            <Users size={48} className="empty-icon" />
-            <h3>Không tìm thấy người dùng phù hợp</h3>
-            <p>Vui lòng thay đổi từ khóa tìm kiếm hoặc bộ lọc.</p>
+          <div className="admin-no-data">
+            <p>Không tìm thấy người dùng nào phù hợp với bộ lọc.</p>
           </div>
         ) : (
-          <div className="table-responsive">
-            <table className="admin-custom-table">
-              <thead>
-                <tr>
-                  <th>VẬN ĐỘNG VIÊN</th>
-                  <th>EMAIL</th>
-                  <th>MÔN THỂ THAO</th>
-                  <th>VAI TRÒ</th>
-                  <th>NGÀY THAM GIA</th>
-                  <th>TRẠNG THÁI</th>
-                  <th style={{ textAlign: 'right' }}>QUẢN TRỊ HÀNH ĐỘNG</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((user) => {
-                  const isAdmin = user.role === 'ADMIN';
-                  const initials = (user.name || 'U')
-                    .split(' ')
-                    .map((n) => n[0])
-                    .join('')
-                    .substring(0, 2)
-                    .toUpperCase();
-
-                  return (
-                    <tr
-                      key={user.id}
-                      className={`user-row ${!user.enabled ? 'row-banned' : ''}`}
-                    >
-                      <td>
-                        <div className="user-profile-cell">
-                          <div className={`user-table-avatar ${isAdmin ? 'avatar-admin' : ''}`}>
-                            {initials}
-                          </div>
-                          <div className="user-name-group">
-                            <span className="user-table-name">{user.name}</span>
-                            <span className="user-table-id">ID: #{user.id}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="user-table-email">{user.email}</span>
-                      </td>
-                      <td>
-                        <span className="user-sport-pill">
-                          <Activity size={13} />
-                          {user.preferredSport || 'Thể thao đa năng'}
+          <table className="admin-data-table">
+            <thead>
+              <tr>
+                <th style={{ width: '60px' }}>ID</th>
+                <th>HỌ TÊN</th>
+                <th>EMAIL</th>
+                <th>VAI TRÒ</th>
+                <th>MÔN THỂ THAO</th>
+                <th>TRẠNG THÁI</th>
+                <th style={{ textAlign: 'right' }}>THAO TÁC</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers.map((u) => {
+                const isAdmin = u.role === 'ADMIN';
+                return (
+                  <tr key={u.id} className={!u.enabled ? 'row-disabled' : ''}>
+                    <td className="col-id">#{u.id}</td>
+                    <td className="col-name">{u.name}</td>
+                    <td className="col-email">{u.email}</td>
+                    <td>
+                      {isAdmin ? (
+                        <span className="pill-role-admin">
+                          <ShieldCheck size={12} /> ADMIN
                         </span>
-                      </td>
-                      <td>
-                        {isAdmin ? (
-                          <span className="badge-role-admin">
-                            <ShieldCheck size={13} />
-                            ADMIN
-                          </span>
-                        ) : (
-                          <span className="badge-role-user">
-                            <Flame size={13} />
-                            ATHLETE
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <span className="user-date-text">
-                          {user.createdAt
-                            ? new Date(user.createdAt).toLocaleDateString('vi-VN', {
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                              })
-                            : '01/09/2026'}
+                      ) : (
+                        <span className="pill-role-user">
+                          <Flame size={12} /> ATHLETE
                         </span>
-                      </td>
-                      <td>
-                        <span
-                          className={`user-status-pill ${
-                            user.enabled ? 'status-active' : 'status-banned'
-                          }`}
+                      )}
+                    </td>
+                    <td>{u.preferredSport || 'Đa môn'}</td>
+                    <td>
+                      <span className={`pill-status ${u.enabled ? 'active' : 'banned'}`}>
+                        {u.enabled ? 'Hoạt động' : 'Bị khóa'}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div className="action-btns-wrap">
+                        {/* Toggle Role Button */}
+                        <button
+                          type="button"
+                          className="btn-opt role"
+                          onClick={() => handleToggleRole(u)}
+                          title={`Chuyển quyền thành ${isAdmin ? 'USER' : 'ADMIN'}`}
                         >
-                          <span className="status-dot" />
-                          {user.enabled ? 'Hoạt động' : 'Bị khóa'}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="table-actions-group">
-                          {/* Toggle Role Button */}
-                          <button
-                            type="button"
-                            className="btn-action-pill role-pill"
-                            onClick={() => handleToggleRole(user)}
-                            title={`Chuyển quyền thành ${isAdmin ? 'USER' : 'ADMIN'}`}
-                          >
-                            {isAdmin ? 'Hạ quyền' : 'Thăng Admin'}
-                          </button>
+                          {isAdmin ? 'Hạ quyền' : 'Thăng Admin'}
+                        </button>
 
-                          {/* Ban/Unban Button */}
-                          <button
-                            type="button"
-                            className={`btn-action-pill ${
-                              user.enabled ? 'ban-pill' : 'unban-pill'
-                            }`}
-                            onClick={() => handleToggleBan(user)}
-                            title={user.enabled ? 'Khóa tài khoản này' : 'Mở khóa tài khoản'}
-                          >
-                            {user.enabled ? 'Khóa' : 'Mở khóa'}
-                          </button>
-
-                          {/* Delete Button (Only for non-admin) */}
-                          {!isAdmin && (
-                            <button
-                              type="button"
-                              className="btn-action-icon delete-icon"
-                              onClick={() => handleDeleteUser(user)}
-                              title="Xóa vĩnh viễn khỏi SQL"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                        {/* Ban/Unban Button */}
+                        <button
+                          type="button"
+                          className={`btn-opt ${u.enabled ? 'ban' : 'unban'}`}
+                          onClick={() => handleToggleBan(u)}
+                          title={u.enabled ? 'Khóa tài khoản' : 'Mở khóa'}
+                        >
+                          {u.enabled ? (
+                            <>
+                              <UserX size={13} />
+                              <span>Khóa</span>
+                            </>
+                          ) : (
+                            <>
+                              <UserCheck size={13} />
+                              <span>Mở</span>
+                            </>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </button>
+
+                        {/* Delete Button (non-admin only) */}
+                        {!isAdmin && (
+                          <button
+                            type="button"
+                            className="btn-opt delete"
+                            onClick={() => handleDeleteUser(u)}
+                            title="Xóa khỏi cơ sở dữ liệu"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

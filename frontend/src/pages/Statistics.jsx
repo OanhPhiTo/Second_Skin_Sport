@@ -32,15 +32,8 @@ export default function Statistics() {
   const [statsList, setStatsList] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Sports data dataset for rich charts
+  // Sports data dataset for rich charts (Focused on Running & Basketball)
   const datasetMap = {
-    Basketball: [
-      { date: '09/10', speed: 17.5, acceleration: 3.1, intensity: 85, jumps: 52, score: 89 },
-      { date: '09/12', speed: 18.2, acceleration: 3.3, intensity: 88, jumps: 58, score: 92 },
-      { date: '09/14', speed: 16.8, acceleration: 2.9, intensity: 82, jumps: 45, score: 86 },
-      { date: '09/15', speed: 17.2, acceleration: 2.89, intensity: 84, jumps: 43, score: 87 },
-      { date: '09/16', speed: 18.4, acceleration: 3.21, intensity: 88, jumps: 56, score: 91 },
-    ],
     Running: [
       { date: '09/08', speed: 13.5, acceleration: 2.2, intensity: 74, jumps: 0, score: 79 },
       { date: '09/10', speed: 14.2, acceleration: 2.3, intensity: 77, jumps: 0, score: 81 },
@@ -48,26 +41,17 @@ export default function Statistics() {
       { date: '09/14', speed: 14.8, acceleration: 2.41, intensity: 79, jumps: 0, score: 82 },
       { date: '09/16', speed: 15.2, acceleration: 2.55, intensity: 83, jumps: 0, score: 86 },
     ],
-    Football: [
-      { date: '09/07', speed: 20.2, acceleration: 3.0, intensity: 88, jumps: 28, score: 88 },
-      { date: '09/09', speed: 21.0, acceleration: 3.15, intensity: 90, jumps: 32, score: 90 },
-      { date: '09/11', speed: 19.8, acceleration: 2.95, intensity: 86, jumps: 26, score: 85 },
-      { date: '09/13', speed: 21.6, acceleration: 3.12, intensity: 92, jumps: 34, score: 89 },
-      { date: '09/15', speed: 22.1, acceleration: 3.28, intensity: 94, jumps: 38, score: 93 },
-    ],
-    Gym: [
-      { date: '09/08', speed: 5.5, acceleration: 1.7, intensity: 70, jumps: 12, score: 74 },
-      { date: '09/10', speed: 6.0, acceleration: 1.8, intensity: 72, jumps: 15, score: 76 },
-      { date: '09/11', speed: 6.2, acceleration: 1.85, intensity: 75, jumps: 18, score: 78 },
-      { date: '09/13', speed: 6.5, acceleration: 1.9, intensity: 76, jumps: 20, score: 80 },
-      { date: '09/15', speed: 6.8, acceleration: 1.95, intensity: 78, jumps: 22, score: 82 },
+    Basketball: [
+      { date: '09/10', speed: 17.5, acceleration: 3.1, intensity: 85, jumps: 52, score: 89 },
+      { date: '09/12', speed: 18.2, acceleration: 3.3, intensity: 88, jumps: 58, score: 92 },
+      { date: '09/14', speed: 16.8, acceleration: 2.9, intensity: 82, jumps: 45, score: 86 },
+      { date: '09/15', speed: 17.2, acceleration: 2.89, intensity: 84, jumps: 43, score: 87 },
+      { date: '09/16', speed: 18.4, acceleration: 3.21, intensity: 88, jumps: 56, score: 91 },
     ],
     All: [
-      { date: '09/05', speed: 22.1, acceleration: 3.18, intensity: 91, jumps: 41, score: 92 },
-      { date: '09/07', speed: 13.9, acceleration: 2.38, intensity: 76, jumps: 0, score: 80 },
-      { date: '09/09', speed: 19.1, acceleration: 3.35, intensity: 90, jumps: 62, score: 94 },
-      { date: '09/11', speed: 6.2, acceleration: 1.85, intensity: 75, jumps: 18, score: 78 },
-      { date: '09/13', speed: 21.6, acceleration: 3.12, intensity: 92, jumps: 34, score: 89 },
+      { date: '09/08', speed: 13.5, acceleration: 2.2, intensity: 74, jumps: 0, score: 79 },
+      { date: '09/10', speed: 17.5, acceleration: 3.1, intensity: 85, jumps: 52, score: 89 },
+      { date: '09/12', speed: 18.2, acceleration: 3.3, intensity: 88, jumps: 58, score: 92 },
       { date: '09/14', speed: 14.8, acceleration: 2.41, intensity: 79, jumps: 0, score: 82 },
       { date: '09/15', speed: 17.2, acceleration: 2.89, intensity: 84, jumps: 43, score: 87 },
       { date: '09/16', speed: 18.4, acceleration: 3.21, intensity: 88, jumps: 56, score: 91 },
@@ -108,7 +92,7 @@ export default function Statistics() {
           <div className="filter-group">
             <span className="filter-label">Sport:</span>
             <div className="filter-pills">
-              {['All', 'Basketball', 'Running', 'Football', 'Gym'].map((sport) => (
+              {['All', 'Running', 'Basketball'].map((sport) => (
                 <button
                   key={sport}
                   className={`filter-pill ${selectedSport === sport ? 'active' : ''}`}

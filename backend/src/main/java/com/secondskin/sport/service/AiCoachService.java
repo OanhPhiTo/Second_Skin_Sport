@@ -56,23 +56,24 @@ public class AiCoachService {
 
         String prompt = String.format(
                 "Bạn là chuyên gia khoa học thể thao và huấn luyện viên AI cho hệ thống thiết bị đeo 'Second Skin Sport'. " +
-                "Hãy phân tích buổi tập sau đây:\n" +
+                "Hệ thống chuyên sâu nghiên cứu 2 bộ môn chính: Chạy bộ (Running) và Bóng rổ (Basketball).\n" +
+                "Hãy phân tích chi tiết dữ liệu động học buổi tập sau đây:\n" +
                 "- Môn thể thao: %s\n" +
                 "- Thời lượng: %d phút\n" +
-                "- Số lần bật nhảy: %d\n" +
+                "- Số lần bật nhảy: %d (Với Bóng rổ: tải trọng tiếp đất; Với Chạy bộ: độ nảy sải chân)\n" +
                 "- Số lần đổi hướng: %d\n" +
                 "- Gia tốc trung bình: %.2f m/s²\n" +
                 "- Tốc độ trung bình: %.1f km/h\n" +
                 "- Cường độ vận động: %d%%\n\n" +
                 "YÊU CẦU: Trả về ĐÚNG MỘT JSON thuần túy (không bọc trong markdown hay bất kỳ text nào khác) có cấu trúc sau:\n" +
                 "{\n" +
-                "  \"activityType\": \"<Tên hoạt động chi tiết, VD: Bóng rổ - Phối hợp tấn công nhanh>\",\n" +
+                "  \"activityType\": \"<Tên hoạt động chi tiết, VD: Bóng rổ - Bật nhảy & Phòng ngự phản công hoặc Chạy bộ - Rèn luyện sức bền nhịp bước>\",\n" +
                 "  \"performanceScore\": <Điểm phong độ từ 1-100>,\n" +
                 "  \"injuryRiskLevel\": \"<LOW hoặc MEDIUM hoặc HIGH>\",\n" +
-                "  \"injuryRiskExplanation\": \"<Giải thích nguyên nhân rủi ro chấn thương ngắn gọn bằng tiếng Việt>\",\n" +
+                "  \"injuryRiskExplanation\": \"<Giải thích nguyên nhân rủi ro chấn thương (khớp gối/gân gót/dây chằng) ngắn gọn bằng tiếng Việt>\",\n" +
                 "  \"estimatedCalories\": <Số calo tiêu thụ ước tính>,\n" +
-                "  \"postureFeedback\": [\"<Nhận xét kỹ thuật 1>\", \"<Nhận xét kỹ thuật 2>\"],\n" +
-                "  \"recoveryAdvice\": [\"<Lời khuyên phục hồi 1>\", \"<Lời khuyên phục hồi 2>\"],\n" +
+                "  \"postureFeedback\": [\"<Nhận xét kỹ thuật tư thế chuyên sâu 1>\", \"<Nhận xét kỹ thuật tư thế chuyên sâu 2>\"],\n" +
+                "  \"recoveryAdvice\": [\"<Lời khuyên phục hồi cơ bắp 1>\", \"<Lời khuyên phục hồi cơ bắp 2>\"],\n" +
                 "  \"aiSummary\": \"<Tóm tắt phong độ tổng thể từ AI Coach bằng tiếng Việt>\"\n" +
                 "}",
                 session.getSport(),
@@ -124,60 +125,86 @@ public class AiCoachService {
      */
     public AiInsightDTO generateBiomechanicalInsights(SportSession session) {
         String sport = session.getSport() != null ? session.getSport() : "Running";
+        boolean isRunning = "running".equalsIgnoreCase(sport);
         int duration = session.getDurationMinutes() > 0 ? session.getDurationMinutes() : 30;
         int jumps = session.getTotalJumps();
         int directionChanges = session.getDirectionChanges();
         double avgAccel = session.getAverageAcceleration();
         int intensity = session.getMovementIntensity() > 0 ? session.getMovementIntensity() : 75;
 
-        // 1. Calculate Calorie Burn based on MET (Metabolic Equivalent of Task)
-        double met;
-        switch (sport.toLowerCase()) {
-            case "basketball": met = 8.0; break;
-            case "football": case "soccer": met = 8.5; break;
-            case "gym": met = 5.5; break;
-            case "cycling": met = 7.5; break;
-            default: met = 9.0; break; // Running
-        }
-        // Calories = MET * 70kg (avg weight) * (duration / 60)
+        // 1. Calculate Calorie Burn based on MET (Running = 9.8, Basketball = 8.0)
+        double met = isRunning ? 9.8 : 8.0;
         int calories = (int) Math.round(met * 70.0 * (duration / 60.0));
 
         // 2. Performance Score Calculation
-        int score = (int) Math.min(98, Math.max(65, Math.round((intensity * 0.5) + (avgAccel * 10) + (jumps * 0.2))));
+        int score;
+        if (isRunning) {
+            score = (int) Math.min(98, Math.max(68, Math.round((intensity * 0.55) + (avgAccel * 12) + (session.getAverageSpeed() * 0.8))));
+        } else {
+            score = (int) Math.min(98, Math.max(65, Math.round((intensity * 0.5) + (avgAccel * 10) + (jumps * 0.25))));
+        }
 
-        // 3. Injury Risk Analysis
+        // 3. Injury Risk Analysis (Tailored to Running vs Basketball)
         String riskLevel = "LOW";
-        String riskExplanation = "Tải trọng cơ học và mật độ vận động nằm trong ngưỡng an toàn tối ưu.";
+        String riskExplanation;
         List<String> postureFeedback = new ArrayList<>();
         List<String> recoveryAdvice = new ArrayList<>();
 
-        if (jumps > 50 || (avgAccel > 3.8 && intensity > 85)) {
-            riskLevel = "HIGH";
-            riskExplanation = "Cảnh báo áp lực quá tải khớp gối và cổ chân do tần suất tiếp đất bật nhảy vượt ngưỡng phục hồi tức thời.";
-            postureFeedback.add("Tư thế tiếp đất sau các pha bật nhảy có xu hướng dồn lực lớn lên gối trước (chưa uốn cong gối đủ sâu).");
-            postureFeedback.add("Tốc độ chuyển hướng ở 15 phút cuối có dấu hiệu giảm độ ổn định do mỏi cơ đùi.");
-            recoveryAdvice.add("Chườm lạnh khớp gối và cơ bắp đùi trong 15-20 phút.");
-            recoveryAdvice.add("Thực hiện bài tập giãn cơ bắp chân (Calf stretch) và cơ tứ đầu (Quad stretch).");
-            recoveryAdvice.add("Nghỉ ngơi ít nhất 24 giờ trước buổi tập cường độ cao tiếp theo.");
-        } else if (jumps > 30 || directionChanges > 80 || intensity > 78) {
-            riskLevel = "MEDIUM";
-            riskExplanation = "Mức độ chịu tải vừa phải. Cần lưu ý bổ sung nước và điện giải để tránh chuột rút cơ bắp.";
-            postureFeedback.add("Trọng tâm cơ thể giữ cân bằng tốt trong 70% thời gian thi đấu.");
-            postureFeedback.add("Góc nghiêng thân người khi bứt tốc đạt tiêu chuẩn khí động học.");
-            recoveryAdvice.add("Bổ sung 500ml nước điện giải và protein hồi phục trong vòng 30 phút sau tập.");
-            recoveryAdvice.add("Xoa bóp nhẹ nhóm cơ cẳng chân và cơ mông.");
+        if (isRunning) {
+            // Running Biomechanics Analysis
+            if (avgAccel > 2.8 || intensity > 85 || duration > 60) {
+                riskLevel = "HIGH";
+                riskExplanation = "Cảnh báo quá tải vùng cẳng chân và gân Achilles do nhịp bước dồn lực gót chân ở cuối buổi chạy.";
+                postureFeedback.add("Tần số tiếp đất (Cadence) có dấu hiệu giảm nhẹ ở 1/3 cuối quãng đường chạy.");
+                postureFeedback.add("Độ dốc tiếp đất chuyển từ giữa bàn chân sang gót chân khi mệt mỏi.");
+                recoveryAdvice.add("Ngâm chân nước đá/chườm lạnh gân Achilles và cơ bắp chuối 15 phút.");
+                recoveryAdvice.add("Thực hiện bài giãn cơ dải chậu chày (IT Band) và cơ đùi sau.");
+                recoveryAdvice.add("Nghỉ ngơi hoặc bơi lội nhẹ nhàng phục hồi trong ngày mai.");
+            } else if (intensity > 75 || duration > 40) {
+                riskLevel = "MEDIUM";
+                riskExplanation = "Cường độ chạy ổn định. Cần duy trì tính đối xứng giữa hai chân để tránh lệch trục hông.";
+                postureFeedback.add("Độ cân bằng lực sải chân hai bên đạt 92% (chân thuận chịu lực nhỉnh hơn 8%).");
+                postureFeedback.add("Góc đánh tay nhịp nhàng hỗ trợ nhịp thở và khí động học tốt.");
+                recoveryAdvice.add("Bổ sung 400-500ml nước điện giải bù lượng muối khoáng mất qua mồ hôi.");
+                recoveryAdvice.add("Lăn bóng/ống foam roller thư giãn cơ bắp chân và lòng bàn chân.");
+            } else {
+                riskExplanation = "Nhịp chạy nhịp nhàng, tải trọng tác động lên khớp gối và cột sống ở mức lý tưởng.";
+                postureFeedback.add("Tiếp đất chuẩn giữa bàn chân (Midfoot strike), giảm xung lực dội ngược tối đa.");
+                postureFeedback.add("Tốc độ sải chân ổn định và đồng đều trong suốt buổi chạy.");
+                recoveryAdvice.add("Đi bộ thả lỏng 5 phút và hít thở sâu để hạ nhịp tim.");
+                recoveryAdvice.add("Bổ sung dinh dưỡng giàu protein và tinh bột hấp thu chậm.");
+            }
         } else {
-            postureFeedback.add("Tư thế di chuyển nhịp nhàng, độ đối xứng hai chân đạt 94%.");
-            postureFeedback.add("Khả năng hấp thụ xung lực khi tiếp đất tốt, kiểm soát thăng bằng chuẩn xác.");
-            recoveryAdvice.add("Thực hiện 5 phút thả lỏng nhẹ nhàng (Cool-down walk).");
-            recoveryAdvice.add("Ngủ đủ 7-8 tiếng để tối ưu hóa quá trình tái tạo năng lượng.");
+            // Basketball Biomechanics Analysis
+            if (jumps > 50 || (avgAccel > 3.5 && intensity > 85)) {
+                riskLevel = "HIGH";
+                riskExplanation = "Cảnh báo áp lực quá tải khớp gối (Patellar tendon) do tần suất bật nhảy và tiếp đất liên tục.";
+                postureFeedback.add("Tư thế tiếp đất sau các pha tranh bóng trên không dồn nhiều trọng tâm lên gối phải.");
+                postureFeedback.add("Tốc độ giảm tốc ở các pha đảo bóng (crossover) chưa phân bổ đều về hông.");
+                recoveryAdvice.add("Chườm lạnh hai khớp gối 15-20 phút để giảm phù nề vi thể gân.");
+                recoveryAdvice.add("Giãn cơ tứ đầu đùi (Quads) và cơ khép đùi cẩn thận.");
+                recoveryAdvice.add("Hạn chế bật nhảy cao trong 24 giờ tới.");
+            } else if (jumps > 30 || directionChanges > 80 || intensity > 78) {
+                riskLevel = "MEDIUM";
+                riskExplanation = "Khả năng giảm chấn và độ linh hoạt khi đổi hướng duy trì ở mức tốt.";
+                postureFeedback.add("Góc gập gối khi bật nhảy đạt biên độ lực tối ưu (~115 độ).");
+                postureFeedback.add("Kiểm soát thăng bằng tốt ở các pha xoay trụ và bứt tốc.");
+                recoveryAdvice.add("Bổ sung nước điện giải và protein trong vòng 30 phút sau trận đấu.");
+                recoveryAdvice.add("Thực hiện bài tập giãn cơ bắp chân và khớp cổ chân.");
+            } else {
+                riskExplanation = "Tải trọng bật nhảy và cường độ phòng ngự trong ngưỡng an toàn tuyệt đối.";
+                postureFeedback.add("Kỹ thuật tiếp đất hai chân cân bằng, hấp thụ xung lực hoàn hảo.");
+                postureFeedback.add("Độ linh hoạt khi xoay trở hướng bóng đạt chuẩn vận động viên.");
+                recoveryAdvice.add("Thực hiện 5 phút giãn cơ nhẹ nhàng toàn thân.");
+                recoveryAdvice.add("Duy trì chế độ nghỉ ngơi điều độ.");
+            }
         }
 
-        String summary = String.format(
-                "Buổi tập %s hoàn thành xuất sắc trong %d phút với điểm phong độ %d/100. " +
-                "Vận động viên đạt %d lần bật nhảy và %d pha bứt tốc đổi hướng với mức tiêu hao ~%d kcal.",
-                sport, duration, score, jumps, directionChanges, calories
-        );
+        String summary = isRunning
+                ? String.format("Buổi chạy bộ hoàn thành trong %d phút với tốc độ trung bình %.1f km/h, đạt điểm phong độ %d/100 và tiêu hao ~%d kcal.",
+                    duration, session.getAverageSpeed(), score, calories)
+                : String.format("Trận bóng rổ hoàn thành trong %d phút với %d lần bật nhảy, %d pha đổi hướng bứt tốc, điểm phong độ %d/100 (~%d kcal).",
+                    duration, jumps, directionChanges, score, calories);
 
         return new AiInsightDTO(
                 sport + " - " + (intensity > 80 ? "Cường độ cao" : "Tiêu chuẩn"),

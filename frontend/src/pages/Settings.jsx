@@ -88,10 +88,8 @@ export default function Settings() {
                 onChange={(e) => setPreferredSport(e.target.value)}
                 className="form-select"
               >
-                <option value="Basketball">Basketball (Jumps & Agility)</option>
-                <option value="Running">Running (Cadence & Endurance)</option>
-                <option value="Football">Football (Sprint & Direction Cuts)</option>
-                <option value="Gym">Gym / Functional Training</option>
+                <option value="Basketball">Basketball (Bật nhảy & Phản xạ đổi hướng)</option>
+                <option value="Running">Running (Nhịp bước, Tiếp đất & Bền bỉ)</option>
               </select>
             </div>
           </div>
