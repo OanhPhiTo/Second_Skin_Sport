@@ -60,6 +60,16 @@ float pitch = 0.0, roll = 0.0, yaw = 0.0;
 float gpsLat = 10.7626, gpsLng = 106.6602, gpsSpeed = 0.0;
 int batteryLevel = 92;
 
+// Activity Detection (Auto Session Trigger)
+String activityState = "idle"; // "idle" | "active" | "cooldown"
+int activeStreak = 0;
+int idleStreak = 0;
+const float ACTIVE_THRESHOLD = 12.0;   // m/s² (magnitude > 12 indicates vigorous activity like running/jumping)
+const float IDLE_THRESHOLD = 10.5;     // m/s² (near steady gravity 9.81)
+const int ACTIVE_TRIGGER_COUNT = 15;   // ~1.5s at 10Hz to confirm active
+const int COOLDOWN_TRIGGER_COUNT = 100;// ~10s low movement -> cooldown
+const int IDLE_TRIGGER_COUNT = 300;    // ~30s low movement -> idle
+
 // Wi-Fi Configuration stored in Flash
 String wifiSSID = "";
 String wifiPass = "";
@@ -231,6 +241,34 @@ void readSensors() {
 }
 
 // ==========================================
+// 🏃 ON-DEVICE ACTIVITY DETECTION (HEURISTIC)
+// ==========================================
+void detectActivity() {
+    // Vector magnitude of 3-axis acceleration
+    float magnitude = sqrt(ax * ax + ay * ay + az * az);
+
+    if (magnitude > ACTIVE_THRESHOLD) {
+        activeStreak++;
+        idleStreak = 0;
+        if (activeStreak >= ACTIVE_TRIGGER_COUNT) {
+            activityState = "active";
+        }
+    } else if (magnitude < IDLE_THRESHOLD) {
+        idleStreak++;
+        activeStreak = 0;
+        if (idleStreak >= IDLE_TRIGGER_COUNT) {
+            activityState = "idle";
+        } else if (idleStreak >= COOLDOWN_TRIGGER_COUNT && activityState == "active") {
+            activityState = "cooldown";
+        }
+    } else {
+        // Transitional zone, decay counters gradually
+        if (activeStreak > 0) activeStreak--;
+        if (idleStreak > 0) idleStreak--;
+    }
+}
+
+// ==========================================
 // 🚀 SETUP
 // ==========================================
 void setup() {
@@ -309,16 +347,19 @@ void loop() {
     // Đọc cảm biến liên tục
     readSensors();
 
+    // Tự động nhận diện trạng thái vận động (Active / Cooldown / Idle)
+    detectActivity();
+
     // Gửi gói tin BLE mỗi 100ms khi Web đã kết nối
     if (now - lastSensorPublish >= SENSOR_INTERVAL) {
         lastSensorPublish = now;
 
         if (bleClientConnected) {
-            // Đóng gói JSON ngắn gọn tối ưu BLE MTU
-            char jsonBuffer[220];
+            // Đóng gói JSON ngắn gọn tối ưu BLE MTU kèm flag state "s"
+            char jsonBuffer[256];
             snprintf(jsonBuffer, sizeof(jsonBuffer),
-                "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f,\"gx\":%.1f,\"gy\":%.1f,\"gz\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"lat\":%.4f,\"lng\":%.4f,\"spd\":%.1f,\"bat\":%d}",
-                ax, ay, az, gx, gy, gz, pitch, roll, yaw, gpsLat, gpsLng, gpsSpeed, batteryLevel
+                "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f,\"gx\":%.1f,\"gy\":%.1f,\"gz\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"lat\":%.4f,\"lng\":%.4f,\"spd\":%.1f,\"bat\":%d,\"s\":\"%s\"}",
+                ax, ay, az, gx, gy, gz, pitch, roll, yaw, gpsLat, gpsLng, gpsSpeed, batteryLevel, activityState.c_str()
             );
 
             pSensorCharacteristic->setValue((uint8_t*)jsonBuffer, strlen(jsonBuffer));
@@ -332,10 +373,10 @@ void loop() {
             http.begin(backendUrl);
             http.addHeader("Content-Type", "application/json");
 
-            char httpPayload[300];
+            char httpPayload[350];
             snprintf(httpPayload, sizeof(httpPayload),
-                "{\"deviceId\":\"ESP32-SUPERMINI-01\",\"accelerometerX\":%.2f,\"accelerometerY\":%.2f,\"accelerometerZ\":%.2f,\"gyroscopeX\":%.1f,\"gyroscopeY\":%.1f,\"gyroscopeZ\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"movementIntensity\":75}",
-                ax, ay, az, gx, gy, gz, pitch, roll, yaw
+                "{\"deviceId\":\"ESP32-SUPERMINI-01\",\"accelerometerX\":%.2f,\"accelerometerY\":%.2f,\"accelerometerZ\":%.2f,\"gyroscopeX\":%.1f,\"gyroscopeY\":%.1f,\"gyroscopeZ\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"movementIntensity\":75,\"activityState\":\"%s\"}",
+                ax, ay, az, gx, gy, gz, pitch, roll, yaw, activityState.c_str()
             );
 
             int httpCode = http.POST(httpPayload);

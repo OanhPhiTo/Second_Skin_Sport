@@ -1,39 +1,52 @@
 package com.secondskin.sport.service;
 
+import com.secondskin.sport.dto.AutoSessionDTO;
+import com.secondskin.sport.dto.SportSessionDTO;
 import com.secondskin.sport.entity.SportSession;
 import com.secondskin.sport.repository.SportSessionRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class SessionService {
     private final SportSessionRepository sessionRepository;
+    private final AutoSessionService autoSessionService;
 
-    public SessionService(SportSessionRepository sessionRepository) {
+    public SessionService(SportSessionRepository sessionRepository, AutoSessionService autoSessionService) {
         this.sessionRepository = sessionRepository;
+        this.autoSessionService = autoSessionService;
     }
 
-    public List<SportSession> getAllSessions(String sport) {
+    public List<SportSessionDTO> getAllSessions(String sport) {
+        List<SportSession> list;
         if (sport != null && !sport.trim().isEmpty() && !sport.equalsIgnoreCase("all")) {
-            return sessionRepository.findBySportIgnoreCaseOrderByStartTimeDesc(sport);
+            list = sessionRepository.findBySportIgnoreCaseOrderByStartTimeDesc(sport);
+        } else {
+            list = sessionRepository.findAllByOrderByStartTimeDesc();
         }
-        return sessionRepository.findAllByOrderByStartTimeDesc();
+        return list.stream().map(s -> autoSessionService.mapToDTO(s, null)).collect(Collectors.toList());
     }
 
-    public Optional<SportSession> getSessionById(Long id) {
-        return sessionRepository.findById(id);
+    public Optional<SportSessionDTO> getSessionById(Long id) {
+        return sessionRepository.findById(id).map(s -> autoSessionService.mapToDTO(s, null));
     }
 
-    public SportSession createSession(SportSession session) {
+    public SportSessionDTO createSession(SportSession session) {
         if (session.getStatus() == null) {
             session.setStatus("Completed");
         }
-        return sessionRepository.save(session);
+        SportSession saved = sessionRepository.save(session);
+        return autoSessionService.mapToDTO(saved, null);
     }
 
-    public SportSession updateSession(Long id, SportSession updated) {
+    public SportSessionDTO createAutoSession(AutoSessionDTO dto) {
+        return autoSessionService.processAutoSession(dto);
+    }
+
+    public SportSessionDTO updateSession(Long id, SportSession updated) {
         return sessionRepository.findById(id).map(session -> {
             session.setSport(updated.getSport());
             session.setDurationMinutes(updated.getDurationMinutes());
@@ -44,7 +57,8 @@ public class SessionService {
             session.setMovementIntensity(updated.getMovementIntensity());
             session.setPerformanceScore(updated.getPerformanceScore());
             session.setStatus(updated.getStatus());
-            return sessionRepository.save(session);
+            SportSession saved = sessionRepository.save(session);
+            return autoSessionService.mapToDTO(saved, null);
         }).orElseThrow(() -> new RuntimeException("Session not found with id " + id));
     }
 

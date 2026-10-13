@@ -29,6 +29,7 @@ import {
   Tooltip,
 } from 'recharts';
 import { sessionService, aiService } from '../services/api';
+import AiCoachInsightCard from '../components/AiCoachInsightCard';
 import './Activities.css';
 
 export default function Activities() {
@@ -357,76 +358,15 @@ export default function Activities() {
               </div>
             </div>
 
-            {/* AI COACH & INJURY RISK ASSESSMENT */}
+            {/* AI COACH BIOMECHANICS & HUMAN-ACTIONABLE INSIGHTS */}
             <div className="detail-ai-section">
-              <div className="ai-section-header">
-                <div className="ai-badge-icon">
-                  <Sparkles size={20} className="highlight-cyan" />
-                </div>
-                <div>
-                  <h4 className="ai-section-title">Phân Tích AI Coach & Cảnh Báo Chấn Thương</h4>
-                  <p className="ai-section-subtitle">Tích hợp Google Gemini AI & Khoa Học Chuyển Động Thể Thao</p>
-                </div>
-              </div>
-
               {loadingAi ? (
                 <div className="ai-loading-box">
                   <Loader2 size={22} className="spin-icon highlight-cyan" />
-                  <span>AI đang phân tích các xung lực gia tốc, tần suất tiếp đất & nguy cơ quá tải cơ...</span>
+                  <span>AI Coach đang phân tích các xung lực gia tốc, tần suất tiếp đất & nguy cơ quá tải cơ...</span>
                 </div>
               ) : aiInsights ? (
-                <div className="ai-results-wrapper">
-                  <div className="ai-summary-card">
-                    <p className="ai-summary-text">{aiInsights.aiSummary}</p>
-                  </div>
-
-                  <div className="ai-cards-grid">
-                    <div className={`ai-mini-card injury-card ${aiInsights.injuryRiskLevel?.toLowerCase()}`}>
-                      <div className="ai-mini-card-header">
-                        <span className="mini-card-label">RỦI RO CHẤN THƯƠNG</span>
-                        <span className={`risk-pill ${aiInsights.injuryRiskLevel?.toLowerCase()}`}>
-                          {aiInsights.injuryRiskLevel === 'HIGH' ? 'CAO ⚠️' : aiInsights.injuryRiskLevel === 'MEDIUM' ? 'TRUNG BÌNH' : 'AN TOÀN ✓'}
-                        </span>
-                      </div>
-                      <p className="risk-explanation">{aiInsights.injuryRiskExplanation}</p>
-                    </div>
-
-                    <div className="ai-mini-card calories-card">
-                      <div className="ai-mini-card-header">
-                        <span className="mini-card-label">TIÊU HAO NĂNG LƯỢNG</span>
-                        <Flame size={16} className="highlight-orange" />
-                      </div>
-                      <div className="calories-val">
-                        <span className="calories-num">{aiInsights.estimatedCalories || 420}</span>
-                        <span className="calories-unit">kcal</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="ai-advice-columns">
-                    {aiInsights.postureFeedback && aiInsights.postureFeedback.length > 0 && (
-                      <div className="advice-col">
-                        <h5 className="advice-col-title">🎯 Kỹ Thuật & Tư Thế Tiếp Đất:</h5>
-                        <ul>
-                          {aiInsights.postureFeedback.map((item, idx) => (
-                            <li key={idx}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {aiInsights.recoveryAdvice && aiInsights.recoveryAdvice.length > 0 && (
-                      <div className="advice-col">
-                        <h5 className="advice-col-title">💊 Lời Khuyên Phục Hồi Thể Lực:</h5>
-                        <ul>
-                          {aiInsights.recoveryAdvice.map((item, idx) => (
-                            <li key={idx}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <AiCoachInsightCard insights={aiInsights} />
               ) : null}
             </div>
 

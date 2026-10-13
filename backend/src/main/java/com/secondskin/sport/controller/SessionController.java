@@ -1,5 +1,7 @@
 package com.secondskin.sport.controller;
 
+import com.secondskin.sport.dto.AutoSessionDTO;
+import com.secondskin.sport.dto.SportSessionDTO;
 import com.secondskin.sport.entity.SensorData;
 import com.secondskin.sport.entity.SportSession;
 import com.secondskin.sport.service.SensorDataService;
@@ -21,25 +23,30 @@ public class SessionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<SportSession>> getAllSessions(
+    public ResponseEntity<List<SportSessionDTO>> getAllSessions(
             @RequestParam(required = false) String sport) {
         return ResponseEntity.ok(sessionService.getAllSessions(sport));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<SportSession> getSessionById(@PathVariable Long id) {
+    public ResponseEntity<SportSessionDTO> getSessionById(@PathVariable Long id) {
         return sessionService.getSessionById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public ResponseEntity<SportSession> createSession(@RequestBody SportSession session) {
+    public ResponseEntity<SportSessionDTO> createSession(@RequestBody SportSession session) {
         return ResponseEntity.ok(sessionService.createSession(session));
     }
 
+    @PostMapping("/auto")
+    public ResponseEntity<SportSessionDTO> createAutoSession(@RequestBody AutoSessionDTO autoSessionDTO) {
+        return ResponseEntity.ok(sessionService.createAutoSession(autoSessionDTO));
+    }
+
     @PutMapping("/{id}")
-    public ResponseEntity<SportSession> updateSession(@PathVariable Long id, @RequestBody SportSession session) {
+    public ResponseEntity<SportSessionDTO> updateSession(@PathVariable Long id, @RequestBody SportSession session) {
         return ResponseEntity.ok(sessionService.updateSession(id, session));
     }
 

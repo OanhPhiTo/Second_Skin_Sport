@@ -7,6 +7,7 @@ D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\controlle
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\controller\AiCoachController.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\controller\AuthController.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\controller\DeviceController.java
+D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\controller\SensorBatchController.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\controller\SensorDataController.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\controller\SessionController.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\controller\StatisticsController.java
@@ -14,9 +15,16 @@ D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\Activ
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\AiInsightDTO.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\AuthRequest.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\AuthResponse.java
+D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\AutoSessionDTO.java
+D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\BatchProcessResponseDTO.java
+D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\BiomechanicalMetricsDTO.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\OverviewStatsDTO.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\RegisterRequest.java
+D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\SensorBatchDTO.java
+D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\SensorReadingDTO.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\SensorStatusDTO.java
+D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\SportSessionDTO.java
+D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\TrajectoryPointDTO.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\dto\UserDTO.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\entity\Device.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\entity\PerformanceStatistic.java
@@ -36,7 +44,10 @@ D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\security\
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\service\AdminService.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\service\AiCoachService.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\service\AuthService.java
+D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\service\AutoSessionService.java
+D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\service\BiomechanicalFeatureExtractor.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\service\DeviceService.java
+D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\service\SensorBatchService.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\service\SensorDataService.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\service\SessionService.java
 D:\EXE101\Second_Skin_Sport\backend\src\main\java\com\secondskin\sport\service\StatisticsService.java

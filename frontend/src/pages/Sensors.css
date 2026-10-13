@@ -515,6 +515,192 @@
   color: #bae6fd;
 }
 
+/* ZERO-TOUCH AUTO SESSION TRACKING CARD */
+.zero-touch-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--accent-cyan);
+  font-weight: 500;
+}
+
+.auto-session-banner-card {
+  margin-top: 20px;
+  padding: 20px 24px;
+  border-radius: var(--radius-lg, 12px);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.75));
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.4s ease;
+}
+
+.auto-session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.auto-session-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.session-state-glow {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  transition: all 0.3s ease;
+}
+
+.session-state-glow.recording {
+  background: rgba(0, 255, 135, 0.18);
+  color: #00ff87;
+  border-color: rgba(0, 255, 135, 0.5);
+  box-shadow: 0 0 16px rgba(0, 255, 135, 0.4);
+  animation: pulse-glow 1.5s infinite;
+}
+
+.session-state-glow.cooldown {
+  background: rgba(245, 158, 11, 0.18);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+}
+
+@keyframes pulse-glow {
+  0% { transform: scale(1); box-shadow: 0 0 12px rgba(0, 255, 135, 0.3); }
+  50% { transform: scale(1.08); box-shadow: 0 0 22px rgba(0, 255, 135, 0.6); }
+  100% { transform: scale(1); box-shadow: 0 0 12px rgba(0, 255, 135, 0.3); }
+}
+
+.auto-session-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 3px 0;
+}
+
+.auto-session-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.state-pill {
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.state-pill.recording {
+  background: rgba(0, 255, 135, 0.15);
+  border: 1px solid rgba(0, 255, 135, 0.4);
+  color: #00ff87;
+}
+
+.state-pill.cooldown {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #f59e0b;
+}
+
+.state-pill.idle {
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #94a3b8;
+}
+
+.auto-session-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.auto-stat-item {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md, 8px);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auto-stat-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.auto-stat-val {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  font-family: 'Outfit', sans-serif;
+}
+
+.auto-stat-val.timer-val {
+  color: #00ff87;
+  font-family: 'Outfit', monospace;
+  letter-spacing: 1px;
+}
+
+.badge-sport-label {
+  color: var(--accent-cyan);
+}
+
+.auto-session-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.auto-session-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.last-saved-session-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0, 255, 135, 0.1);
+  border: 1px solid rgba(0, 255, 135, 0.3);
+  padding: 12px 16px;
+  border-radius: var(--radius-md, 8px);
+  color: #86efac;
+  font-size: 0.88rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.last-saved-session-banner span {
+  color: var(--text-secondary);
+}
+
 @media (max-width: 768px) {
   .ble-telemetry-meta-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -527,6 +713,9 @@
   }
   .wifi-form-submit {
     grid-column: span 1;
+  }
+  .auto-session-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
