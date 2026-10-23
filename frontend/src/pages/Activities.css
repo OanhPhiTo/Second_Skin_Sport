@@ -130,82 +130,259 @@
   background-color: rgba(0, 242, 254, 0.05);
 }
 
-/* Session Detail Modal */
-.session-detail-modal {
-  max-width: 680px;
+/* Universal Modal Overlay for Activities */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  inset: 0;
+  background: rgba(4, 6, 12, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.modal-box {
   width: 100%;
-  padding: 28px;
+  position: relative;
+  z-index: 1201;
+  box-sizing: border-box;
+  margin: auto;
+}
+
+/* Session Detail Modal - Pixel-perfect to Mockup */
+.session-detail-modal {
+  max-width: 720px;
+  width: 94%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 30px 34px 28px 34px;
+  background-color: #0b0f19;
+  border: 1px solid rgba(0, 242, 254, 0.22);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), 0 0 35px rgba(0, 242, 254, 0.05);
+  animation: modalScaleIn 0.22s ease-out;
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .detail-modal-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .detail-tags {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+}
+
+.detail-tag-sport {
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 9999px;
+  text-transform: capitalize;
+  display: inline-flex;
+  align-items: center;
+}
+
+.detail-tag-sport.basketball {
+  background-color: #281812;
+  color: #ff8c42;
+}
+
+.detail-tag-sport.running {
+  background-color: #0e271e;
+  color: #10b981;
+}
+
+.detail-tag-id {
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 9999px;
+  background-color: #0b2432;
+  color: #00f2fe;
+  display: inline-flex;
+  align-items: center;
+}
+
+.detail-modal-close {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 0.15s ease;
+}
+
+.detail-modal-close:hover {
+  color: #ffffff;
 }
 
 .detail-modal-title {
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: #fff;
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 12px 0 4px 0;
+  letter-spacing: -0.01em;
 }
 
+.detail-modal-subtitle {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* 6 Metric Cards Breakdown Grid */
 .detail-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
+  margin-top: 22px;
   margin-bottom: 24px;
 }
 
 .detail-stat-item {
-  background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-color);
-  padding: 14px;
-  border-radius: var(--radius-md);
+  background-color: #111625;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 16px 20px;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  min-height: 86px;
 }
 
 .detail-stat-item .stat-label {
-  font-size: 0.72rem;
-  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #5a6882;
   text-transform: uppercase;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .detail-stat-item .stat-val {
-  font-family: 'Outfit', sans-serif;
-  font-size: 1.25rem;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 1.4rem;
   font-weight: 700;
-  color: #fff;
+  color: #ffffff;
 }
 
+/* Telemetry Acceleration Curve */
 .detail-chart-wrapper {
-  margin-bottom: 24px;
+  margin-bottom: 22px;
 }
 
 .detail-section-title {
   font-size: 0.92rem;
   font-weight: 700;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
+  color: #cbd5e1;
+  margin: 0 0 14px 0;
 }
 
+.detail-chart-wrapper .chart-inner {
+  width: 100%;
+  height: 185px;
+}
+
+/* Modal Footer & Close button */
 .detail-modal-footer {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.detail-close-btn {
+  background-color: #171d2b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 10px 28px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.detail-close-btn:hover {
+  background-color: #1f273b;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Action buttons group in table */
+.activity-action-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-outline-sparkle {
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: #c084fc;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-outline-sparkle:hover {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: #c084fc;
+  color: #ffffff;
+}
+
+/* Dedicated AI Coach Modal */
+.session-ai-modal {
+  max-width: 760px;
+  width: 94%;
+  padding: 28px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background-color: #0b0f19;
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  border-radius: 22px;
 }
 
 @media (max-width: 640px) {
   .detail-stats-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .session-detail-modal {
+    padding: 20px 18px;
   }
 }
 

@@ -40,6 +40,7 @@ export default function Activities() {
   const [selectedSport, setSelectedSport] = useState('All');
   const [sortBy, setSortBy] = useState('date-desc');
   const [selectedSession, setSelectedSession] = useState(null);
+  const [aiCoachSession, setAiCoachSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [aiInsights, setAiInsights] = useState(null);
   const [loadingAi, setLoadingAi] = useState(false);
@@ -67,17 +68,17 @@ export default function Activities() {
     fetchSessions();
   }, [searchParams]);
 
-  // Fetch AI insights when a session modal is opened
+  // Fetch AI insights when AI Coach modal is opened
   useEffect(() => {
-    if (selectedSession) {
+    if (aiCoachSession) {
       setAiInsights(null);
       setLoadingAi(true);
-      aiService.analyzeSession(selectedSession.id)
+      aiService.analyzeSession(aiCoachSession.id)
         .then((data) => setAiInsights(data))
         .catch((err) => console.error('Error fetching AI insights:', err))
         .finally(() => setLoadingAi(false));
     }
-  }, [selectedSession]);
+  }, [aiCoachSession]);
 
   // Handle Search, Filter, and Sort
   useEffect(() => {
@@ -246,15 +247,28 @@ export default function Activities() {
                       <span className="score-number">{session.performanceScore}%</span>
                     </td>
                     <td className="cell-action">
-                      <button
-                        className="btn btn-outline-cyan btn-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedSession(session);
-                        }}
-                      >
-                        View Detail
-                      </button>
+                      <div className="activity-action-group">
+                        <button
+                          className="btn btn-outline-cyan btn-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSession(session);
+                          }}
+                        >
+                          View Detail
+                        </button>
+                        <button
+                          className="btn btn-outline-sparkle btn-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAiCoachSession(session);
+                          }}
+                          title="Xem phân tích chuyên sâu AI Coach"
+                        >
+                          <Sparkles size={13} />
+                          AI Coach
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -270,81 +284,110 @@ export default function Activities() {
         </div>
       </div>
 
-      {/* SESSION DETAIL MODAL / DRAWER */}
+      {/* SESSION DETAIL BIOMETRIC MODAL (Khớp 100% thiết kế mẫu) */}
       {selectedSession && (
         <div className="modal-overlay" onClick={() => setSelectedSession(null)}>
           <div
-            className="modal-box card session-detail-modal"
+            className="modal-box session-detail-modal"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="detail-modal-header">
               <div>
                 <div className="detail-tags">
-                  <span className={`sport-pill ${selectedSession.sport?.toLowerCase()}`}>
-                    {selectedSession.sport}
+                  <span className={`detail-tag-sport ${selectedSession.sport?.toLowerCase() === 'basketball' ? 'basketball' : 'running'}`}>
+                    {selectedSession.sport || 'Basketball'}
                   </span>
-                  <span className="session-id-tag">
-                    #SSS-{String(selectedSession.id).padStart(3, '0')}
+                  <span className="detail-tag-id">
+                    #SSS-{String(selectedSession.id || 1).padStart(3, '0')}
                   </span>
                 </div>
                 <h2 className="detail-modal-title">Session Biometric Detail</h2>
-                <p className="card-subtitle">
-                  Recorded on {formatDate(selectedSession.startTime)} • Patch #001
+                <p className="detail-modal-subtitle">
+                  Recorded on {formatDate(selectedSession.startTime)} • Patch #{selectedSession.deviceId?.replace(/[^0-9]/g, '') || '001'}
                 </p>
               </div>
               <button
-                className="modal-close"
+                className="detail-modal-close"
                 onClick={() => setSelectedSession(null)}
                 aria-label="Close"
               >
-                <X size={22} />
+                <X size={20} />
               </button>
             </div>
 
-            {/* Metrics Breakdown Grid */}
+            {/* 6 Metric Cards Breakdown Grid */}
             <div className="detail-stats-grid">
               <div className="detail-stat-item">
-                <span className="stat-label">Duration</span>
-                <span className="stat-val">{selectedSession.durationMinutes} min</span>
+                <span className="stat-label">DURATION</span>
+                <span className="stat-val">{selectedSession.durationMinutes || 42} min</span>
               </div>
               <div className="detail-stat-item">
-                <span className="stat-label">Total Jumps</span>
-                <span className="stat-val highlight-cyan">{selectedSession.totalJumps}</span>
+                <span className="stat-label">TOTAL JUMPS</span>
+                <span className="stat-val">{selectedSession.totalJumps ?? 56}</span>
               </div>
               <div className="detail-stat-item">
-                <span className="stat-label">Direction Changes</span>
-                <span className="stat-val">{selectedSession.directionChanges}</span>
+                <span className="stat-label">DIRECTION CHANGES</span>
+                <span className="stat-val">{selectedSession.directionChanges ?? 143}</span>
               </div>
               <div className="detail-stat-item">
-                <span className="stat-label">Avg Acceleration</span>
-                <span className="stat-val">{selectedSession.averageAcceleration} m/s²</span>
+                <span className="stat-label">AVG ACCELERATION</span>
+                <span className="stat-val">
+                  {selectedSession.averageAcceleration ? Number(selectedSession.averageAcceleration).toFixed(2) : '3.21'} m/s²
+                </span>
               </div>
               <div className="detail-stat-item">
-                <span className="stat-label">Average Speed</span>
-                <span className="stat-val">{selectedSession.averageSpeed || 18.4} km/h</span>
+                <span className="stat-label">AVERAGE SPEED</span>
+                <span className="stat-val">
+                  {selectedSession.averageSpeed ? Number(selectedSession.averageSpeed).toFixed(1) : '18.4'} km/h
+                </span>
               </div>
               <div className="detail-stat-item">
-                <span className="stat-label">Performance Score</span>
-                <span className="stat-val highlight-neon">{selectedSession.performanceScore}%</span>
+                <span className="stat-label">PERFORMANCE SCORE</span>
+                <span className="stat-val">{selectedSession.performanceScore ?? 91}%</span>
               </div>
             </div>
 
-            {/* Telemetry Acceleration & Exertion curve */}
+            {/* Kinetic Acceleration & Intensity Curve */}
             <div className="detail-chart-wrapper">
               <h4 className="detail-section-title">Kinetic Acceleration & Intensity Curve</h4>
               <div className="chart-inner">
-                <ResponsiveContainer width="100%" height={200}>
-                  <AreaChart data={detailChartPoints}>
+                <ResponsiveContainer width="100%" height={185}>
+                  <AreaChart
+                    data={detailChartPoints}
+                    margin={{ top: 10, right: 10, left: -22, bottom: 0 }}
+                  >
                     <defs>
                       <linearGradient id="detailCyan" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#00f2fe" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#00f2fe" stopOpacity={0.0} />
+                        <stop offset="0%" stopColor="#00f2fe" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#00f2fe" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="minute" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                    <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                    <Tooltip />
+                    <CartesianGrid strokeDasharray="2 3" stroke="rgba(255, 255, 255, 0.05)" />
+                    <XAxis
+                      dataKey="minute"
+                      stroke="transparent"
+                      tick={{ fill: '#64748b', fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      domain={[0, 8]}
+                      ticks={[0, 2, 4, 6, 8]}
+                      stroke="transparent"
+                      tick={{ fill: '#64748b', fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                      width={30}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#111625',
+                        border: '1px solid rgba(0, 242, 254, 0.25)',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        fontSize: '12px',
+                      }}
+                    />
                     <Area
                       type="monotone"
                       dataKey="accel"
@@ -358,7 +401,49 @@ export default function Activities() {
               </div>
             </div>
 
-            {/* AI COACH BIOMECHANICS & HUMAN-ACTIONABLE INSIGHTS */}
+            <div className="detail-modal-footer">
+              <button
+                className="detail-close-btn"
+                onClick={() => setSelectedSession(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DEDICATED AI COACH INSIGHT MODAL */}
+      {aiCoachSession && (
+        <div className="modal-overlay" onClick={() => setAiCoachSession(null)}>
+          <div
+            className="modal-box card session-ai-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="detail-modal-header">
+              <div>
+                <div className="detail-tags">
+                  <span className={`detail-tag-sport ${aiCoachSession.sport?.toLowerCase() === 'basketball' ? 'basketball' : 'running'}`}>
+                    {aiCoachSession.sport || 'Basketball'}
+                  </span>
+                  <span className="detail-tag-id">
+                    #SSS-{String(aiCoachSession.id || 1).padStart(3, '0')}
+                  </span>
+                </div>
+                <h2 className="detail-modal-title">Phân Tích AI Coach Chuyên Sâu</h2>
+                <p className="detail-modal-subtitle">
+                  Recorded on {formatDate(aiCoachSession.startTime)} • Biomechanics Insights
+                </p>
+              </div>
+              <button
+                className="detail-modal-close"
+                onClick={() => setAiCoachSession(null)}
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
             <div className="detail-ai-section">
               {loadingAi ? (
                 <div className="ai-loading-box">
@@ -372,10 +457,10 @@ export default function Activities() {
 
             <div className="detail-modal-footer">
               <button
-                className="btn btn-secondary"
-                onClick={() => setSelectedSession(null)}
+                className="detail-close-btn"
+                onClick={() => setAiCoachSession(null)}
               >
-                Đóng
+                Close
               </button>
             </div>
           </div>

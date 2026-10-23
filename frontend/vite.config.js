@@ -16,6 +16,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/setupTests.js',
+    fileParallelism: false,
+    isolate: false,
   },
   server: {
     host: '0.0.0.0',

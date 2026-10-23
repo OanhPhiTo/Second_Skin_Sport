@@ -60,7 +60,7 @@ export default function Navbar({ onToggleSidebar, patchStatus }) {
           <div className="user-info-text">
             <span className="user-name">{user.name}</span>
             <span className={`user-role-badge ${isAdmin ? 'badge-admin' : 'badge-athlete'}`}>
-              {isAdmin ? '🛡️ QUẢN TRỊ VIÊN' : '🏃 VẬN ĐỘNG VIÊN'}
+              {isAdmin ? '🛡️ ADMIN' : '🏃 ATHLETE'}
             </span>
           </div>
         </div>
@@ -69,10 +69,10 @@ export default function Navbar({ onToggleSidebar, patchStatus }) {
         <button
           className="logout-action-btn"
           onClick={handleLogout}
-          title="Đăng xuất khỏi hệ thống"
+          title="Logout"
         >
           <LogOut size={16} />
-          <span className="logout-text">Thoát</span>
+          <span className="logout-text">Logout</span>
         </button>
       </div>
     </header>

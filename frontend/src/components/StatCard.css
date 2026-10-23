@@ -2,7 +2,7 @@
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 20px 18px;
+  padding: 18px 14px;
   position: relative;
   overflow: hidden;
   transition: all var(--transition-normal);
@@ -36,27 +36,29 @@
 
 .stat-card-top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 8px;
+  min-height: 28px;
 }
 
 .stat-title {
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  line-height: 1.25;
-  white-space: normal;
-  word-break: break-word;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   flex: 1;
 }
 
 .stat-icon-wrapper {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-sm);
   background-color: rgba(0, 242, 254, 0.08);
   border: 1px solid rgba(0, 242, 254, 0.2);

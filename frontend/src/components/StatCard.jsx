@@ -6,10 +6,10 @@ export default function StatCard({ title, value, unit, change, isPositive = true
   return (
     <div className={`stat-card accent-${accent}`}>
       <div className="stat-card-top">
-        <span className="stat-title">{title}</span>
+        <span className="stat-title" title={title}>{title}</span>
         {Icon && (
           <div className="stat-icon-wrapper">
-            <Icon size={18} />
+            <Icon size={16} />
           </div>
         )}
       </div>

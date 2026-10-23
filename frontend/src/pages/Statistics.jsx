@@ -124,12 +124,12 @@ export default function Statistics() {
 
       {/* Aggregate KPI Cards */}
       <div className="grid-cols-6 stats-kpis">
-        <StatCard title="Average Speed" value={avgSpeed} unit="km/h" change="+1.4%" icon={Navigation} accent="blue" />
+        <StatCard title="Avg Speed" value={avgSpeed} unit="km/h" change="+1.4%" icon={Navigation} accent="blue" />
         <StatCard title="Avg Acceleration" value={avgAccel} unit="m/s²" change="+4.2%" icon={Gauge} accent="cyan" />
         <StatCard title="Total Distance" value="48.6" unit="km" change="+8.1%" icon={Zap} accent="cyan" />
         <StatCard title="Total Jumps" value={totalJumps} change="+12.0%" icon={ArrowUpRight} accent="green" />
-        <StatCard title="Movement Intensity" value={`${avgIntensity}%`} change="+3.5%" icon={Activity} accent="purple" />
-        <StatCard title="Performance Score" value={`${avgScore}%`} change="+5.2%" icon={Award} accent="green" />
+        <StatCard title="Avg Intensity" value={`${avgIntensity}%`} change="+3.5%" icon={Activity} accent="purple" />
+        <StatCard title="Perf Score" value={`${avgScore}%`} change="+5.2%" icon={Award} accent="green" />
       </div>
 
       {/* 5 Deep-Dive Charts */}
@@ -142,10 +142,15 @@ export default function Statistics() {
           </div>
           <div className="chart-inner">
             <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={currentChartData}>
+              <LineChart data={currentChartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="date" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} unit=" km/h" />
+                <YAxis
+                  stroke="#64748b"
+                  tick={{ fill: '#94a3b8', fontSize: 11 }}
+                  width={68}
+                  tickFormatter={(v) => `${v} km/h`}
+                />
                 <Tooltip />
                 <Line type="monotone" dataKey="speed" name="Speed (km/h)" stroke="#4facfe" strokeWidth={3} dot={{ fill: '#4facfe', r: 4 }} />
               </LineChart>
@@ -161,7 +166,7 @@ export default function Statistics() {
           </div>
           <div className="chart-inner">
             <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={currentChartData}>
+              <AreaChart data={currentChartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="accelGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#00f2fe" stopOpacity={0.4} />
@@ -170,7 +175,12 @@ export default function Statistics() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="date" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} unit=" m/s²" />
+                <YAxis
+                  stroke="#64748b"
+                  tick={{ fill: '#94a3b8', fontSize: 11 }}
+                  width={68}
+                  tickFormatter={(v) => `${v} m/s²`}
+                />
                 <Tooltip />
                 <Area type="monotone" dataKey="acceleration" name="Acceleration" stroke="#00f2fe" strokeWidth={3} fill="url(#accelGrad)" />
               </AreaChart>
@@ -186,7 +196,7 @@ export default function Statistics() {
           </div>
           <div className="chart-inner">
             <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={currentChartData}>
+              <AreaChart data={currentChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="intGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#00ff87" stopOpacity={0.4} />
@@ -195,7 +205,13 @@ export default function Statistics() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="date" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                <YAxis stroke="#64748b" domain={[40, 100]} tick={{ fill: '#94a3b8', fontSize: 11 }} unit="%" />
+                <YAxis
+                  stroke="#64748b"
+                  domain={[40, 100]}
+                  tick={{ fill: '#94a3b8', fontSize: 11 }}
+                  width={48}
+                  tickFormatter={(v) => `${v}%`}
+                />
                 <Tooltip />
                 <Area type="monotone" dataKey="intensity" name="Intensity (%)" stroke="#00ff87" strokeWidth={3} fill="url(#intGrad)" />
               </AreaChart>
@@ -211,10 +227,10 @@ export default function Statistics() {
           </div>
           <div className="chart-inner">
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={currentChartData}>
+              <BarChart data={currentChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                 <XAxis dataKey="date" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} width={40} />
                 <Tooltip />
                 <Bar dataKey="jumps" name="Total Jumps" fill="#00f2fe" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -234,10 +250,16 @@ export default function Statistics() {
         </div>
         <div className="chart-inner">
           <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={currentChartData}>
+            <LineChart data={currentChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="date" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 12 }} />
-              <YAxis stroke="#64748b" domain={[60, 100]} tick={{ fill: '#94a3b8', fontSize: 12 }} unit="%" />
+              <YAxis
+                stroke="#64748b"
+                domain={[60, 100]}
+                tick={{ fill: '#94a3b8', fontSize: 12 }}
+                width={48}
+                tickFormatter={(v) => `${v}%`}
+              />
               <Tooltip />
               <Legend />
               <Line type="monotone" dataKey="score" name="Performance Score" stroke="#00ff87" strokeWidth={3} dot={{ r: 5, fill: '#00ff87' }} />
