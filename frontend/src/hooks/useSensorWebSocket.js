@@ -51,7 +51,6 @@ export function useSensorWebSocket(options = {}) {
             roll: Number(raw.roll ?? 0),
             yaw: Number(raw.yaw ?? 0),
             movementIntensity: Number(raw.movementIntensity ?? 75),
-            heartRate: Number(raw.heartRate ?? 135),
           };
 
           setLatestData(telemetry);

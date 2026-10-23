@@ -28,7 +28,11 @@ export default function DashboardLayout() {
 
   return (
     <div className="dashboard-layout">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        patchStatus={patchStatus}
+      />
       <div className="main-wrapper">
         <Navbar
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}

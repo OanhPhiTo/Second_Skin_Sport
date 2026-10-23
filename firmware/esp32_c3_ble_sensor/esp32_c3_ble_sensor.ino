@@ -31,6 +31,8 @@
 #define GPS_RX_PIN       20   // Connect to GPS TX
 #define GPS_TX_PIN       21   // Connect to GPS RX
 #define LED_PIN          8    // Onboard Blue LED on ESP32-C3 SuperMini
+#define BATTERY_ADC_PIN  0    // ADC1 Channel 0 (GPIO0 on ESP32-C3) for LiPo voltage divider (100k:100k)
+#define CHARGE_DETECT_PIN 1   // Optional GPIO1: connected to TP4056 CHRG pin (Active LOW) or USB VBUS
 
 // ==========================================
 // 📡 BLE UUID DEFINITIONS
@@ -58,7 +60,15 @@ float ax = 0.0, ay = 0.0, az = 9.81;
 float gx = 0.0, gy = 0.0, gz = 0.0;
 float pitch = 0.0, roll = 0.0, yaw = 0.0;
 float gpsLat = 10.7626, gpsLng = 106.6602, gpsSpeed = 0.0;
-int batteryLevel = 92;
+
+// Dynamic Battery & Charging Management
+int batteryLevel = 98;
+float batteryVoltage = 4.15;
+bool isUsingRealAdc = false;
+bool isCharging = false;
+unsigned long lastBatteryCheck = 0;
+unsigned long lastDrainTick = 0;
+unsigned long lastChargeTick = 0;
 
 // Activity Detection (Auto Session Trigger)
 String activityState = "idle"; // "idle" | "active" | "cooldown"
@@ -168,6 +178,20 @@ class CommandCallbacks : public BLECharacteristicCallbacks {
                     pCharacteristic->notify();
                 }
             }
+
+            // Command to switch charging mode: {"cmd":"set_charging","charging":true/false}
+            if (value.indexOf("set_charging") != -1) {
+                if (value.indexOf("\"charging\":true") != -1 || value.indexOf("\"charging\":1") != -1) {
+                    isCharging = true;
+                    Serial.println(">>> [BATTERY] ⚡ Nhan lenh BLE: Kich hoat che do DANG SAC (Charging).");
+                } else {
+                    isCharging = false;
+                    Serial.println(">>> [BATTERY] 🔋 Nhan lenh BLE: Kich hoat che do DUNG PIN (Discharging).");
+                }
+                String resp = "{\"status\":\"charge_updated\",\"isCharging\":" + String(isCharging ? "true" : "false") + ",\"battery\":" + String(batteryLevel) + "}";
+                pCharacteristic->setValue(resp.c_str());
+                pCharacteristic->notify();
+            }
         }
     }
 };
@@ -269,6 +293,95 @@ void detectActivity() {
 }
 
 // ==========================================
+// 🔋 REAL-TIME BATTERY MANAGEMENT & ESTIMATION
+// ==========================================
+// Li-Po 1S multi-point discharge curve mapping (Voltage -> SoC %)
+int calculateLiPoPercentage(float v) {
+    if (v >= 4.18f) return 100;
+    if (v >= 4.05f) return 90 + (int)((v - 4.05f) / (4.18f - 4.05f) * 10.0f);
+    if (v >= 3.93f) return 80 + (int)((v - 3.93f) / (4.05f - 3.93f) * 10.0f);
+    if (v >= 3.82f) return 65 + (int)((v - 3.82f) / (3.93f - 3.82f) * 15.0f);
+    if (v >= 3.74f) return 45 + (int)((v - 3.74f) / (3.82f - 3.74f) * 20.0f);
+    if (v >= 3.65f) return 25 + (int)((v - 3.65f) / (3.74f - 3.65f) * 20.0f);
+    if (v >= 3.55f) return 10 + (int)((v - 3.55f) / (3.65f - 3.55f) * 15.0f);
+    if (v >= 3.30f) return (int)((v - 3.30f) / (3.55f - 3.30f) * 10.0f);
+    return 0;
+}
+
+void updateBatteryStatus() {
+    unsigned long now = millis();
+    if (now - lastBatteryCheck < 2000) return;
+    lastBatteryCheck = now;
+
+    // Read ADC millivolts with multisampling to eliminate noise
+    uint32_t mvSum = 0;
+    const int SAMPLES = 8;
+    for (int i = 0; i < SAMPLES; i++) {
+        mvSum += analogReadMilliVolts(BATTERY_ADC_PIN);
+        delayMicroseconds(200);
+    }
+    float pinMv = mvSum / (float)SAMPLES;
+    // Assuming 1:2 voltage divider (100k + 100k ohm): Vbat = Vpin * 2.0
+    float calculatedV = (pinMv * 2.0f) / 1000.0f;
+
+    // Detect hardware charge detect pin (e.g. TP4056 CHRG pin is active LOW)
+    bool hwChargePinActive = (digitalRead(CHARGE_DETECT_PIN) == LOW);
+    if (hwChargePinActive) {
+        isCharging = true;
+    }
+
+    // Detect if valid battery voltage divider is wired to ADC pin (3.1V <= V <= 4.35V)
+    if (calculatedV >= 3.10f && calculatedV <= 4.35f) {
+        isUsingRealAdc = true;
+        batteryVoltage = calculatedV;
+        int targetPercent = calculateLiPoPercentage(calculatedV);
+        if (calculatedV >= 4.22f) {
+            isCharging = true;
+        }
+        batteryLevel = constrain((batteryLevel * 3 + targetPercent) / 4, 0, 100);
+    } else {
+        // Mode: USB-powered test bench / No divider wired / Simulation
+        isUsingRealAdc = false;
+        
+        if (isCharging) {
+            // Charging mode: battery percentage increases up to 100% (+1% every 25s)
+            unsigned long chargeInterval = 25000;
+            if (now - lastChargeTick >= chargeInterval) {
+                lastChargeTick = now;
+                if (batteryLevel < 100) {
+                    batteryLevel++;
+                    if (batteryLevel % 2 == 0) {
+                        preferences.begin("ss_config", false);
+                        preferences.putInt("bat_lvl", batteryLevel);
+                        preferences.end();
+                    }
+                    Serial.printf(">>> [BATTERY] ⚡ Dang nap sac: %d%% (+1%% / %ds)\n",
+                        batteryLevel, (int)(chargeInterval / 1000));
+                } else {
+                    Serial.println(">>> [BATTERY] ⚡ Pin da duoc nap day 100%!");
+                }
+            }
+        } else {
+            // Discharging mode: battery depletes realistically during active sports testing
+            unsigned long drainInterval = (activityState == "active") ? 60000 : 120000;
+            if (now - lastDrainTick >= drainInterval) {
+                lastDrainTick = now;
+                if (batteryLevel > 5) {
+                    batteryLevel--;
+                    if (batteryLevel % 2 == 0) {
+                        preferences.begin("ss_config", false);
+                        preferences.putInt("bat_lvl", batteryLevel);
+                        preferences.end();
+                    }
+                    Serial.printf(">>> [BATTERY] 🔋 Muc pin giam con: %d%% (%s | Chu ky: %ds/1%%)\n",
+                        batteryLevel, activityState.c_str(), (int)(drainInterval / 1000));
+                }
+            }
+        }
+    }
+}
+
+// ==========================================
 // 🚀 SETUP
 // ==========================================
 void setup() {
@@ -280,6 +393,15 @@ void setup() {
 
     pinMode(LED_PIN, OUTPUT);
     digitalWrite(LED_PIN, HIGH); // LED off
+
+    // 0. Khoi tao ADC do Pin, chan nhan dien sac & phuc hoi muc pin
+    pinMode(BATTERY_ADC_PIN, INPUT);
+    pinMode(CHARGE_DETECT_PIN, INPUT_PULLUP);
+    analogSetAttenuation(ADC_11db);
+    preferences.begin("ss_config", false);
+    batteryLevel = preferences.getInt("bat_lvl", 96);
+    preferences.end();
+    Serial.printf(">>> [BATTERY] Khoi tao muc pin: %d%%\n", batteryLevel);
 
     // 1. Khoi tao Cam bien I2C MPU-6050
     initMPU6050();
@@ -350,16 +472,19 @@ void loop() {
     // Tự động nhận diện trạng thái vận động (Active / Cooldown / Idle)
     detectActivity();
 
+    // Cập nhật mức pin định kỳ (qua ADC hoặc tính toán mức tiêu hao/nạp sạc)
+    updateBatteryStatus();
+
     // Gửi gói tin BLE mỗi 100ms khi Web đã kết nối
     if (now - lastSensorPublish >= SENSOR_INTERVAL) {
         lastSensorPublish = now;
 
         if (bleClientConnected) {
-            // Đóng gói JSON ngắn gọn tối ưu BLE MTU kèm flag state "s"
+            // Đóng gói JSON ngắn gọn tối ưu BLE MTU kèm flag state "s", % pin "bat" và cờ sạc "chg"
             char jsonBuffer[256];
             snprintf(jsonBuffer, sizeof(jsonBuffer),
-                "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f,\"gx\":%.1f,\"gy\":%.1f,\"gz\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"lat\":%.4f,\"lng\":%.4f,\"spd\":%.1f,\"bat\":%d,\"s\":\"%s\"}",
-                ax, ay, az, gx, gy, gz, pitch, roll, yaw, gpsLat, gpsLng, gpsSpeed, batteryLevel, activityState.c_str()
+                "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f,\"gx\":%.1f,\"gy\":%.1f,\"gz\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"lat\":%.4f,\"lng\":%.4f,\"spd\":%.1f,\"bat\":%d,\"chg\":%d,\"s\":\"%s\"}",
+                ax, ay, az, gx, gy, gz, pitch, roll, yaw, gpsLat, gpsLng, gpsSpeed, batteryLevel, isCharging ? 1 : 0, activityState.c_str()
             );
 
             pSensorCharacteristic->setValue((uint8_t*)jsonBuffer, strlen(jsonBuffer));
@@ -368,15 +493,15 @@ void loop() {
 
         // Tùy chọn: Nếu có Wi-Fi và không có BLE, hoặc đồng thời, gửi HTTP POST lên Backend
         if (WiFi.status() == WL_CONNECTED && (now % 2000 < SENSOR_INTERVAL)) {
-            // Gửi định kỳ 2s một lần lên Backend qua HTTP
+            // Gửi định kỳ 2s một lần lên Backend qua HTTP kèm thông số pin và cờ sạc
             HTTPClient http;
             http.begin(backendUrl);
             http.addHeader("Content-Type", "application/json");
 
             char httpPayload[350];
             snprintf(httpPayload, sizeof(httpPayload),
-                "{\"deviceId\":\"ESP32-SUPERMINI-01\",\"accelerometerX\":%.2f,\"accelerometerY\":%.2f,\"accelerometerZ\":%.2f,\"gyroscopeX\":%.1f,\"gyroscopeY\":%.1f,\"gyroscopeZ\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"movementIntensity\":75,\"activityState\":\"%s\"}",
-                ax, ay, az, gx, gy, gz, pitch, roll, yaw, activityState.c_str()
+                "{\"deviceId\":\"ESP32-SUPERMINI-01\",\"accelerometerX\":%.2f,\"accelerometerY\":%.2f,\"accelerometerZ\":%.2f,\"gyroscopeX\":%.1f,\"gyroscopeY\":%.1f,\"gyroscopeZ\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"movementIntensity\":75,\"activityState\":\"%s\",\"batteryLevel\":%d,\"isCharging\":%s}",
+                ax, ay, az, gx, gy, gz, pitch, roll, yaw, activityState.c_str(), batteryLevel, isCharging ? "true" : "false"
             );
 
             int httpCode = http.POST(httpPayload);

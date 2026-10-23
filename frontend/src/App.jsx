@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
 import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import { BleProvider } from './context/BleContext';
 import './styles/global.css';
 
 // Lazy load route pages for high Lighthouse Performance & code-splitting
@@ -45,7 +46,8 @@ function PageFallback() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <BleProvider>
+        <Routes>
         <Route path="/login" element={
           <Suspense fallback={<PageFallback />}>
             <Login />
@@ -135,6 +137,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </BleProvider>
     </BrowserRouter>
   );
 }

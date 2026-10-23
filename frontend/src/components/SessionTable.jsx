@@ -28,11 +28,11 @@ export default function SessionTable({ sessions, onSelectSession }) {
     <div className="card session-table-card">
       <div className="card-header">
         <div>
-          <h2 className="card-title">Recent Sessions</h2>
-          <p className="card-subtitle">Recorded sports workouts and automated biometric breakdowns</p>
+          <h2 className="card-title">Các Buổi Tập Gần Đây</h2>
+          <p className="card-subtitle">Các buổi tập thể thao đã ghi nhận và chi tiết sinh trắc học tự động</p>
         </div>
         <button className="btn btn-outline-cyan btn-sm" onClick={() => navigate('/activities')}>
-          View All Activities
+          Xem tất cả hoạt động
         </button>
       </div>
 
@@ -40,13 +40,13 @@ export default function SessionTable({ sessions, onSelectSession }) {
         <table className="sessions-table">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Sport</th>
-              <th>Duration</th>
-              <th>Jumps</th>
-              <th>Avg Acceleration</th>
-              <th>Score</th>
-              <th>Status</th>
+              <th>Ngày</th>
+              <th>Bộ môn</th>
+              <th>Thời lượng</th>
+              <th>Cú nhảy</th>
+              <th>Gia tốc TB</th>
+              <th>Điểm số</th>
+              <th>Trạng thái</th>
               <th></th>
             </tr>
           </thead>
@@ -56,16 +56,16 @@ export default function SessionTable({ sessions, onSelectSession }) {
                 <tr key={s.id} onClick={() => handleRowClick(s)} className="clickable-row">
                   <td className="cell-date">
                     <div className="date-wrapper">
-                      <Calendar size={14} className="cell-icon" />
+                       <Calendar size={14} className="cell-icon" />
                       <span>{formatDate(s.startTime)}</span>
                     </div>
                   </td>
                   <td className="cell-sport">
                     <span className={`sport-pill ${s.sport?.toLowerCase()}`}>
-                      {s.sport}
+                      {s.sport === 'Basketball' ? 'Bóng rổ' : s.sport === 'Running' ? 'Chạy bộ' : s.sport}
                     </span>
                   </td>
-                  <td className="cell-duration">{s.durationMinutes} min</td>
+                  <td className="cell-duration">{s.durationMinutes} phút</td>
                   <td className="cell-jumps">
                     <strong>{s.totalJumps}</strong>
                   </td>
@@ -93,11 +93,11 @@ export default function SessionTable({ sessions, onSelectSession }) {
                   </td>
                   <td className="cell-status">
                     <span className="badge badge-success">
-                      ● {s.status || 'Completed'}
+                      ● {s.status === 'Completed' || !s.status ? 'Hoàn thành' : s.status}
                     </span>
                   </td>
                   <td className="cell-action">
-                    <button className="row-action-btn" aria-label="View Details">
+                    <button className="row-action-btn" aria-label="Xem chi tiết">
                       <ChevronRight size={16} />
                     </button>
                   </td>
@@ -106,7 +106,7 @@ export default function SessionTable({ sessions, onSelectSession }) {
             ) : (
               <tr>
                 <td colSpan="8" className="empty-table-state">
-                  No sessions recorded yet. Start a session with your sensor patch!
+                  Chưa có buổi tập nào được ghi nhận. Hãy bắt đầu một buổi tập với miếng dán cảm biến!
                 </td>
               </tr>
             )}

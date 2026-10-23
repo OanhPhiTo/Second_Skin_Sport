@@ -4,8 +4,10 @@ import com.secondskin.sport.dto.AiInsightDTO;
 import com.secondskin.sport.dto.AutoSessionDTO;
 import com.secondskin.sport.dto.SportSessionDTO;
 import com.secondskin.sport.dto.TrajectoryPointDTO;
+import com.secondskin.sport.entity.PerformanceStatistic;
 import com.secondskin.sport.entity.SensorData;
 import com.secondskin.sport.entity.SportSession;
+import com.secondskin.sport.repository.PerformanceStatisticRepository;
 import com.secondskin.sport.repository.SensorDataRepository;
 import com.secondskin.sport.repository.SportSessionRepository;
 import org.springframework.stereotype.Service;
@@ -21,13 +23,16 @@ public class AutoSessionService {
 
     private final SportSessionRepository sessionRepository;
     private final SensorDataRepository sensorDataRepository;
+    private final PerformanceStatisticRepository statisticRepository;
     private final AiCoachService aiCoachService;
 
     public AutoSessionService(SportSessionRepository sessionRepository,
                               SensorDataRepository sensorDataRepository,
+                              PerformanceStatisticRepository statisticRepository,
                               AiCoachService aiCoachService) {
         this.sessionRepository = sessionRepository;
         this.sensorDataRepository = sensorDataRepository;
+        this.statisticRepository = statisticRepository;
         this.aiCoachService = aiCoachService;
     }
 
@@ -60,7 +65,8 @@ public class AutoSessionService {
         int score = dto.getPerformanceScore() != null ? dto.getPerformanceScore() :
                 Math.min(100, Math.max(50, (int) Math.round(intensity * 0.5 + Math.min(scoreFromMetrics(sport, jumps, directionChanges, avgAccel), 50))));
 
-        Long userId = dto.getUserId() != null ? dto.getUserId() : 1L;
+        Long userId = dto.getUserId() != null ? dto.getUserId() :
+                com.secondskin.sport.security.SecurityUtils.getCurrentUser().map(com.secondskin.sport.entity.User::getId).orElse(1L);
         String deviceId = dto.getDeviceId() != null ? dto.getDeviceId() : "ESP32-SUPERMINI-01";
         String status = dto.getStatus() != null ? dto.getStatus() : "Completed";
 
@@ -70,6 +76,23 @@ public class AutoSessionService {
         );
 
         SportSession savedSession = sessionRepository.save(session);
+
+        // Record real longitudinal performance statistics entry
+        double totalDistance = Math.round((avgSpeed * (durationMinutes / 60.0)) * 10.0) / 10.0;
+        PerformanceStatistic stat = new PerformanceStatistic(
+                savedSession.getId(),
+                userId,
+                start.toLocalDate(),
+                sport,
+                avgSpeed,
+                avgAccel,
+                totalDistance,
+                jumps,
+                directionChanges,
+                intensity,
+                score
+        );
+        statisticRepository.save(stat);
 
         List<SensorData> entitiesToSave = new ArrayList<>();
         // Save representative trajectory points (up to 60 points) to sensor_data for plotting
@@ -93,8 +116,7 @@ public class AutoSessionService {
                         pt.getPitch(),
                         pt.getRoll(),
                         pt.getYaw(),
-                        pt.getMovementIntensity(),
-                        140 // default heart rate
+                        pt.getMovementIntensity()
                 );
                 entitiesToSave.add(data);
             }

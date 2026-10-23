@@ -21,11 +21,23 @@ public class SessionService {
     }
 
     public List<SportSessionDTO> getAllSessions(String sport) {
+        java.util.Optional<com.secondskin.sport.entity.User> currentUser = com.secondskin.sport.security.SecurityUtils.getCurrentUser();
+        boolean isAdmin = com.secondskin.sport.security.SecurityUtils.isAdmin();
+
         List<SportSession> list;
-        if (sport != null && !sport.trim().isEmpty() && !sport.equalsIgnoreCase("all")) {
-            list = sessionRepository.findBySportIgnoreCaseOrderByStartTimeDesc(sport);
+        if (isAdmin || currentUser.isEmpty()) {
+            if (sport != null && !sport.trim().isEmpty() && !sport.equalsIgnoreCase("all")) {
+                list = sessionRepository.findBySportIgnoreCaseOrderByStartTimeDesc(sport);
+            } else {
+                list = sessionRepository.findAllByOrderByStartTimeDesc();
+            }
         } else {
-            list = sessionRepository.findAllByOrderByStartTimeDesc();
+            Long userId = currentUser.get().getId();
+            if (sport != null && !sport.trim().isEmpty() && !sport.equalsIgnoreCase("all")) {
+                list = sessionRepository.findByUserIdAndSportIgnoreCaseOrderByStartTimeDesc(userId, sport);
+            } else {
+                list = sessionRepository.findByUserIdOrderByStartTimeDesc(userId);
+            }
         }
         return list.stream().map(s -> autoSessionService.mapToDTO(s, null)).collect(Collectors.toList());
     }
@@ -38,6 +50,11 @@ public class SessionService {
         if (session.getStatus() == null) {
             session.setStatus("Completed");
         }
+        com.secondskin.sport.security.SecurityUtils.getCurrentUser().ifPresent(u -> {
+            if (session.getUserId() == null) {
+                session.setUserId(u.getId());
+            }
+        });
         SportSession saved = sessionRepository.save(session);
         return autoSessionService.mapToDTO(saved, null);
     }

@@ -88,7 +88,7 @@ export default function Login() {
                   className={`auth-demo-chip admin ${selectedRole === 'ADMIN' ? 'active' : ''}`}
                   onClick={() => handleQuickLogin('admin@secondskin.com', 'admin123', 'ADMIN')}
                 >
-                  <span className="auth-demo-chip-title">Role: ADMIN</span>
+                  <span className="auth-demo-chip-title">Vai trò: QUẢN TRỊ VIÊN</span>
                 </button>
 
                 <button
@@ -96,7 +96,7 @@ export default function Login() {
                   className={`auth-demo-chip athlete ${selectedRole === 'ATHLETE' ? 'active' : ''}`}
                   onClick={() => handleQuickLogin('alex.athlete@secondskin.io', 'password', 'ATHLETE')}
                 >
-                  <span className="auth-demo-chip-title">Role: ATHLETE</span>
+                  <span className="auth-demo-chip-title">Vai trò: VẬN ĐỘNG VIÊN</span>
                 </button>
               </div>
             </div>

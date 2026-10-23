@@ -131,7 +131,7 @@ export default function AdminDashboard() {
         <div className="health-item">
           <Activity size={16} className="health-icon active" />
           <span className="health-name">Chế độ hệ thống:</span>
-          <span className="health-status-badge mode">Internal Production Mode</span>
+          <span className="health-status-badge mode">Chế độ nội bộ chính thức</span>
         </div>
       </div>
 
@@ -172,11 +172,11 @@ export default function AdminDashboard() {
                   <td>
                     {u.role === 'ADMIN' ? (
                       <span className="badge-admin-tag">
-                        <ShieldCheck size={12} /> ADMIN
+                        <ShieldCheck size={12} /> QUẢN TRỊ VIÊN
                       </span>
                     ) : (
                       <span className="badge-user-tag">
-                        <Flame size={12} /> ATHLETE
+                        <Flame size={12} /> VẬN ĐỘNG VIÊN
                       </span>
                     )}
                   </td>

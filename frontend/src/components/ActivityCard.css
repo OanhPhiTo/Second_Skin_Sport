@@ -45,6 +45,24 @@
   border: 1px solid rgba(0, 255, 135, 0.3);
 }
 
+.activity-icon-badge.shield {
+  background-color: rgba(0, 242, 254, 0.12);
+  color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.35);
+}
+
+.activity-icon-badge.zap {
+  background-color: rgba(255, 204, 0, 0.12);
+  color: #ffcc00;
+  border: 1px solid rgba(255, 204, 0, 0.35);
+}
+
+.activity-icon-badge.scale {
+  background-color: rgba(168, 85, 247, 0.12);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+}
+
 .activity-badge-tag {
   font-size: 0.68rem;
   font-weight: 700;
@@ -97,6 +115,14 @@
 
 .highlight-neon {
   color: var(--status-success);
+}
+
+.highlight-purple {
+  color: #c084fc;
+}
+
+.highlight-orange {
+  color: #fb923c;
 }
 
 .split-divider {
@@ -157,6 +183,12 @@
 
 .progress-fill.neon {
   background: linear-gradient(90deg, #00ff87, #00f2fe);
+  height: 100%;
+  border-radius: var(--radius-full);
+}
+
+.progress-fill.purple {
+  background: linear-gradient(90deg, #a855f7, #ec4899);
   height: 100%;
   border-radius: var(--radius-full);
 }

@@ -202,7 +202,7 @@ public class AiCoachService {
 
             if (metrics.getCadenceRpm() < 162) {
                 areasForImprovement.add("Nhịp bước (" + metrics.getCadenceRpm() + " spm) hơi chậm, khiến sải chân bị kéo dài quá mức (Overstriding).");
-                actionableDrills.add("Bài tập Chạy theo máy đếm nhịp Metronome (170-175 bpm) để tăng tần số nhịp bước ngắn.");
+                actionableDrills.add("Bài tập Chạy theo máy đếm nhịp Metronome (170-175 nhịp/phút) để tăng tần số nhịp bước ngắn.");
             }
 
             if (areasForImprovement.isEmpty()) {
@@ -224,7 +224,7 @@ public class AiCoachService {
                 recoveryAdvice.add("Thực hiện 10 phút kéo giãn cơ bắp chân và cơ gập hông.");
             } else {
                 riskExplanation = "Xung lực tiếp đất và độ cân bằng sải chân hoàn toàn trong ngưỡng lý tưởng, nguy cơ chấn thương rất thấp.";
-                recoveryAdvice.add("Đi bộ thả lỏng 5 phút và hít thở sâu để hạ nhịp tim.");
+                recoveryAdvice.add("Đi bộ thả lỏng 5 phút và hít thở sâu để ổn định nhịp thở và hồi phục thể trạng.");
                 recoveryAdvice.add("Bổ sung bữa ăn giàu protein nạc và tinh bột tiêu hóa chậm.");
             }
 

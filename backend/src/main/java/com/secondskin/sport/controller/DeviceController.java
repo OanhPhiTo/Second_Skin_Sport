@@ -49,8 +49,20 @@ public class DeviceController {
     public ResponseEntity<Map<String, Object>> syncDevice(@PathVariable Long id) {
         return ResponseEntity.ok(Map.of(
                 "status", "success",
-                "message", "Device synchronized successfully",
+                "message", "Đồng bộ thiết bị thành công",
                 "syncedAt", java.time.LocalDateTime.now()
+        ));
+    }
+
+    @PutMapping("/{id}/battery")
+    public ResponseEntity<Map<String, Object>> updateBattery(@PathVariable Long id, @RequestBody Map<String, Integer> payload) {
+        int battery = payload.getOrDefault("batteryLevel", 100);
+        Device updated = deviceService.updateBatteryLevel(id, battery);
+        return ResponseEntity.ok(Map.of(
+                "status", "success",
+                "deviceId", updated.getDeviceId(),
+                "batteryLevel", updated.getBatteryLevel(),
+                "updatedAt", java.time.LocalDateTime.now()
         ));
     }
 }

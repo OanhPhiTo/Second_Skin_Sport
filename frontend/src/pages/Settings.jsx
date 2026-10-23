@@ -15,7 +15,7 @@ export default function Settings() {
   const [name, setName] = useState('Alex Johnson');
   const [email, setEmail] = useState('alex.athlete@secondskin.io');
   const [preferredSport, setPreferredSport] = useState('Basketball');
-  const [units, setUnits] = useState('Metric (m/s², km/h, cm)');
+  const [units, setUnits] = useState('Hệ mét (m/s², km/h, cm)');
   const [samplingRate, setSamplingRate] = useState('100 Hz');
   const [autoSync, setAutoSync] = useState(true);
   const [pushAlerts, setPushAlerts] = useState(true);
@@ -24,7 +24,7 @@ export default function Settings() {
 
   const handleSave = (e) => {
     e.preventDefault();
-    setSavedMessage('Configuration and device calibration saved successfully.');
+    setSavedMessage('Cấu hình và hiệu chuẩn thiết bị đã được lưu thành công.');
     setTimeout(() => setSavedMessage(''), 3500);
   };
 
@@ -33,9 +33,9 @@ export default function Settings() {
       {/* Header */}
       <div className="page-header-row">
         <div>
-          <h1 className="hero-title">Settings & Configuration</h1>
+          <h1 className="hero-title">Cài Đặt & Cấu Hình</h1>
           <p className="hero-subtitle">
-            Manage your biometric athlete profile, sensor connectivity parameters, and app preferences.
+            Quản lý hồ sơ vận động viên, thông số kết nối cảm biến và tùy chọn ứng dụng.
           </p>
         </div>
 
@@ -55,14 +55,14 @@ export default function Settings() {
               <User size={18} />
             </div>
             <div>
-              <h3>Athlete Profile</h3>
-              <p className="card-subtitle">Personal data utilized for AI motion baseline calibration</p>
+              <h3>Hồ Sơ Vận Động Viên</h3>
+              <p className="card-subtitle">Dữ liệu cá nhân dùng để hiệu chuẩn đường cơ sở chuyển động của AI</p>
             </div>
           </div>
 
           <div className="settings-fields-stack">
             <div className="form-group">
-              <label>Full Name</label>
+              <label>Họ và Tên</label>
               <input
                 type="text"
                 value={name}
@@ -72,7 +72,7 @@ export default function Settings() {
             </div>
 
             <div className="form-group">
-              <label>Email Address</label>
+              <label>Địa chỉ Email</label>
               <input
                 type="email"
                 value={email}
@@ -82,14 +82,14 @@ export default function Settings() {
             </div>
 
             <div className="form-group">
-              <label>Primary Sport Focus</label>
+              <label>Môn Thể Thao Trọng Tâm</label>
               <select
                 value={preferredSport}
                 onChange={(e) => setPreferredSport(e.target.value)}
                 className="form-select"
               >
-                <option value="Basketball">Basketball (Bật nhảy & Phản xạ đổi hướng)</option>
-                <option value="Running">Running (Nhịp bước, Tiếp đất & Bền bỉ)</option>
+                <option value="Basketball">Bóng rổ (Bật nhảy & Phản xạ đổi hướng)</option>
+                <option value="Running">Chạy bộ (Nhịp bước, Tiếp đất & Bền bỉ)</option>
               </select>
             </div>
           </div>
@@ -102,29 +102,29 @@ export default function Settings() {
               <Cpu size={18} />
             </div>
             <div>
-              <h3>Device & Sensor Settings</h3>
-              <p className="card-subtitle">Hardware sampling, IMU sensitivity, and Bluetooth sync</p>
+              <h3>Cài Đặt Thiết Bị & Cảm Biến</h3>
+              <p className="card-subtitle">Tần số lấy mẫu phần cứng, độ nhạy IMU và đồng bộ Bluetooth</p>
             </div>
           </div>
 
           <div className="settings-fields-stack">
             <div className="form-group">
-              <label>Telemetry Sampling Frequency</label>
+              <label>Tần số lấy mẫu đo lường</label>
               <select
                 value={samplingRate}
                 onChange={(e) => setSamplingRate(e.target.value)}
                 className="form-select"
               >
-                <option value="50 Hz">50 Hz (Power Saving - Low Power Mode)</option>
-                <option value="100 Hz">100 Hz (Recommended - Balanced)</option>
-                <option value="200 Hz">200 Hz (Ultra High Dynamic Motion)</option>
+                <option value="50 Hz">50 Hz (Tiết kiệm pin - Tiêu thụ thấp)</option>
+                <option value="100 Hz">100 Hz (Khuyên dùng - Cân bằng)</option>
+                <option value="200 Hz">200 Hz (Chuyển động cường độ cực cao)</option>
               </select>
             </div>
 
             <div className="toggle-setting-row">
               <div>
-                <span className="toggle-title">Auto-Sync on Session Finish</span>
-                <p className="toggle-desc">Automatically upload buffered IMU packets via BLE</p>
+                <span className="toggle-title">Tự động đồng bộ khi kết thúc buổi tập</span>
+                <p className="toggle-desc">Tự động tải lên các gói tin IMU được đệm qua BLE</p>
               </div>
               <label className="switch">
                 <input
@@ -138,10 +138,10 @@ export default function Settings() {
 
             <div className="toggle-setting-row">
               <div>
-                <span className="toggle-title">Hardware IMU Calibration</span>
-                <p className="toggle-desc">Auto-zero gyroscopic drift at session start</p>
+                <span className="toggle-title">Hiệu chuẩn phần cứng IMU</span>
+                <p className="toggle-desc">Tự động khử trôi con quay hồi chuyển khi bắt đầu buổi tập</p>
               </div>
-              <span className="badge badge-success">CALIBRATED</span>
+              <span className="badge badge-success">ĐÃ HIỆU CHUẨN</span>
             </div>
           </div>
         </div>
@@ -153,16 +153,16 @@ export default function Settings() {
               <Bell size={18} />
             </div>
             <div>
-              <h3>Biometric Notifications</h3>
-              <p className="card-subtitle">Real-time alerts for exertion thresholds and fatigue</p>
+              <h3>Thông Báo Sinh Trắc Học</h3>
+              <p className="card-subtitle">Cảnh báo theo thời gian thực về ngưỡng gắng sức và mức độ mệt mỏi</p>
             </div>
           </div>
 
           <div className="settings-fields-stack">
             <div className="toggle-setting-row">
               <div>
-                <span className="toggle-title">Fatigue Risk Alert</span>
-                <p className="toggle-desc">Warn when jump deceleration mechanics degrade &gt;15%</p>
+                <span className="toggle-title">Cảnh báo nguy cơ mệt mỏi & quá tải</span>
+                <p className="toggle-desc">Cảnh báo khi kỹ thuật giảm chấn tiếp đất suy giảm &gt;15%</p>
               </div>
               <label className="switch">
                 <input
@@ -176,8 +176,8 @@ export default function Settings() {
 
             <div className="toggle-setting-row">
               <div>
-                <span className="toggle-title">Push Notifications</span>
-                <p className="toggle-desc">Send session summary report upon device disconnect</p>
+                <span className="toggle-title">Thông báo đẩy</span>
+                <p className="toggle-desc">Gửi báo cáo tóm tắt buổi tập khi thiết bị ngắt kết nối</p>
               </div>
               <label className="switch">
                 <input
@@ -198,29 +198,29 @@ export default function Settings() {
               <Sliders size={18} />
             </div>
             <div>
-              <h3>Application & System</h3>
-              <p className="card-subtitle">Measurement units and system theme</p>
+              <h3>Ứng Dụng & Hệ Thống</h3>
+              <p className="card-subtitle">Đơn vị đo lường và giao diện hệ thống</p>
             </div>
           </div>
 
           <div className="settings-fields-stack">
             <div className="form-group">
-              <label>Measurement Units</label>
+              <label>Đơn vị đo lường</label>
               <select
                 value={units}
                 onChange={(e) => setUnits(e.target.value)}
                 className="form-select"
               >
-                <option value="Metric (m/s², km/h, cm)">Metric (m/s², km/h, cm)</option>
-                <option value="Imperial (G, mph, inches)">Imperial (G, mph, inches)</option>
+                <option value="Hệ mét (m/s², km/h, cm)">Hệ mét (m/s², km/h, cm)</option>
+                <option value="Hệ Anh-Mỹ (G, mph, inches)">Hệ Anh-Mỹ (G, mph, inches)</option>
               </select>
             </div>
 
             <div className="form-group">
-              <label>Active Theme</label>
+              <label>Giao diện đang dùng</label>
               <div className="theme-preview-pill">
                 <span className="status-dot connected" />
-                <span>Second Skin Dark Futuristic (Default)</span>
+                <span>Second Skin Dark Futuristic (Mặc định)</span>
               </div>
             </div>
           </div>
@@ -230,7 +230,7 @@ export default function Settings() {
         <div className="settings-actions-bar">
           <button type="submit" className="btn btn-primary">
             <Save size={16} />
-            Save Changes
+            Lưu Thay Đổi
           </button>
         </div>
       </form>

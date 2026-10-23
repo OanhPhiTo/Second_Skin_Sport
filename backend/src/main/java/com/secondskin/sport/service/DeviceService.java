@@ -34,7 +34,15 @@ public class DeviceService {
             device.setConnected(connected);
             device.setLastSync(LocalDateTime.now());
             return deviceRepository.save(device);
-        }).orElseThrow(() -> new RuntimeException("Device not found"));
+        }).orElseThrow(() -> new RuntimeException("Không tìm thấy thiết bị"));
+    }
+
+    public Device updateBatteryLevel(Long id, int batteryLevel) {
+        return deviceRepository.findById(id).map(device -> {
+            device.setBatteryLevel(Math.max(0, Math.min(100, batteryLevel)));
+            device.setLastSync(LocalDateTime.now());
+            return deviceRepository.save(device);
+        }).orElseThrow(() -> new RuntimeException("Không tìm thấy thiết bị"));
     }
 
     public SensorStatusDTO getSensorStatus() {
@@ -43,25 +51,35 @@ public class DeviceService {
 
         String deviceId = deviceOpt.map(Device::getDeviceId).orElse("SSS-PATCH-001");
         String deviceName = deviceOpt.map(Device::getDeviceName).orElse("Second Skin Patch #001");
-        boolean isConnected = deviceOpt.map(Device::isConnected).orElse(true);
-        int batteryLevel = deviceOpt.map(Device::getBatteryLevel).orElse(82);
+        boolean isConnected = deviceOpt.map(Device::isConnected).orElse(false);
+        int batteryLevel = deviceOpt.map(Device::getBatteryLevel).orElse(100);
+
+        String lastSync = deviceOpt.map(d -> {
+            if (d.getLastSync() == null) return "Chưa đồng bộ";
+            long seconds = java.time.Duration.between(d.getLastSync(), LocalDateTime.now()).getSeconds();
+            if (seconds < 15) return "Vừa xong";
+            if (seconds < 60) return seconds + " giây trước";
+            long minutes = seconds / 60;
+            if (minutes < 60) return minutes + " phút trước";
+            long hours = minutes / 60;
+            return hours + " giờ trước";
+        }).orElse("Sẵn sàng kết nối");
 
         SensorData latestData = latestDataOpt.orElseGet(() -> {
-            SensorData mock = new SensorData();
-            mock.setAccelerometerX(0.82);
-            mock.setAccelerometerY(-0.21);
-            mock.setAccelerometerZ(9.73);
-            mock.setGyroscopeX(12.4);
-            mock.setGyroscopeY(4.8);
-            mock.setGyroscopeZ(-2.1);
-            mock.setPitch(12.0);
-            mock.setRoll(4.0);
-            mock.setYaw(82.0);
-            mock.setMovementIntensity(82);
-            mock.setHeartRate(142);
-            return mock;
+            SensorData standby = new SensorData();
+            standby.setAccelerometerX(0.0);
+            standby.setAccelerometerY(0.0);
+            standby.setAccelerometerZ(9.81);
+            standby.setGyroscopeX(0.0);
+            standby.setGyroscopeY(0.0);
+            standby.setGyroscopeZ(0.0);
+            standby.setPitch(0.0);
+            standby.setRoll(0.0);
+            standby.setYaw(0.0);
+            standby.setMovementIntensity(0);
+            return standby;
         });
 
-        return new SensorStatusDTO(deviceId, deviceName, isConnected, batteryLevel, "10 seconds ago", latestData);
+        return new SensorStatusDTO(deviceId, deviceName, isConnected, batteryLevel, lastSync, latestData);
     }
 }

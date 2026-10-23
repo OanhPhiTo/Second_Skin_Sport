@@ -11,16 +11,23 @@ import {
   X,
 } from 'lucide-react';
 import logoImg from '../assets/logo-slogan.png';
+import { useBle } from '../context/BleContext';
 import './Sidebar.css';
 
-export default function Sidebar({ isOpen, onClose }) {
+export default function Sidebar({ isOpen, onClose, patchStatus }) {
+  const { bleStatus, bleDevice, bleTelemetry, isCharging } = useBle();
+  const isBle = bleStatus === 'connected';
+  const isConnected = isBle || Boolean(patchStatus?.connected);
+  const battery = isBle ? (bleTelemetry?.bat ?? patchStatus?.batteryLevel ?? 92) : (patchStatus?.batteryLevel ?? bleTelemetry?.bat ?? 92);
+  const deviceName = isBle ? (bleDevice?.deviceName || 'SecondSkin_ESP32') : (patchStatus?.deviceName || 'PATCH #001');
+
   const navItems = [
-    { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/statistics', label: 'Statistics', icon: BarChart3 },
-    { to: '/activities', label: 'Activities', icon: Activity },
-    { to: '/sensors', label: 'Sensors', icon: Cpu },
-    { to: '/reports', label: 'Reports', icon: FileText },
-    { to: '/settings', label: 'Settings', icon: Settings },
+    { to: '/', label: 'Tổng quan', icon: LayoutDashboard },
+    { to: '/statistics', label: 'Thống kê', icon: BarChart3 },
+    { to: '/activities', label: 'Hoạt động', icon: Activity },
+    { to: '/sensors', label: 'Cảm biến', icon: Cpu },
+    { to: '/reports', label: 'Báo cáo', icon: FileText },
+    { to: '/settings', label: 'Cài đặt', icon: Settings },
   ];
 
   return (
@@ -37,7 +44,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
         {/* Navigation Menu */}
         <nav className="sidebar-nav">
-          <div className="nav-group-label">MAIN MENU</div>
+          <div className="nav-group-label">DANH MỤC CHÍNH</div>
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -65,16 +72,31 @@ export default function Sidebar({ isOpen, onClose }) {
           <div className="patch-card">
             <div className="patch-header">
               <div className="patch-indicator">
-                <Radio size={14} className="pulse-icon" />
-                <span>PATCH #001</span>
+                <Radio size={14} className={isConnected ? "pulse-icon" : "dim-icon"} />
+                <span>{deviceName}</span>
               </div>
-              <span className="status-badge-online">ONLINE</span>
+              <span className={isConnected ? "status-badge-online" : "status-badge-offline"}>
+                {isConnected ? 'TRỰC TUYẾN' : 'NGOẠI TUYẾN'}
+              </span>
             </div>
             <div className="patch-battery-bar">
-              <div className="battery-fill" style={{ width: '82%' }}></div>
+              <div
+                className="battery-fill"
+                style={{
+                  width: `${isConnected ? battery : 0}%`,
+                  background: !isConnected
+                    ? '#64748b'
+                    : isCharging
+                    ? 'var(--accent-cyan)'
+                    : battery < 20
+                    ? '#ef4444'
+                    : undefined,
+                  boxShadow: isCharging ? '0 0 8px rgba(6, 182, 212, 0.6)' : undefined,
+                }}
+              ></div>
             </div>
             <div className="patch-meta">
-              <span>Battery: 82%</span>
+              <span>{isConnected ? (isCharging ? `⚡ Đang sạc: ${battery}%` : `Pin: ${battery}%`) : 'Trạng thái: Đã ngắt kết nối'}</span>
               <span>BLE 5.2</span>
             </div>
           </div>

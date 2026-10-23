@@ -31,7 +31,6 @@ public class SensorData {
 
     // Movement Metrics
     private int movementIntensity; // % (0-100)
-    private Integer heartRate;     // bpm (optional)
 
     public SensorData() {
         this.timestamp = LocalDateTime.now();
@@ -40,7 +39,7 @@ public class SensorData {
     public SensorData(Long sessionId, String deviceId, LocalDateTime timestamp, 
                       double accelerometerX, double accelerometerY, double accelerometerZ, 
                       double gyroscopeX, double gyroscopeY, double gyroscopeZ, 
-                      double pitch, double roll, double yaw, int movementIntensity, Integer heartRate) {
+                      double pitch, double roll, double yaw, int movementIntensity) {
         this.sessionId = sessionId;
         this.deviceId = deviceId;
         this.timestamp = timestamp;
@@ -54,7 +53,6 @@ public class SensorData {
         this.roll = roll;
         this.yaw = yaw;
         this.movementIntensity = movementIntensity;
-        this.heartRate = heartRate;
     }
 
     public Long getId() { return id; }
@@ -98,7 +96,4 @@ public class SensorData {
 
     public int getMovementIntensity() { return movementIntensity; }
     public void setMovementIntensity(int movementIntensity) { this.movementIntensity = movementIntensity; }
-
-    public Integer getHeartRate() { return heartRate; }
-    public void setHeartRate(Integer heartRate) { this.heartRate = heartRate; }
 }

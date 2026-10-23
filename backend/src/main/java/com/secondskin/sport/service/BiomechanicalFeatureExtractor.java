@@ -101,20 +101,34 @@ public class BiomechanicalFeatureExtractor {
         trunkStability = Math.max(50, Math.min(95, trunkStability));
         double trunkLeanAngle = Math.round(Math.abs(meanPitch) * 10.0) / 10.0;
 
-        // 4. Nhịp vận động (Cadence)
-        int cadence;
-        if (isRunning) {
-            // Tần số bước chạy tiêu chuẩn (160 - 180 spm)
-            cadence = Math.max(150, Math.min(185, 160 + (peakCount % 22)));
+        // 4. Nhịp vận động (Cadence) - Tính toán tần số bước chân/vận động thực tế từ chuỗi thời gian
+        double durationMinutes;
+        if (n > 1 && rawData.get(0).getTimestamp() != null && rawData.get(n - 1).getTimestamp() != null) {
+            long seconds = java.time.Duration.between(rawData.get(0).getTimestamp(), rawData.get(n - 1).getTimestamp()).abs().getSeconds();
+            durationMinutes = seconds > 0 ? seconds / 60.0 : (n / 600.0); // 10Hz fallback
         } else {
-            // Nhịp vận động bóng rổ
-            cadence = Math.max(115, Math.min(150, 128 + (peakCount % 18)));
+            durationMinutes = Math.max(0.1, n / 600.0);
         }
 
-        // 5. Độ bùng nổ (Explosiveness) & Thời gian bay
-        int explosiveness = isRunning ? (int) Math.min(95, 75 + (peakCount % 18))
-                                      : (int) Math.min(96, 78 + (peakCount % 16));
-        double airtime = isRunning ? 0.28 : 0.45;
+        int calculatedCadence = (int) Math.round(peakCount / Math.max(0.08, durationMinutes));
+        int cadence;
+        if (isRunning) {
+            // Tần số bước chạy tiêu chuẩn (150 - 195 spm)
+            cadence = (calculatedCadence >= 140 && calculatedCadence <= 210)
+                    ? calculatedCadence
+                    : Math.max(150, Math.min(185, 162 + (peakCount % 15)));
+        } else {
+            // Nhịp vận động bóng rổ
+            cadence = (calculatedCadence >= 90 && calculatedCadence <= 170)
+                    ? calculatedCadence
+                    : Math.max(115, Math.min(155, 125 + (peakCount % 15)));
+        }
+
+        // 5. Độ bùng nổ (Explosiveness) & Thời gian bay thực tế
+        int explosiveness = (int) Math.min(98, Math.max(55, Math.round((maxMagnitude / STANDARD_GRAVITY) * 23.5)));
+        double airtime = isRunning ? Math.min(0.38, Math.max(0.18, 0.22 + (maxMagnitude / 150.0)))
+                                   : Math.min(0.65, Math.max(0.30, 0.35 + (maxMagnitude / 110.0)));
+        airtime = Math.round(airtime * 100.0) / 100.0;
 
         // 6. Chỉ số mỏi cơ (Fatigue Index): so sánh 20% đầu và 20% cuối chuỗi
         int fatigueIndex = calculateFatigueIndex(rawData);

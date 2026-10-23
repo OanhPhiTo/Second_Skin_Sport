@@ -18,10 +18,21 @@ class BleService {
     this.onDataCallbacks = [];
     this.onStatusCallbacks = [];
     this.onWifiStatusCallbacks = [];
+    this._handleGattDisconnect = this.handleDisconnect.bind(this);
+    this._handleSensorData = this.handleSensorData.bind(this);
+    this._handleCommandResponse = this.handleCommandResponse.bind(this);
   }
 
   isSupported() {
     return typeof navigator !== 'undefined' && 'bluetooth' in navigator;
+  }
+
+  getDeviceInfo() {
+    return {
+      isConnected: this.isConnected && Boolean(this.device?.gatt?.connected),
+      deviceName: this.device?.name || null,
+      deviceId: this.device?.id || null,
+    };
   }
 
   notifyStatus(status, details = {}) {
@@ -62,6 +73,13 @@ class BleService {
       );
     }
 
+    if (this.isConnected && this.device && this.device.gatt?.connected) {
+      return {
+        deviceName: this.device.name,
+        deviceId: this.device.id,
+      };
+    }
+
     try {
       this.notifyStatus('connecting', { message: 'Đang mở cửa sổ chọn thiết bị Bluetooth...' });
 
@@ -74,7 +92,8 @@ class BleService {
         optionalServices: [BLE_CONFIG.SERVICE_UUID],
       });
 
-      this.device.addEventListener('gattserverdisconnected', this.handleDisconnect.bind(this));
+      this.device.removeEventListener('gattserverdisconnected', this._handleGattDisconnect);
+      this.device.addEventListener('gattserverdisconnected', this._handleGattDisconnect);
 
       this.notifyStatus('connecting', { message: `Đang kết nối GATT Server với ${this.device.name}...` });
 
@@ -87,19 +106,26 @@ class BleService {
       // Get Sensor Telemetry Characteristic
       this.sensorChar = await this.service.getCharacteristic(BLE_CONFIG.SENSOR_CHAR_UUID);
       await this.sensorChar.startNotifications();
+      this.sensorChar.removeEventListener(
+        'characteristicvaluechanged',
+        this._handleSensorData
+      );
       this.sensorChar.addEventListener(
         'characteristicvaluechanged',
-        this.handleSensorData.bind(this)
+        this._handleSensorData
       );
 
       // Get Command Characteristic (for WiFi Provisioning & Control)
       try {
         this.commandChar = await this.service.getCharacteristic(BLE_CONFIG.COMMAND_CHAR_UUID);
-        // Start notifications on command char for WiFi responses
         await this.commandChar.startNotifications();
+        this.commandChar.removeEventListener(
+          'characteristicvaluechanged',
+          this._handleCommandResponse
+        );
         this.commandChar.addEventListener(
           'characteristicvaluechanged',
-          this.handleCommandResponse.bind(this)
+          this._handleCommandResponse
         );
       } catch (cmdErr) {
         console.warn('Command characteristic not found or failed to subscribe:', cmdErr);
@@ -167,10 +193,30 @@ class BleService {
   }
 
   async disconnect() {
-    if (this.device && this.device.gatt.connected) {
-      await this.device.gatt.disconnect();
+    try {
+      if (this.sensorChar) {
+        try {
+          this.sensorChar.removeEventListener('characteristicvaluechanged', this._handleSensorData);
+          await this.sensorChar.stopNotifications();
+        } catch (e) {}
+      }
+      if (this.commandChar) {
+        try {
+          this.commandChar.removeEventListener('characteristicvaluechanged', this._handleCommandResponse);
+          await this.commandChar.stopNotifications();
+        } catch (e) {}
+      }
+      if (this.device) {
+        this.device.removeEventListener('gattserverdisconnected', this._handleGattDisconnect);
+        if (this.device.gatt && this.device.gatt.connected) {
+          await this.device.gatt.disconnect();
+        }
+      }
+    } catch (e) {
+      console.warn('Error during disconnect:', e);
+    } finally {
+      this.handleDisconnect();
     }
-    this.handleDisconnect();
   }
 
   /**
@@ -187,6 +233,27 @@ class BleService {
       ssid: ssid.trim(),
       pass: password,
       url: backendUrl.trim(),
+    });
+
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(payload);
+
+    await this.commandChar.writeValue(dataBuffer);
+    return true;
+  }
+
+  /**
+   * Send charging mode command to ESP32 over BLE
+   * @param {boolean} isCharging
+   */
+  async sendChargingCommand(isCharging) {
+    if (!this.isConnected || !this.commandChar) {
+      return false;
+    }
+
+    const payload = JSON.stringify({
+      cmd: 'set_charging',
+      charging: Boolean(isCharging),
     });
 
     const encoder = new TextEncoder();

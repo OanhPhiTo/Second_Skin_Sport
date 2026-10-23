@@ -42,7 +42,7 @@ export default function AdminLayout() {
             }
           >
             <LayoutDashboard size={18} />
-            <span>Dashboard</span>
+            <span>Tổng quan</span>
           </NavLink>
 
           <NavLink
@@ -68,7 +68,7 @@ export default function AdminLayout() {
       <div className="admin-main-wrap">
         <header className="admin-top-navbar">
           <div className="admin-nav-left">
-            <span className="admin-title-badge">ADMIN CONSOLE</span>
+            <span className="admin-title-badge">BÀN ĐIỀU KHIỂN QUẢN TRỊ</span>
           </div>
 
           <div className="admin-nav-right">
@@ -88,7 +88,7 @@ export default function AdminLayout() {
               title="Đăng xuất khỏi hệ thống"
             >
               <LogOut size={15} />
-              <span>Thoát</span>
+              <span>Đăng xuất</span>
             </button>
           </div>
         </header>

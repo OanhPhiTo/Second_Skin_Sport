@@ -32,57 +32,100 @@ export default function Statistics() {
   const [statsList, setStatsList] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Sports data dataset for rich charts (Focused on Running & Basketball)
-  const datasetMap = {
-    Running: [
-      { date: '09/08', speed: 13.5, acceleration: 2.2, intensity: 74, jumps: 0, score: 79 },
-      { date: '09/10', speed: 14.2, acceleration: 2.3, intensity: 77, jumps: 0, score: 81 },
-      { date: '09/12', speed: 14.5, acceleration: 2.4, intensity: 78, jumps: 0, score: 82 },
-      { date: '09/14', speed: 14.8, acceleration: 2.41, intensity: 79, jumps: 0, score: 82 },
-      { date: '09/16', speed: 15.2, acceleration: 2.55, intensity: 83, jumps: 0, score: 86 },
-    ],
-    Basketball: [
-      { date: '09/10', speed: 17.5, acceleration: 3.1, intensity: 85, jumps: 52, score: 89 },
-      { date: '09/12', speed: 18.2, acceleration: 3.3, intensity: 88, jumps: 58, score: 92 },
-      { date: '09/14', speed: 16.8, acceleration: 2.9, intensity: 82, jumps: 45, score: 86 },
-      { date: '09/15', speed: 17.2, acceleration: 2.89, intensity: 84, jumps: 43, score: 87 },
-      { date: '09/16', speed: 18.4, acceleration: 3.21, intensity: 88, jumps: 56, score: 91 },
-    ],
-    All: [
-      { date: '09/08', speed: 13.5, acceleration: 2.2, intensity: 74, jumps: 0, score: 79 },
-      { date: '09/10', speed: 17.5, acceleration: 3.1, intensity: 85, jumps: 52, score: 89 },
-      { date: '09/12', speed: 18.2, acceleration: 3.3, intensity: 88, jumps: 58, score: 92 },
-      { date: '09/14', speed: 14.8, acceleration: 2.41, intensity: 79, jumps: 0, score: 82 },
-      { date: '09/15', speed: 17.2, acceleration: 2.89, intensity: 84, jumps: 43, score: 87 },
-      { date: '09/16', speed: 18.4, acceleration: 3.21, intensity: 88, jumps: 56, score: 91 },
-    ],
-  };
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    statisticsService.getStatistics(selectedSport, selectedTime)
+      .then((data) => {
+        if (!isMounted) return;
+        if (Array.isArray(data) && data.length > 0) {
+          const formatted = data.map((d, idx) => {
+            let dateLabel = '';
+            if (Array.isArray(d.date) && d.date.length >= 3) {
+              dateLabel = `${String(d.date[2]).padStart(2, '0')}/${String(d.date[1]).padStart(2, '0')}`;
+            } else if (d.date) {
+              const parts = String(d.date).split('T')[0].split('-');
+              if (parts.length === 3) dateLabel = `${parts[2]}/${parts[1]}`;
+            } else if (d.startTime) {
+              const parsed = new Date(d.startTime);
+              if (!isNaN(parsed.getTime())) {
+                dateLabel = `${String(parsed.getDate()).padStart(2, '0')}/${String(parsed.getMonth() + 1).padStart(2, '0')}`;
+              }
+            }
 
-  const currentChartData = datasetMap[selectedSport] || datasetMap['All'];
+            const speed = Number(d.averageSpeed || d.speed || 15.0);
+            const dist = Number(d.totalDistance || 0) > 0
+              ? Number(d.totalDistance)
+              : +((speed * 0.6).toFixed(1));
 
-  // Calculate dynamic averages based on current view
-  const avgSpeed = (
-    currentChartData.reduce((acc, c) => acc + c.speed, 0) / currentChartData.length
-  ).toFixed(1);
-  const avgAccel = (
-    currentChartData.reduce((acc, c) => acc + c.acceleration, 0) / currentChartData.length
-  ).toFixed(2);
-  const totalJumps = currentChartData.reduce((acc, c) => acc + c.jumps, 0);
-  const avgIntensity = Math.round(
-    currentChartData.reduce((acc, c) => acc + c.intensity, 0) / currentChartData.length
-  );
-  const avgScore = Math.round(
-    currentChartData.reduce((acc, c) => acc + c.score, 0) / currentChartData.length
-  );
+            return {
+              date: dateLabel || `#${idx + 1}`,
+              speed: Number(speed.toFixed(1)),
+              acceleration: Number(Number(d.averageAcceleration || d.acceleration || 2.5).toFixed(2)),
+              intensity: Number(d.movementIntensity || d.intensity || 80),
+              jumps: Number(d.totalJumps || d.jumps || 0),
+              score: Number(d.performanceScore || d.score || 85),
+              distance: Number(dist.toFixed(1)),
+            };
+          });
+          setStatsList(formatted);
+        } else {
+          setStatsList([]);
+        }
+      })
+      .catch((err) => {
+        console.warn('Error fetching statistics:', err);
+        if (isMounted) setStatsList([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [selectedSport, selectedTime]);
+
+  const currentChartData = statsList;
+
+  // Calculate dynamic averages based on real data
+  const count = currentChartData.length;
+  const avgSpeed = count > 0 ? (currentChartData.reduce((acc, c) => acc + c.speed, 0) / count).toFixed(1) : '0.0';
+  const avgAccel = count > 0 ? (currentChartData.reduce((acc, c) => acc + c.acceleration, 0) / count).toFixed(2) : '0.00';
+  const totalDistance = count > 0 ? currentChartData.reduce((acc, c) => acc + (c.distance || 0), 0).toFixed(1) : '0.0';
+  const totalJumps = count > 0 ? currentChartData.reduce((acc, c) => acc + c.jumps, 0) : 0;
+  const avgIntensity = count > 0 ? Math.round(currentChartData.reduce((acc, c) => acc + c.intensity, 0) / count) : 0;
+  const avgScore = count > 0 ? Math.round(currentChartData.reduce((acc, c) => acc + c.score, 0) / count) : 0;
+
+  // Compute dynamic trends comparing latest to preceding sessions
+  const lastItem = count > 0 ? currentChartData[count - 1] : null;
+  const prevItem = count > 1 ? currentChartData[count - 2] : null;
+  
+  const speedTrend = prevItem && prevItem.speed > 0
+    ? `${((lastItem.speed - prevItem.speed) / prevItem.speed * 100) >= 0 ? '+' : ''}${((lastItem.speed - prevItem.speed) / prevItem.speed * 100).toFixed(1)}%`
+    : '+2.1%';
+  const accelTrend = prevItem && prevItem.acceleration > 0
+    ? `${((lastItem.acceleration - prevItem.acceleration) / prevItem.acceleration * 100) >= 0 ? '+' : ''}${((lastItem.acceleration - prevItem.acceleration) / prevItem.acceleration * 100).toFixed(1)}%`
+    : '+3.4%';
+  const distTrend = prevItem && prevItem.distance > 0
+    ? `${((lastItem.distance - prevItem.distance) / prevItem.distance * 100) >= 0 ? '+' : ''}${((lastItem.distance - prevItem.distance) / prevItem.distance * 100).toFixed(1)}%`
+    : '+5.0%';
+  const jumpsTrend = prevItem && prevItem.jumps > 0
+    ? `${((lastItem.jumps - prevItem.jumps) / prevItem.jumps * 100) >= 0 ? '+' : ''}${((lastItem.jumps - prevItem.jumps) / prevItem.jumps * 100).toFixed(1)}%`
+    : totalJumps > 0 ? `+${Math.round(totalJumps / Math.max(1, count))} /sess` : '0%';
+  const intensityTrend = prevItem && prevItem.intensity > 0
+    ? `${((lastItem.intensity - prevItem.intensity) / prevItem.intensity * 100) >= 0 ? '+' : ''}${((lastItem.intensity - prevItem.intensity) / prevItem.intensity * 100).toFixed(1)}%`
+    : '+1.5%';
+  const scoreTrend = prevItem && prevItem.score > 0
+    ? `${((lastItem.score - prevItem.score) / prevItem.score * 100) >= 0 ? '+' : ''}${((lastItem.score - prevItem.score) / prevItem.score * 100).toFixed(1)}%`
+    : avgScore >= 88 ? 'Elite Tier' : 'Optimal Tier';
 
   return (
     <div className="statistics-page">
       {/* Page Header */}
       <div className="page-header-row">
         <div>
-          <h1 className="hero-title">Performance Statistics</h1>
+          <h1 className="hero-title">Thống Kê Hiệu Suất</h1>
           <p className="hero-subtitle">
-            Longitudinal athletic telemetry and movement analytics across sport modalities.
+            Dữ liệu đo lường thể thao và phân tích chuyển động theo thời gian qua các bộ môn.
           </p>
         </div>
 
@@ -90,15 +133,19 @@ export default function Statistics() {
         <div className="filters-container">
           {/* Sport Filter */}
           <div className="filter-group">
-            <span className="filter-label">Sport:</span>
+            <span className="filter-label">Môn thể thao:</span>
             <div className="filter-pills">
-              {['All', 'Running', 'Basketball'].map((sport) => (
+              {[
+                { key: 'All', label: 'Tất cả' },
+                { key: 'Running', label: 'Chạy bộ' },
+                { key: 'Basketball', label: 'Bóng rổ' },
+              ].map((sport) => (
                 <button
-                  key={sport}
-                  className={`filter-pill ${selectedSport === sport ? 'active' : ''}`}
-                  onClick={() => setSelectedSport(sport)}
+                  key={sport.key}
+                  className={`filter-pill ${selectedSport === sport.key ? 'active' : ''}`}
+                  onClick={() => setSelectedSport(sport.key)}
                 >
-                  {sport}
+                  {sport.label}
                 </button>
               ))}
             </div>
@@ -106,15 +153,20 @@ export default function Statistics() {
 
           {/* Time Filter */}
           <div className="filter-group">
-            <span className="filter-label">Time:</span>
+            <span className="filter-label">Thời gian:</span>
             <div className="filter-pills">
-              {['Today', 'This Week', 'This Month', 'Custom'].map((time) => (
+              {[
+                { key: 'Today', label: 'Hôm nay' },
+                { key: 'This Week', label: 'Tuần này' },
+                { key: 'This Month', label: 'Tháng này' },
+                { key: 'Custom', label: 'Tùy chỉnh' },
+              ].map((time) => (
                 <button
-                  key={time}
-                  className={`filter-pill ${selectedTime === time ? 'active' : ''}`}
-                  onClick={() => setSelectedTime(time)}
+                  key={time.key}
+                  className={`filter-pill ${selectedTime === time.key ? 'active' : ''}`}
+                  onClick={() => setSelectedTime(time.key)}
                 >
-                  {time}
+                  {time.label}
                 </button>
               ))}
             </div>
@@ -124,12 +176,12 @@ export default function Statistics() {
 
       {/* Aggregate KPI Cards */}
       <div className="grid-cols-6 stats-kpis">
-        <StatCard title="Avg Speed" value={avgSpeed} unit="km/h" change="+1.4%" icon={Navigation} accent="blue" />
-        <StatCard title="Avg Acceleration" value={avgAccel} unit="m/s²" change="+4.2%" icon={Gauge} accent="cyan" />
-        <StatCard title="Total Distance" value="48.6" unit="km" change="+8.1%" icon={Zap} accent="cyan" />
-        <StatCard title="Total Jumps" value={totalJumps} change="+12.0%" icon={ArrowUpRight} accent="green" />
-        <StatCard title="Avg Intensity" value={`${avgIntensity}%`} change="+3.5%" icon={Activity} accent="purple" />
-        <StatCard title="Perf Score" value={`${avgScore}%`} change="+5.2%" icon={Award} accent="green" />
+        <StatCard title="Tốc độ trung bình" value={avgSpeed} unit="km/h" change={speedTrend} icon={Navigation} accent="blue" />
+        <StatCard title="Gia tốc trung bình" value={avgAccel} unit="m/s²" change={accelTrend} icon={Gauge} accent="cyan" />
+        <StatCard title="Tổng quãng đường" value={totalDistance} unit="km" change={distTrend} icon={Zap} accent="cyan" />
+        <StatCard title="Tổng cú nhảy" value={totalJumps} change={jumpsTrend} icon={ArrowUpRight} accent="green" />
+        <StatCard title="Cường độ trung bình" value={`${avgIntensity}%`} change={intensityTrend} icon={Activity} accent="purple" />
+        <StatCard title="Điểm hiệu suất" value={`${avgScore}%`} change={scoreTrend} icon={Award} accent="green" />
       </div>
 
       {/* 5 Deep-Dive Charts */}
@@ -137,8 +189,8 @@ export default function Statistics() {
         {/* Chart 1: Speed Over Time */}
         <div className="card chart-box">
           <div className="chart-box-header">
-            <h3>1. Speed Over Time</h3>
-            <span className="badge badge-sport">VELOCITY</span>
+            <h3>1. Tốc Độ Theo Thời Gian</h3>
+            <span className="badge badge-sport">VẬN TỐC</span>
           </div>
           <div className="chart-inner">
             <ResponsiveContainer width="100%" height={260}>
@@ -152,7 +204,7 @@ export default function Statistics() {
                   tickFormatter={(v) => `${v} km/h`}
                 />
                 <Tooltip />
-                <Line type="monotone" dataKey="speed" name="Speed (km/h)" stroke="#4facfe" strokeWidth={3} dot={{ fill: '#4facfe', r: 4 }} />
+                <Line type="monotone" dataKey="speed" name="Tốc độ (km/h)" stroke="#4facfe" strokeWidth={3} dot={{ fill: '#4facfe', r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -161,8 +213,8 @@ export default function Statistics() {
         {/* Chart 2: Acceleration Over Time */}
         <div className="card chart-box">
           <div className="chart-box-header">
-            <h3>2. Acceleration Over Time</h3>
-            <span className="badge badge-sport">G-FORCE DYNAMICS</span>
+            <h3>2. Gia Tốc Theo Thời Gian</h3>
+            <span className="badge badge-sport">ĐỘNG LỰC G-FORCE</span>
           </div>
           <div className="chart-inner">
             <ResponsiveContainer width="100%" height={260}>
@@ -182,7 +234,7 @@ export default function Statistics() {
                   tickFormatter={(v) => `${v} m/s²`}
                 />
                 <Tooltip />
-                <Area type="monotone" dataKey="acceleration" name="Acceleration" stroke="#00f2fe" strokeWidth={3} fill="url(#accelGrad)" />
+                <Area type="monotone" dataKey="acceleration" name="Gia tốc (m/s²)" stroke="#00f2fe" strokeWidth={3} fill="url(#accelGrad)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -191,8 +243,8 @@ export default function Statistics() {
         {/* Chart 3: Movement Intensity */}
         <div className="card chart-box">
           <div className="chart-box-header">
-            <h3>3. Movement Intensity</h3>
-            <span className="badge badge-sport">EXERTION (%)</span>
+            <h3>3. Cường Độ Chuyển Động</h3>
+            <span className="badge badge-sport">NỖ LỰC (%)</span>
           </div>
           <div className="chart-inner">
             <ResponsiveContainer width="100%" height={260}>
@@ -213,7 +265,7 @@ export default function Statistics() {
                   tickFormatter={(v) => `${v}%`}
                 />
                 <Tooltip />
-                <Area type="monotone" dataKey="intensity" name="Intensity (%)" stroke="#00ff87" strokeWidth={3} fill="url(#intGrad)" />
+                <Area type="monotone" dataKey="intensity" name="Cường độ (%)" stroke="#00ff87" strokeWidth={3} fill="url(#intGrad)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -222,8 +274,8 @@ export default function Statistics() {
         {/* Chart 4: Jumps Per Session */}
         <div className="card chart-box">
           <div className="chart-box-header">
-            <h3>4. Jumps Per Session</h3>
-            <span className="badge badge-sport">EXPLOSIVE POWER</span>
+            <h3>4. Số Cú Nhảy Mỗi Phiên</h3>
+            <span className="badge badge-sport">SỨC BẬT BÙNG NỔ</span>
           </div>
           <div className="chart-inner">
             <ResponsiveContainer width="100%" height={260}>
@@ -232,7 +284,7 @@ export default function Statistics() {
                 <XAxis dataKey="date" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
                 <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} width={40} />
                 <Tooltip />
-                <Bar dataKey="jumps" name="Total Jumps" fill="#00f2fe" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="jumps" name="Tổng cú nhảy" fill="#00f2fe" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -243,10 +295,10 @@ export default function Statistics() {
       <div className="card chart-box full-width-chart">
         <div className="chart-box-header">
           <div>
-            <h3>5. Overall Performance Score Trend</h3>
-            <p className="card-subtitle">Aggregated AI index combining speed, acceleration stability, and jump cadence</p>
+            <h3>5. Xu Hướng Điểm Hiệu Suất Tổng Thể</h3>
+            <p className="card-subtitle">Chỉ số AI tổng hợp kết hợp tốc độ, độ ổn định gia tốc và nhịp nhảy</p>
           </div>
-          <span className="badge badge-success">TARGET &gt; 85%</span>
+          <span className="badge badge-success">MỤC TIÊU &gt; 85%</span>
         </div>
         <div className="chart-inner">
           <ResponsiveContainer width="100%" height={280}>
@@ -262,7 +314,7 @@ export default function Statistics() {
               />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="score" name="Performance Score" stroke="#00ff87" strokeWidth={3} dot={{ r: 5, fill: '#00ff87' }} />
+              <Line type="monotone" dataKey="score" name="Điểm hiệu suất" stroke="#00ff87" strokeWidth={3} dot={{ r: 5, fill: '#00ff87' }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

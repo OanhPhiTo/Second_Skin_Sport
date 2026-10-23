@@ -43,7 +43,7 @@ public class BiomechanicalFeatureExtractorTest {
             double roll = 2.0 * Math.sin(i * 0.5);
             SensorData data = new SensorData(
                     1L, "DEV-01", now.plusSeconds(i),
-                    ax, ay, az, 10.0, 5.0, 2.0, 7.5, roll, 0.0, 75, 140
+                    ax, ay, az, 10.0, 5.0, 2.0, 7.5, roll, 0.0, 75
             );
             rawData.add(data);
         }
@@ -66,7 +66,7 @@ public class BiomechanicalFeatureExtractorTest {
             double az = (i % 5 == 0) ? 38.0 : 9.81;
             SensorData data = new SensorData(
                     1L, "DEV-01", now.plusSeconds(i),
-                    1.2, 0.5, az, 15.0, 8.0, 5.0, 10.0, 2.0, 0.0, 90, 160
+                    1.2, 0.5, az, 15.0, 8.0, 5.0, 10.0, 2.0, 0.0, 90
             );
             rawData.add(data);
         }
@@ -87,7 +87,7 @@ public class BiomechanicalFeatureExtractorTest {
         for (int i = 0; i < 30; i++) {
             SensorData data = new SensorData(
                     1L, "DEV-01", now.plusSeconds(i),
-                    0.2, -2.5, 12.0, 5.0, 2.0, 1.0, 5.0, -8.0, 0.0, 70, 130
+                    0.2, -2.5, 12.0, 5.0, 2.0, 1.0, 5.0, -8.0, 0.0, 70
             );
             rawData.add(data);
         }

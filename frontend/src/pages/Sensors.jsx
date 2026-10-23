@@ -27,59 +27,48 @@ import {
   Flame,
   Award,
   Sparkles,
+  ShieldCheck,
+  Scale,
 } from 'lucide-react';
 import SensorCard from '../components/SensorCard';
 import { deviceService, sensorDataService, sessionService } from '../services/api';
-import bleService from '../services/bleService';
+import { useBle } from '../context/BleContext';
 import './Sensors.css';
 
 export default function Sensors() {
+  const {
+    bleStatus,
+    bleDevice,
+    bleError,
+    livePacketCount,
+    bleTelemetry,
+    sensorStatus: liveSensorStatus,
+    autoSession: autoSessionDisplay,
+    actionMessage: globalActionMessage,
+    wifiSending,
+    wifiFeedback,
+    connectBle,
+    disconnectBle,
+    finalizeAutoSession,
+    sendWifiConfig,
+    isCharging,
+    toggleCharging,
+  } = useBle();
+
   const [devices, setDevices] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(null);
-  const [sensorStatus, setSensorStatus] = useState(null);
+  const [backendSensorStatus, setBackendSensorStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [actionMessage, setActionMessage] = useState('');
-
-  // Web Bluetooth (BLE) State
-  const [bleStatus, setBleStatus] = useState('disconnected'); // 'disconnected' | 'connecting' | 'connected' | 'error'
-  const [bleDevice, setBleDevice] = useState(null);
-  const [bleError, setBleError] = useState('');
-  const [livePacketCount, setLivePacketCount] = useState(0);
-  const [bleTelemetry, setBleTelemetry] = useState(null);
-
-  // Auto Session State (Zero-Touch Activity Tracking)
-  const autoSessionRef = useRef({
-    status: 'idle', // 'idle' | 'recording' | 'cooldown'
-    startTime: null,
-    lastActiveTime: null,
-    lastJumpTime: 0,
-    lastTurnTime: 0,
-    jumpCount: 0,
-    directionChangeCount: 0,
-    sampleCount: 0,
-    accelSum: 0,
-    maxAccel: 0,
-    trajectoryPoints: [], // max 60 points in RAM
-  });
-
-  const [autoSessionDisplay, setAutoSessionDisplay] = useState({
-    status: 'idle', // 'idle' | 'recording' | 'cooldown'
-    elapsedSeconds: 0,
-    jumpCount: 0,
-    directionChangeCount: 0,
-    avgAccel: 0,
-    sport: 'Running',
-    lastSavedSession: null,
-    isSaving: false,
-  });
+  const [localActionMessage, setLocalActionMessage] = useState('');
 
   // Wi-Fi Provisioning Form State
   const [wifiSsid, setWifiSsid] = useState('');
   const [wifiPassword, setWifiPassword] = useState('');
   const [backendUrl, setBackendUrl] = useState('http://localhost:8080/api/sensor-data');
-  const [wifiSending, setWifiSending] = useState(false);
-  const [wifiFeedback, setWifiFeedback] = useState(null);
+
+  const actionMessage = globalActionMessage || localActionMessage;
+  const sensorStatus = bleStatus === 'connected' ? liveSensorStatus : backendSensorStatus;
 
   const loadData = async () => {
     try {
@@ -88,8 +77,8 @@ export default function Sensors() {
         deviceService.getStatus(),
       ]);
       setDevices(devList);
-      if (!sensorStatus) {
-        setSensorStatus(status);
+      if (!backendSensorStatus) {
+        setBackendSensorStatus(status);
       }
       if (devList.length > 0 && !selectedDevice) {
         setSelectedDevice(devList[0]);
@@ -108,252 +97,26 @@ export default function Sensors() {
       if (bleStatus !== 'connected') {
         try {
           const status = await deviceService.getStatus();
-          setSensorStatus(status);
+          setBackendSensorStatus(status);
         } catch (e) {}
       }
     }, 4000);
     return () => clearInterval(interval);
   }, [bleStatus]);
 
-  // Finalize auto session helper
-  const finalizeAutoSession = useCallback(async (manual = false) => {
-    const session = autoSessionRef.current;
-    if (session.status === 'idle') return;
-
-    setAutoSessionDisplay((prev) => ({ ...prev, isSaving: true }));
-    try {
-      const endTime = new Date();
-      const startTime = session.startTime || new Date(Date.now() - 60000);
-      const durationMin = Math.max(1, Math.round((endTime.getTime() - startTime.getTime()) / 60000));
-      const avgAccel = session.sampleCount > 0
-        ? Math.round((session.accelSum / session.sampleCount) * 100) / 100
-        : 2.85;
-
-      const detectedSport = (session.jumpCount >= 10 || session.directionChangeCount >= 30)
-        ? 'Basketball'
-        : 'Running';
-
-      const payload = {
-        deviceId: bleDevice?.deviceName || 'SecondSkin_ESP32',
-        sport: detectedSport,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        durationMinutes: durationMin,
-        totalJumps: session.jumpCount,
-        directionChanges: session.directionChangeCount,
-        averageAcceleration: avgAccel,
-        averageSpeed: detectedSport === 'Basketball' ? 18.2 : 14.8,
-        movementIntensity: Math.min(100, Math.round(avgAccel * 25)),
-        trajectoryPoints: session.trajectoryPoints,
-      };
-
-      const saved = await sessionService.createAutoSession(payload);
-      setActionMessage(`🎉 Buổi tập ${detectedSport} đã tự động lưu! Điểm đánh giá: ${saved.performanceScore || 88}/100.`);
-      setAutoSessionDisplay({
-        status: 'idle',
-        elapsedSeconds: 0,
-        jumpCount: 0,
-        directionChangeCount: 0,
-        avgAccel: 0,
-        sport: detectedSport,
-        lastSavedSession: saved,
-        isSaving: false,
-      });
-
-      // Reset in-memory session ref
-      autoSessionRef.current = {
-        status: 'idle',
-        startTime: null,
-        lastActiveTime: null,
-        lastJumpTime: 0,
-        lastTurnTime: 0,
-        jumpCount: 0,
-        directionChangeCount: 0,
-        sampleCount: 0,
-        accelSum: 0,
-        maxAccel: 0,
-        trajectoryPoints: [],
-      };
-
-      setTimeout(() => setActionMessage(''), 6000);
-    } catch (err) {
-      console.error('Error saving auto session:', err);
-      setAutoSessionDisplay((prev) => ({ ...prev, isSaving: false }));
-    }
-  }, [bleDevice]);
-
-  // Subscribe to Web Bluetooth events
-  useEffect(() => {
-    const unsubData = bleService.onData((data) => {
-      setLivePacketCount((prev) => prev + 1);
-      setBleTelemetry(data);
-
-      const ax = data.ax ?? 0;
-      const ay = data.ay ?? 0;
-      const az = data.az ?? 9.81;
-      const gx = data.gx ?? 0;
-      const gy = data.gy ?? 0;
-      const gz = data.gz ?? 0;
-      const rawMagnitude = Math.hypot(ax, ay, az);
-      const intensity = Math.min(100, Math.round(Math.hypot(ax, ay, az - 9.81) * 12));
-
-      // 1. Real-time update into the IMU SensorCard (RAM only, 0 latency, 0 DB overhead)
-      setSensorStatus({
-        connected: true,
-        currentData: {
-          accelerometerX: ax,
-          accelerometerY: ay,
-          accelerometerZ: az,
-          gyroscopeX: gx,
-          gyroscopeY: gy,
-          gyroscopeZ: gz,
-          pitch: data.pitch ?? 0,
-          roll: data.roll ?? 0,
-          yaw: data.yaw ?? 0,
-          movementIntensity: intensity,
-          heartRate: 135,
-        },
-      });
-
-      // 2. Intelligent Auto-Session Processing (No manual Start/Stop buttons needed)
-      const dataState = data.s || (rawMagnitude > 12.0 ? 'active' : rawMagnitude < 10.5 ? 'idle' : 'cooldown');
-      const now = Date.now();
-      const session = autoSessionRef.current;
-
-      // Detect athletic jump (accel magnitude spike > 17.5 m/s²)
-      if (rawMagnitude > 17.5 && now - session.lastJumpTime > 600) {
-        session.jumpCount += 1;
-        session.lastJumpTime = now;
-      }
-
-      // Detect sudden biomechanical direction change (gyro angular velocity > 120°/s)
-      const gyroMagnitude = Math.hypot(gx, gy, gz);
-      if (gyroMagnitude > 120.0 && now - session.lastTurnTime > 500) {
-        session.directionChangeCount += 1;
-        session.lastTurnTime = now;
-      }
-
-      // Auto Start Trigger on Active movement
-      if (dataState === 'active') {
-        session.lastActiveTime = now;
-        if (session.status === 'idle') {
-          session.status = 'recording';
-          session.startTime = new Date();
-          session.sampleCount = 0;
-          session.accelSum = 0;
-          session.maxAccel = 0;
-          session.jumpCount = 0;
-          session.directionChangeCount = 0;
-          session.trajectoryPoints = [];
-          setActionMessage('🏃 Đã phát hiện vận động! Hệ thống đang tự động ghi nhận phiên tập...');
-        } else if (session.status === 'cooldown') {
-          session.status = 'recording';
-        }
-      } else if (dataState === 'cooldown' && session.status === 'recording') {
-        session.status = 'cooldown';
-      }
-
-      // Accumulate metrics while session is recording or in cooldown
-      if (session.status === 'recording' || session.status === 'cooldown') {
-        session.sampleCount += 1;
-        session.accelSum += rawMagnitude;
-        if (rawMagnitude > session.maxAccel) {
-          session.maxAccel = rawMagnitude;
-        }
-
-        // Downsample trajectory: capture 1 representative point every 10 samples (1s at 10Hz) up to max 60 points
-        if (session.sampleCount % 10 === 0 && session.trajectoryPoints.length < 60) {
-          session.trajectoryPoints.push({
-            timestamp: new Date().toISOString(),
-            accelerometerX: ax,
-            accelerometerY: ay,
-            accelerometerZ: az,
-            gyroscopeX: gx,
-            gyroscopeY: gy,
-            gyroscopeZ: gz,
-            pitch: data.pitch ?? 0,
-            roll: data.roll ?? 0,
-            yaw: data.yaw ?? 0,
-            movementIntensity: intensity,
-          });
-        }
-      }
-    });
-
-    const unsubStatus = bleService.onStatus((status, details) => {
-      setBleStatus(status);
-      if (status === 'connected') {
-        setBleDevice(details);
-        setBleError('');
-        setActionMessage(`Đã kết nối Bluetooth với ${details.deviceName || 'ESP32-C3'}!`);
-        setTimeout(() => setActionMessage(''), 4000);
-      } else if (status === 'disconnected') {
-        setBleDevice(null);
-        setBleTelemetry(null);
-        setActionMessage('Đã ngắt kết nối Bluetooth.');
-        setTimeout(() => setActionMessage(''), 3000);
-      } else if (status === 'error') {
-        setBleError(details.error || 'Lỗi kết nối Bluetooth');
-      }
-    });
-
-    const unsubWifi = bleService.onWifiStatus((res) => {
-      setWifiSending(false);
-      setWifiFeedback(res);
-    });
-
-    return () => {
-      unsubData();
-      unsubStatus();
-      unsubWifi();
-    };
-  }, []);
-
-  // Timer ticker: updates live elapsed time and auto-finalizes when user rests
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const session = autoSessionRef.current;
-      if (session.status === 'recording' || session.status === 'cooldown') {
-        const now = Date.now();
-        const elapsed = session.startTime ? Math.floor((now - session.startTime.getTime()) / 1000) : 0;
-        const avg = session.sampleCount > 0 ? (session.accelSum / session.sampleCount) : 0;
-        const detectedSport = (session.jumpCount >= 10 || session.directionChangeCount >= 30) ? 'Basketball' : 'Running';
-
-        setAutoSessionDisplay((prev) => ({
-          ...prev,
-          status: session.status,
-          elapsedSeconds: elapsed,
-          jumpCount: session.jumpCount,
-          directionChangeCount: session.directionChangeCount,
-          avgAccel: Math.round(avg * 100) / 100,
-          sport: detectedSport,
-        }));
-
-        // Auto finalize if user has rested for >= 180 seconds (3 mins) with sufficient data (> 50 samples)
-        if (session.lastActiveTime && now - session.lastActiveTime >= 180000 && session.sampleCount >= 50) {
-          finalizeAutoSession(false);
-        }
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [finalizeAutoSession]);
-
   // Handle BLE Connect button
   const handleBleConnect = async () => {
-    setBleError('');
     try {
-      await bleService.connect();
+      await connectBle();
     } catch (err) {
-      console.error('BLE connection failed:', err);
-      setBleError(err.message || 'Không thể kết nối Bluetooth.');
+      // Handled in BleContext
     }
   };
 
   // Handle BLE Disconnect button
   const handleBleDisconnect = async () => {
     try {
-      await bleService.disconnect();
+      await disconnectBle();
     } catch (err) {
       console.error('BLE disconnect error:', err);
     }
@@ -366,17 +129,14 @@ export default function Sensors() {
       alert('Vui lòng nhập Tên Wi-Fi (SSID)');
       return;
     }
-    setWifiSending(true);
-    setWifiFeedback({ status: 'sending', msg: 'Đang gửi gói tin Wi-Fi xuống ESP32...' });
     try {
-      await bleService.sendWifiConfig({
+      await sendWifiConfig({
         ssid: wifiSsid,
         password: wifiPassword,
         backendUrl: backendUrl,
       });
     } catch (err) {
-      setWifiSending(false);
-      setWifiFeedback({ status: 'wifi_failed', msg: err.message || 'Lỗi khi gửi lệnh xuống ESP32' });
+      // Feedback handled in BleContext
     }
   };
 
@@ -384,13 +144,13 @@ export default function Sensors() {
     try {
       if (currentConnected) {
         await deviceService.disconnect(deviceId);
-        setActionMessage(`Thiết bị #${deviceId} đã ngắt kết nối.`);
+        setLocalActionMessage(`Thiết bị #${deviceId} đã ngắt kết nối.`);
       } else {
         await deviceService.connect(deviceId);
-        setActionMessage(`Thiết bị #${deviceId} đã kết nối.`);
+        setLocalActionMessage(`Thiết bị #${deviceId} đã kết nối.`);
       }
       loadData();
-      setTimeout(() => setActionMessage(''), 3500);
+      setTimeout(() => setLocalActionMessage(''), 3500);
     } catch (err) {
       console.error(err);
     }
@@ -400,8 +160,8 @@ export default function Sensors() {
     setSyncing(true);
     try {
       await deviceService.sync(deviceId);
-      setActionMessage('Đã đồng bộ toàn bộ dữ liệu cảm biến lưu trong bộ nhớ.');
-      setTimeout(() => setActionMessage(''), 3500);
+      setLocalActionMessage('Đã đồng bộ toàn bộ dữ liệu cảm biến lưu trong bộ nhớ.');
+      setTimeout(() => setLocalActionMessage(''), 3500);
     } catch (err) {
       console.error(err);
     } finally {
@@ -509,7 +269,7 @@ export default function Sensors() {
                 </div>
                 <div className="meta-box">
                   <span className="meta-label">Số gói tin nhận</span>
-                  <span className="meta-value">{livePacketCount.toLocaleString()} pkts</span>
+                  <span className="meta-value">{livePacketCount.toLocaleString()} gói</span>
                 </div>
                 <div className="meta-box">
                   <span className="meta-label">Vận tốc GPS</span>
@@ -572,6 +332,22 @@ export default function Sensors() {
               <div className="auto-stat-item">
                 <span className="auto-stat-label"><Timer size={14} /> Thời gian phiên</span>
                 <span className="auto-stat-val timer-val">{formatTimer(autoSessionDisplay.elapsedSeconds)}</span>
+              </div>
+              <div className="auto-stat-item">
+                <span className="auto-stat-label"><ShieldCheck size={14} className="green" /> Độ êm tiếp đất</span>
+                <span className="auto-stat-val highlight-cyan">{autoSessionDisplay.landingSoftness ?? 84}<small>/100 ({autoSessionDisplay.peakImpactG ?? 2.1}G)</small></span>
+              </div>
+              <div className="auto-stat-item">
+                <span className="auto-stat-label"><Zap size={14} className="highlight-neon" /> Độ bùng nổ</span>
+                <span className="auto-stat-val highlight-neon">{autoSessionDisplay.explosiveness ?? 86}<small>/100 ({autoSessionDisplay.airtime ?? 0.38}s)</small></span>
+              </div>
+              <div className="auto-stat-item">
+                <span className="auto-stat-label"><Scale size={14} /> Cân bằng 2 chân</span>
+                <span className="auto-stat-val">{autoSessionDisplay.bilateralBalance ?? 94}% <small>(Đều)</small></span>
+              </div>
+              <div className="auto-stat-item">
+                <span className="auto-stat-label"><Compass size={14} /> Độ vững thân trên</span>
+                <span className="auto-stat-val">{autoSessionDisplay.trunkStability ?? 88}<small>/100</small></span>
               </div>
               <div className="auto-stat-item">
                 <span className="auto-stat-label"><Zap size={14} /> Cú bật nhảy</span>
@@ -737,11 +513,19 @@ export default function Sensors() {
 
       <div className="devices-grid">
         {devices.map((device) => {
-          const isConnected = device.connected;
+          const isBleActive = bleStatus === 'connected' && (device.deviceId === 'SSS-PATCH-001' || device.id === 1);
+          const isConnected = isBleActive || device.connected;
+          const liveBattery = isBleActive
+            ? (bleTelemetry?.bat ?? liveSensorStatus?.batteryLevel ?? device.batteryLevel)
+            : (device.deviceId === 'SSS-PATCH-001' || device.id === 1
+                ? (liveSensorStatus?.batteryLevel ?? device.batteryLevel)
+                : device.batteryLevel);
+          const isDevCharging = (device.deviceId === 'SSS-PATCH-001' || device.id === 1) && (isCharging || liveSensorStatus?.isCharging);
+
           return (
             <div
               key={device.id}
-              className={`card device-card ${isConnected ? 'device-connected' : 'device-disconnected'}`}
+              className={`card device-card ${isConnected ? 'device-connected' : 'device-disconnected'} ${isDevCharging ? 'device-charging' : ''}`}
             >
               <div className="device-card-header">
                 <div className="device-icon-wrap">
@@ -750,7 +534,7 @@ export default function Sensors() {
                 <div className="device-status-indicator">
                   <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`} />
                   <span className={`device-conn-text ${isConnected ? 'connected' : 'disconnected'}`}>
-                    {isConnected ? 'Hoạt động' : 'Ngoại tuyến'}
+                    {isConnected ? (isBleActive ? 'Đang truyền BLE' : 'Hoạt động') : 'Ngoại tuyến'}
                   </span>
                 </div>
               </div>
@@ -763,14 +547,22 @@ export default function Sensors() {
                   <div className="device-stat">
                     <span className="dev-stat-label">Pin</span>
                     <div className="battery-row">
-                      <BatteryCharging size={16} className="battery-icon" />
-                      <span className="battery-number">{device.batteryLevel}%</span>
+                      {isDevCharging ? (
+                        <Zap size={16} className="battery-icon highlight-cyan" style={{ filter: 'drop-shadow(0 0 4px rgba(6, 182, 212, 0.8))' }} />
+                      ) : (
+                        <Battery size={16} className="battery-icon" />
+                      )}
+                      <span className="battery-number">
+                        {liveBattery}% {isDevCharging && <span style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', marginLeft: '3px' }}>⚡ Đang sạc</span>}
+                      </span>
                     </div>
                   </div>
 
                   <div className="device-stat">
                     <span className="dev-stat-label">Đồng bộ</span>
-                    <span className="last-sync-text">{device.lastSync ? '10 giây trước' : 'Chưa đồng bộ'}</span>
+                    <span className="last-sync-text">
+                      {isBleActive ? 'Trực tiếp 10Hz' : device.lastSync ? '10 giây trước' : 'Chưa đồng bộ'}
+                    </span>
                   </div>
 
                   <div className="device-stat">
@@ -783,13 +575,16 @@ export default function Sensors() {
                   <div
                     className="battery-bar-fill"
                     style={{
-                      width: `${device.batteryLevel}%`,
+                      width: `${liveBattery}%`,
                       backgroundColor:
-                        device.batteryLevel > 50
+                        isDevCharging
+                          ? 'var(--accent-cyan)'
+                          : liveBattery > 50
                           ? 'var(--status-success)'
-                          : device.batteryLevel > 20
+                          : liveBattery > 20
                           ? 'var(--status-warning)'
                           : 'var(--status-danger)',
+                      boxShadow: isDevCharging ? '0 0 8px rgba(6, 182, 212, 0.6)' : undefined,
                     }}
                   />
                 </div>
@@ -804,13 +599,24 @@ export default function Sensors() {
                   {isConnected ? 'Ngắt kết nối' : 'Kết nối'}
                 </button>
 
+                {(device.deviceId === 'SSS-PATCH-001' || device.id === 1) && (
+                  <button
+                    className={`btn btn-sm ${isDevCharging ? 'btn-danger' : 'btn-outline-cyan'}`}
+                    onClick={() => toggleCharging()}
+                    title={isDevCharging ? 'Rút sạc (chuyển sang xả pin)' : 'Cắm sạc thiết bị (+1%/25s)'}
+                  >
+                    <Zap size={14} />
+                    {isDevCharging ? 'Rút sạc' : 'Cắm sạc'}
+                  </button>
+                )}
+
                 <button
                   className="btn btn-outline-cyan btn-sm"
                   onClick={() => handleSyncData(device.id)}
                   disabled={!isConnected || syncing}
                 >
                   <RefreshCw size={14} className={syncing ? 'spin-icon' : ''} />
-                  {syncing ? 'Đang sync...' : 'Đồng bộ'}
+                  {syncing ? 'Đang đồng bộ...' : 'Đồng bộ'}
                 </button>
               </div>
             </div>
@@ -827,14 +633,14 @@ export default function Sensors() {
               Tối ưu trải nghiệm thể thao: Tự động phát hiện hoạt động từ phần cứng, loại bỏ hoàn toàn thao tác nút bấm khi tập luyện.
             </p>
           </div>
-          <span className="badge badge-sport">ZERO-TOUCH AUTOMATED</span>
+          <span className="badge badge-sport">TỰ ĐỘNG HÓA ZERO-TOUCH</span>
         </div>
 
         <div className="iot-pipeline-flow">
           <div className="flow-step">
             <div className="step-badge">1</div>
             <div className="step-content">
-              <h4>Second Skin Patch</h4>
+              <h4>Miếng Dán Second Skin</h4>
               <p>Mang trên cơ thể & bắt đầu chơi thể thao</p>
             </div>
           </div>
@@ -843,7 +649,7 @@ export default function Sensors() {
           <div className="flow-step">
             <div className="step-badge">2</div>
             <div className="step-content">
-              <h4>On-Device Detection</h4>
+              <h4>Phát Hiện Trên Thiết Bị</h4>
               <p>ESP32 tính magnitude & gắn cờ <code>active/idle</code></p>
             </div>
           </div>
@@ -861,7 +667,7 @@ export default function Sensors() {
           <div className="flow-step">
             <div className="step-badge">4</div>
             <div className="step-content">
-              <h4>Auto Session Save</h4>
+              <h4>Tự Động Lưu Buổi Tập</h4>
               <p>1 request tổng hợp khi nghỉ tập (không phồng DB)</p>
             </div>
           </div>
@@ -870,7 +676,7 @@ export default function Sensors() {
           <div className="flow-step highlight-step">
             <div className="step-badge">5</div>
             <div className="step-content">
-              <h4>AI Coach Analysis</h4>
+              <h4>Phân Tích AI Huấn Luyện Viên</h4>
               <p>Phân tích động học & phòng ngừa chấn thương</p>
             </div>
           </div>

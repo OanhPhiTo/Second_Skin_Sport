@@ -12,7 +12,6 @@ export interface SensorTelemetry {
   roll?: number;
   yaw?: number;
   movementIntensity?: number;
-  heartRate?: number;
 }
 
 export interface UseSensorWebSocketOptions {
@@ -73,7 +72,6 @@ export function useSensorWebSocket(options: UseSensorWebSocketOptions = {}) {
             roll: Number(raw.roll ?? 0),
             yaw: Number(raw.yaw ?? 0),
             movementIntensity: Number(raw.movementIntensity ?? 75),
-            heartRate: Number(raw.heartRate ?? 135),
           };
 
           setLatestData(telemetry);

@@ -50,19 +50,21 @@ public class SensorBatchService {
                     r.getPitch(),
                     r.getRoll(),
                     r.getYaw(),
-                    r.getMovementIntensity(),
-                    135
+                    r.getMovementIntensity()
             );
             entities.add(data);
         }
 
         sensorDataRepository.saveAll(entities);
 
-        // Update device lastSync timestamp if registered
+        // Update device lastSync timestamp and battery if registered
         Optional<Device> deviceOpt = deviceRepository.findByDeviceId(deviceId);
         deviceOpt.ifPresent(device -> {
             device.setLastSync(LocalDateTime.now());
             device.setConnected(true);
+            if (batchDTO.getBatteryLevel() != null && batchDTO.getBatteryLevel() > 0) {
+                device.setBatteryLevel(Math.min(100, Math.max(0, batchDTO.getBatteryLevel())));
+            }
             deviceRepository.save(device);
         });
 

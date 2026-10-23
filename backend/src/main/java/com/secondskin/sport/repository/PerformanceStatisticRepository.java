@@ -10,5 +10,7 @@ import java.util.Optional;
 public interface PerformanceStatisticRepository extends JpaRepository<PerformanceStatistic, Long> {
     List<PerformanceStatistic> findAllByOrderByDateAsc();
     List<PerformanceStatistic> findBySportIgnoreCaseOrderByDateAsc(String sport);
+    List<PerformanceStatistic> findByUserIdOrderByDateAsc(Long userId);
+    List<PerformanceStatistic> findByUserIdAndSportIgnoreCaseOrderByDateAsc(Long userId, String sport);
     Optional<PerformanceStatistic> findBySessionId(Long sessionId);
 }

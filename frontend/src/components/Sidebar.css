@@ -192,6 +192,10 @@
   animation: pulse-glow 2s infinite;
 }
 
+.dim-icon {
+  color: var(--text-dim);
+}
+
 @keyframes pulse-glow {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(1.15); }
@@ -202,6 +206,15 @@
   font-weight: 700;
   color: var(--status-success);
   background: var(--status-success-bg);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+}
+
+.status-badge-offline {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.15);
   padding: 2px 6px;
   border-radius: var(--radius-full);
 }

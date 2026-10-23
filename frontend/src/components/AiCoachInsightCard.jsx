@@ -47,8 +47,8 @@ export default function AiCoachInsightCard({ insights }) {
           </div>
           <div>
             <div className="ai-coach-tagline">
-              <span className="badge-ai-coach">AI COACH BIOMECHANICS</span>
-              <span className="ai-engine-tag">Google Gemini & DSP Sensors</span>
+              <span className="badge-ai-coach">AI COACH CƠ SINH HỌC</span>
+              <span className="ai-engine-tag">Cảm Biến DSP & Google Gemini AI</span>
             </div>
             <h3 className="ai-insight-title">{insights.activityType || 'Phân Tích Động Học Buổi Tập'}</h3>
           </div>
@@ -120,7 +120,7 @@ export default function AiCoachInsightCard({ insights }) {
               <span className="metric-label">
                 <TrendingUp size={14} className="highlight-orange" /> Nhịp Vận Động
               </span>
-              <span className="metric-val">{metrics.cadenceRpm} spm</span>
+              <span className="metric-val">{metrics.cadenceRpm} bước/phút</span>
             </div>
             <div className="metric-progress-bg">
               <div

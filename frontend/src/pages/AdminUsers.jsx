@@ -235,11 +235,11 @@ export default function AdminUsers() {
                     <td>
                       {isAdmin ? (
                         <span className="pill-role-admin">
-                          <ShieldCheck size={12} /> ADMIN
+                          <ShieldCheck size={12} /> QUẢN TRỊ VIÊN
                         </span>
                       ) : (
                         <span className="pill-role-user">
-                          <Flame size={12} /> ATHLETE
+                          <Flame size={12} /> VẬN ĐỘNG VIÊN
                         </span>
                       )}
                     </td>

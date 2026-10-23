@@ -145,35 +145,250 @@ export const authService = {
   },
 };
 
-// Fallback Mock Data in case backend is loading/offline
-const fallbackStats = {
-  totalSessions: 24,
-  totalSessionsChange: '+4 this week',
-  totalActivityTime: '18h 42m',
-  totalActivityTimeChange: '+12.5%',
-  averageAcceleration: 2.84,
-  averageAccelerationChange: '+5.2%',
-  totalJumps: 386,
-  totalJumpsChange: '+14.8%',
-  directionChanges: 1245,
-  directionChangesChange: '+8.1%',
-  performanceScore: 87,
-  performanceScoreChange: '+8.4%',
+// Dynamic Session & Telemetry Engine (Fallback & Local Persistence)
+const generateInitialSessions = () => {
+  const now = new Date();
+  const getISO = (daysAgo, hours, minutes) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(hours, minutes, 0, 0);
+    return d.toISOString();
+  };
+
+  return [
+    {
+      id: 1,
+      sport: 'Basketball',
+      startTime: getISO(0, Math.max(8, now.getHours() - 2), 30),
+      durationMinutes: 42,
+      totalJumps: 56,
+      directionChanges: 143,
+      averageAcceleration: 3.21,
+      averageSpeed: 18.4,
+      totalDistance: 7.7,
+      movementIntensity: 88,
+      performanceScore: 91,
+      status: 'Completed',
+    },
+    {
+      id: 2,
+      sport: 'Basketball',
+      startTime: getISO(1, 16, 0),
+      durationMinutes: 38,
+      totalJumps: 43,
+      directionChanges: 118,
+      averageAcceleration: 2.89,
+      averageSpeed: 17.2,
+      totalDistance: 6.5,
+      movementIntensity: 84,
+      performanceScore: 87,
+      status: 'Completed',
+    },
+    {
+      id: 3,
+      sport: 'Running',
+      startTime: getISO(2, 6, 15),
+      durationMinutes: 31,
+      totalJumps: 0,
+      directionChanges: 24,
+      averageAcceleration: 2.41,
+      averageSpeed: 14.8,
+      totalDistance: 7.6,
+      movementIntensity: 79,
+      performanceScore: 82,
+      status: 'Completed',
+    },
+    {
+      id: 4,
+      sport: 'Basketball',
+      startTime: getISO(3, 15, 0),
+      durationMinutes: 55,
+      totalJumps: 48,
+      directionChanges: 135,
+      averageAcceleration: 3.12,
+      averageSpeed: 17.6,
+      totalDistance: 8.8,
+      movementIntensity: 88,
+      performanceScore: 89,
+      status: 'Completed',
+    },
+    {
+      id: 5,
+      sport: 'Running',
+      startTime: getISO(5, 18, 0),
+      durationMinutes: 45,
+      totalJumps: 0,
+      directionChanges: 22,
+      averageAcceleration: 2.35,
+      averageSpeed: 14.2,
+      totalDistance: 10.7,
+      movementIntensity: 80,
+      performanceScore: 84,
+      status: 'Completed',
+    },
+    {
+      id: 6,
+      sport: 'Basketball',
+      startTime: getISO(7, 17, 0),
+      durationMinutes: 50,
+      totalJumps: 62,
+      directionChanges: 155,
+      averageAcceleration: 3.35,
+      averageSpeed: 19.1,
+      totalDistance: 9.6,
+      movementIntensity: 90,
+      performanceScore: 94,
+      status: 'Completed',
+    },
+    {
+      id: 7,
+      sport: 'Running',
+      startTime: getISO(9, 7, 0),
+      durationMinutes: 35,
+      totalJumps: 0,
+      directionChanges: 18,
+      averageAcceleration: 2.38,
+      averageSpeed: 13.9,
+      totalDistance: 8.1,
+      movementIntensity: 76,
+      performanceScore: 80,
+      status: 'Completed',
+    },
+    {
+      id: 8,
+      sport: 'Running',
+      startTime: getISO(12, 16, 30),
+      durationMinutes: 60,
+      totalJumps: 0,
+      directionChanges: 20,
+      averageAcceleration: 2.45,
+      averageSpeed: 15.1,
+      totalDistance: 15.1,
+      movementIntensity: 85,
+      performanceScore: 88,
+      status: 'Completed',
+    },
+  ];
+};
+
+const getUserSessionsStorageKey = () => {
+  const currentUser = authService.getCurrentUser();
+  const email = (currentUser?.email || '').toLowerCase().trim();
+  return email ? `secondskin_sessions_${email}` : 'secondskin_sessions_default';
+};
+
+const getStoredSessions = () => {
+  const currentUser = authService.getCurrentUser();
+  const email = (currentUser?.email || '').toLowerCase().trim();
+  const key = getUserSessionsStorageKey();
+
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {}
+
+  // Only demo athlete Alex Johnson gets initial 8 seeded sessions
+  if (email.includes('alex.athlete') || email === 'default' || !email) {
+    const initial = generateInitialSessions();
+    try {
+      localStorage.setItem(key, JSON.stringify(initial));
+    } catch (e) {}
+    return initial;
+  }
+
+  // A newly created account starts with 0 sessions
+  return [];
+};
+
+const saveStoredSession = (newSession) => {
+  const key = getUserSessionsStorageKey();
+  const current = getStoredSessions();
+  const updated = [newSession, ...current.filter((s) => s.id !== newSession.id)];
+  try {
+    localStorage.setItem(key, JSON.stringify(updated));
+  } catch (e) {}
+  return updated;
+};
+
+const calculateOverviewStats = (sessionsList) => {
+  const sessions = sessionsList !== undefined ? sessionsList : getStoredSessions();
+  if (!sessions || sessions.length === 0) {
+    return {
+      totalSessions: 0,
+      totalSessionsChange: '0 this week',
+      totalActivityTime: '0m',
+      totalActivityTimeChange: '0%',
+      averageAcceleration: 0.0,
+      averageAccelerationChange: '0%',
+      totalJumps: 0,
+      totalJumpsChange: '0 /sess',
+      directionChanges: 0,
+      directionChangesChange: '0 /sess',
+      performanceScore: 0,
+      performanceScoreChange: 'No Data',
+    };
+  }
+
+  const totalSessions = sessions.length;
+  const totalMinutes = sessions.reduce((acc, s) => acc + (s.durationMinutes || 0), 0);
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  const totalTimeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+  const avgAccel = +(sessions.reduce((acc, s) => acc + Number(s.averageAcceleration || 0), 0) / Math.max(1, totalSessions)).toFixed(2);
+  const totalJumps = sessions.reduce((acc, s) => acc + Number(s.totalJumps || 0), 0);
+  const directionChanges = sessions.reduce((acc, s) => acc + Number(s.directionChanges || 0), 0);
+  const avgScore = Math.round(sessions.reduce((acc, s) => acc + Number(s.performanceScore || 0), 0) / Math.max(1, totalSessions));
+
+  const now = new Date();
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const recentCount = sessions.filter((s) => new Date(s.startTime) >= oneWeekAgo).length;
+
+  return {
+    totalSessions,
+    totalSessionsChange: `+${recentCount} tuần này`,
+    totalActivityTime: totalTimeStr,
+    totalActivityTimeChange: '+0.0%',
+    averageAcceleration: avgAccel,
+    averageAccelerationChange: '+0.0%',
+    totalJumps,
+    totalJumpsChange: totalJumps > 0 ? `+${Math.round(totalJumps / totalSessions)} /phiên` : '0 /phiên',
+    directionChanges,
+    directionChangesChange: directionChanges > 0 ? `+${Math.round(directionChanges / totalSessions)} /phiên` : '0 /phiên',
+    performanceScore: avgScore,
+    performanceScoreChange: avgScore >= 88 ? 'Hạng Xuất Sắc' : 'Hạng Tối Ưu',
+  };
 };
 
 const fallbackActivityAnalysis = {
-  jumps: 42,
-  averageJumpHeightCm: 38.0,
-  directionChanges: 126,
-  movementIntensity: 82,
+  jumps: 0,
+  averageJumpHeightCm: 0.0,
+  directionChanges: 0,
+  movementIntensity: 0,
+};
+
+const getLiveBatteryLevel = () => {
+  try {
+    const saved = localStorage.getItem('sss_battery_level');
+    if (saved) {
+      const val = parseInt(saved, 10);
+      if (!isNaN(val) && val >= 5 && val <= 100) return val;
+    }
+  } catch (e) {}
+  return 92;
 };
 
 const fallbackSensorStatus = {
   deviceId: 'SSS-PATCH-001',
   deviceName: 'Second Skin Patch #001',
   connected: true,
-  batteryLevel: 82,
-  lastSync: '10 seconds ago',
+  get batteryLevel() {
+    return getLiveBatteryLevel();
+  },
+  lastSync: '10 giây trước',
   currentData: {
     accelerometerX: 0.82,
     accelerometerY: -0.21,
@@ -185,77 +400,8 @@ const fallbackSensorStatus = {
     roll: 4.0,
     yaw: 82.0,
     movementIntensity: 82,
-    heartRate: 142,
   },
 };
-
-const fallbackSessions = [
-  {
-    id: 1,
-    sport: 'Basketball',
-    startTime: '2026-09-16T17:30:00',
-    durationMinutes: 42,
-    totalJumps: 56,
-    directionChanges: 143,
-    averageAcceleration: 3.21,
-    averageSpeed: 18.4,
-    movementIntensity: 88,
-    performanceScore: 91,
-    status: 'Completed',
-  },
-  {
-    id: 2,
-    sport: 'Basketball',
-    startTime: '2026-09-15T16:00:00',
-    durationMinutes: 38,
-    totalJumps: 43,
-    directionChanges: 118,
-    averageAcceleration: 2.89,
-    averageSpeed: 17.2,
-    movementIntensity: 84,
-    performanceScore: 87,
-    status: 'Completed',
-  },
-  {
-    id: 3,
-    sport: 'Running',
-    startTime: '2026-09-14T06:15:00',
-    durationMinutes: 31,
-    totalJumps: 0,
-    directionChanges: 24,
-    averageAcceleration: 2.41,
-    averageSpeed: 14.8,
-    movementIntensity: 79,
-    performanceScore: 82,
-    status: 'Completed',
-  },
-  {
-    id: 4,
-    sport: 'Basketball',
-    startTime: '2026-09-13T15:00:00',
-    durationMinutes: 55,
-    totalJumps: 48,
-    directionChanges: 135,
-    averageAcceleration: 3.12,
-    averageSpeed: 17.6,
-    movementIntensity: 88,
-    performanceScore: 89,
-    status: 'Completed',
-  },
-  {
-    id: 5,
-    sport: 'Running',
-    startTime: '2026-09-11T18:00:00',
-    durationMinutes: 45,
-    totalJumps: 0,
-    directionChanges: 22,
-    averageAcceleration: 2.35,
-    averageSpeed: 14.2,
-    movementIntensity: 80,
-    performanceScore: 84,
-    status: 'Completed',
-  },
-];
 
 const fallbackChartSeries = [
   { time: '10m', acceleration: 2.4, speed: 14.2, intensity: 70 },
@@ -271,10 +417,20 @@ export const sessionService = {
   getAll: async (sport) => {
     try {
       const response = await apiClient.get('/sessions', { params: { sport } });
-      return response.data;
+      if (Array.isArray(response.data)) {
+        try {
+          localStorage.setItem(getUserSessionsStorageKey(), JSON.stringify(response.data));
+        } catch (e) {}
+        return response.data;
+      }
+      return getStoredSessions();
     } catch (err) {
-      console.warn('Backend API offline, using fallback sessions data');
-      return fallbackSessions;
+      console.warn('Backend API offline, using persistent local sessions data');
+      const stored = getStoredSessions();
+      if (sport && sport !== 'All') {
+        return stored.filter((s) => s.sport?.toLowerCase() === sport.toLowerCase());
+      }
+      return stored;
     }
   },
 
@@ -283,32 +439,48 @@ export const sessionService = {
       const response = await apiClient.get(`/sessions/${id}`);
       return response.data;
     } catch (err) {
-      const found = fallbackSessions.find((s) => s.id === Number(id));
-      return found || fallbackSessions[0];
+      const stored = getStoredSessions();
+      const found = stored.find((s) => s.id === Number(id));
+      return found || stored[0];
     }
   },
 
   create: async (session) => {
+    const computedDist = session.totalDistance || +(
+      (Number(session.averageSpeed || 15) * Number(session.durationMinutes || 30)) / 60
+    ).toFixed(1);
+
+    const newObj = {
+      ...session,
+      id: session.id || Date.now(),
+      status: 'Completed',
+      totalDistance: computedDist,
+    };
+
     try {
-      const response = await apiClient.post('/sessions', session);
+      const response = await apiClient.post('/sessions', newObj);
+      saveStoredSession(response.data);
       return response.data;
     } catch (err) {
-      return { ...session, id: Date.now(), status: 'Completed' };
+      saveStoredSession(newObj);
+      return newObj;
     }
   },
 
   createAutoSession: async (autoSessionData) => {
     try {
       const response = await apiClient.post('/sessions/auto', autoSessionData);
+      saveStoredSession(response.data);
       return response.data;
     } catch (err) {
-      console.warn('AutoSession endpoint offline, generating local fallback:', err);
-      return {
+      console.warn('AutoSession endpoint offline, generating persistent local session:', err);
+      const fallbackObj = {
         ...autoSessionData,
         id: Date.now(),
         status: 'Completed',
         durationMinutes: autoSessionData.durationMinutes || 30,
         performanceScore: autoSessionData.performanceScore || 85,
+        totalDistance: +((15.2 * (autoSessionData.durationMinutes || 30)) / 60).toFixed(1),
         aiInsight: {
           activityType: autoSessionData.sport || 'Basketball',
           performanceScore: autoSessionData.performanceScore || 85,
@@ -320,6 +492,8 @@ export const sessionService = {
           aiSummary: 'Buổi tập ghi nhận tự động thành công. Chỉ số chuyển động rất tốt!',
         },
       };
+      saveStoredSession(fallbackObj);
+      return fallbackObj;
     }
   },
 
@@ -339,8 +513,8 @@ export const statisticsService = {
       const response = await apiClient.get('/statistics/overview');
       return response.data;
     } catch (err) {
-      console.warn('Backend API offline, using fallback overview stats');
-      return fallbackStats;
+      console.warn('Backend API offline, using dynamic computed overview stats');
+      return calculateOverviewStats();
     }
   },
 
@@ -349,17 +523,83 @@ export const statisticsService = {
       const response = await apiClient.get('/statistics/activity-analysis');
       return response.data;
     } catch (err) {
-      return fallbackActivityAnalysis;
+      const sessions = getStoredSessions();
+      if (sessions.length > 0) {
+        const latest = sessions[0];
+        const jumps = latest.totalJumps || 0;
+        const jumpHeight = jumps > 0 ? (latest.sport === 'Basketball' ? 46.0 : 32.0) : 0.0;
+        const avgAccel = latest.averageAcceleration || 2.5;
+        const peakG = Math.round(Math.min(3.6, Math.max(1.8, (avgAccel * 0.65) + 0.75)) * 10) / 10;
+        const landingSoftness = Math.round(100 - Math.min(55, Math.max(0, (peakG - 1.8) * 22)));
+        const explosiveness = Math.min(100, Math.max(50, Math.round(avgAccel * 28)));
+
+        return {
+          jumps: latest.totalJumps || 0,
+          averageJumpHeightCm: jumpHeight,
+          directionChanges: latest.directionChanges || 0,
+          movementIntensity: latest.movementIntensity || 80,
+          landingSoftnessScore: landingSoftness,
+          peakLandingImpactG: peakG,
+          explosivenessScore: explosiveness,
+          averageAirtimeSeconds: jumps > 0 ? 0.38 : 0.0,
+          bilateralSymmetryPct: 94,
+          dominantSide: 'BALANCED',
+          trunkStabilityScore: 86,
+          trunkLeanAngleDegrees: latest.sport === 'Basketball' ? 10.4 : 8.2,
+        };
+      }
+      return {
+        jumps: 0,
+        averageJumpHeightCm: 0.0,
+        directionChanges: 0,
+        movementIntensity: 0,
+        landingSoftnessScore: 0,
+        peakLandingImpactG: 0.0,
+        explosivenessScore: 0,
+        averageAirtimeSeconds: 0.0,
+        bilateralSymmetryPct: 0,
+        dominantSide: 'BALANCED',
+        trunkStabilityScore: 0,
+        trunkLeanAngleDegrees: 0.0,
+      };
     }
   },
 
   getStatistics: async (sport, timeRange) => {
     try {
       const response = await apiClient.get('/statistics', { params: { sport, timeRange } });
-      return response.data;
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
     } catch (err) {
-      return fallbackSessions;
+      console.warn('Backend /statistics offline, deriving stats from local sessions');
     }
+
+    const stored = getStoredSessions();
+    if (stored.length === 0) {
+      return [];
+    }
+
+    let filtered = [...stored];
+    if (sport && sport !== 'All') {
+      filtered = filtered.filter((s) => s.sport?.toLowerCase() === sport.toLowerCase());
+    }
+
+    // Sort chronologically ascending for timeline charts
+    filtered.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+
+    return filtered.map((s) => ({
+      sessionId: s.id,
+      date: s.startTime ? s.startTime.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      sport: s.sport,
+      averageSpeed: Number(s.averageSpeed || 15.0),
+      averageAcceleration: Number(s.averageAcceleration || 2.5),
+      totalDistance: Number(s.totalDistance || ((s.averageSpeed || 15) * (s.durationMinutes || 30) / 60).toFixed(1)),
+      totalJumps: Number(s.totalJumps || 0),
+      directionChanges: Number(s.directionChanges || 0),
+      movementIntensity: Number(s.movementIntensity || 80),
+      performanceScore: Number(s.performanceScore || 85),
+    }));
   },
 };
 
@@ -395,8 +635,8 @@ export const deviceService = {
           deviceName: 'Second Skin Patch #001',
           deviceId: 'SSS-PATCH-001',
           connected: true,
-          batteryLevel: 82,
-          lastSync: '10 seconds ago',
+          batteryLevel: getLiveBatteryLevel(),
+          lastSync: '10 giây trước',
           firmwareVersion: 'v2.4.1',
           connectionType: 'BLE 5.2',
         },
@@ -406,7 +646,7 @@ export const deviceService = {
           deviceId: 'SSS-PATCH-002',
           connected: false,
           batteryLevel: 45,
-          lastSync: '2 days ago',
+          lastSync: '2 ngày trước',
           firmwareVersion: 'v2.3.8',
           connectionType: 'BLE 5.2',
         },
@@ -419,7 +659,20 @@ export const deviceService = {
       const response = await apiClient.get('/devices/status');
       return response.data;
     } catch (err) {
-      return fallbackSensorStatus;
+      return {
+        ...fallbackSensorStatus,
+        batteryLevel: getLiveBatteryLevel(),
+      };
+    }
+  },
+
+  updateBattery: async (id, batteryLevel) => {
+    try {
+      localStorage.setItem('sss_battery_level', batteryLevel.toString());
+      const response = await apiClient.put(`/devices/${id}/battery`, { batteryLevel });
+      return response.data;
+    } catch (err) {
+      return { id, batteryLevel };
     }
   },
 
@@ -446,7 +699,7 @@ export const deviceService = {
       const response = await apiClient.post(`/devices/${id}/sync`);
       return response.data;
     } catch (err) {
-      return { status: 'success', message: 'Device synchronized successfully' };
+      return { status: 'success', message: 'Đồng bộ thiết bị thành công' };
     }
   },
 };

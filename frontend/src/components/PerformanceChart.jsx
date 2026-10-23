@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -9,42 +9,60 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+import { statisticsService } from '../services/api';
 import './PerformanceChart.css';
 
 export default function PerformanceChart() {
   const [timeRange, setTimeRange] = useState('7 Days');
+  const [chartData, setChartData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Realistic sample points matching the selected range
-  const chartDataMap = {
-    Today: [
-      { time: '17:30', acceleration: 2.1, speed: 14.5, intensity: 68 },
-      { time: '17:35', acceleration: 3.4, speed: 18.2, intensity: 84 },
-      { time: '17:40', acceleration: 2.8, speed: 16.0, intensity: 76 },
-      { time: '17:45', acceleration: 3.9, speed: 21.4, intensity: 92 },
-      { time: '17:50', acceleration: 3.1, speed: 17.8, intensity: 82 },
-      { time: '17:55', acceleration: 4.2, speed: 22.8, intensity: 96 },
-      { time: '18:00', acceleration: 2.6, speed: 15.2, intensity: 74 },
-      { time: '18:05', acceleration: 3.7, speed: 19.5, intensity: 88 },
-      { time: '18:10', acceleration: 1.8, speed: 11.0, intensity: 58 },
-    ],
-    '7 Days': [
-      { time: '09/10', acceleration: 2.5, speed: 15.4, intensity: 72 },
-      { time: '09/11', acceleration: 1.8, speed: 6.2, intensity: 75 },
-      { time: '09/12', acceleration: 2.7, speed: 16.8, intensity: 80 },
-      { time: '09/13', acceleration: 3.1, speed: 21.6, intensity: 92 },
-      { time: '09/14', acceleration: 2.4, speed: 14.8, intensity: 79 },
-      { time: '09/15', acceleration: 2.9, speed: 17.2, intensity: 84 },
-      { time: '09/16', acceleration: 3.2, speed: 18.4, intensity: 88 },
-    ],
-    '30 Days': [
-      { time: 'W1', acceleration: 2.4, speed: 14.0, intensity: 70 },
-      { time: 'W2', acceleration: 2.8, speed: 16.5, intensity: 79 },
-      { time: 'W3', acceleration: 3.0, speed: 18.2, intensity: 85 },
-      { time: 'W4', acceleration: 3.2, speed: 19.4, intensity: 89 },
-    ],
-  };
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    statisticsService.getStatistics('All', timeRange)
+      .then((res) => {
+        if (!isMounted) return;
+        if (Array.isArray(res) && res.length > 0) {
+          const mapped = res.map((item, idx) => {
+            let label = '';
+            if (Array.isArray(item.date) && item.date.length >= 3) {
+              label = `${String(item.date[2]).padStart(2, '0')}/${String(item.date[1]).padStart(2, '0')}`;
+            } else if (item.date) {
+              const parts = String(item.date).split('T')[0].split('-');
+              if (parts.length === 3) {
+                label = `${parts[2]}/${parts[1]}`;
+              }
+            } else if (item.startTime) {
+              const d = new Date(item.startTime);
+              if (!isNaN(d.getTime())) {
+                label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+              }
+            }
 
-  const data = chartDataMap[timeRange] || chartDataMap['7 Days'];
+            return {
+              time: label || `#${idx + 1}`,
+              acceleration: Number(Number(item.averageAcceleration || 0).toFixed(2)),
+              speed: Number(Number(item.averageSpeed || 0).toFixed(1)),
+              intensity: Number(item.movementIntensity || 0),
+            };
+          });
+          setChartData(mapped);
+        } else {
+          setChartData([]);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setChartData([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [timeRange]);
+
+  const data = chartData;
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -70,18 +88,22 @@ export default function PerformanceChart() {
     <div className="card performance-chart-card">
       <div className="chart-header">
         <div>
-          <h2 className="card-title">Movement Performance</h2>
-          <p className="card-subtitle">Real-time sensor telemetry & biometric movement intensity</p>
+          <h2 className="card-title">Hiệu Suất Chuyển Động</h2>
+          <p className="card-subtitle">Dữ liệu đo cảm biến thời gian thực & cường độ vận động sinh trắc học</p>
         </div>
 
         <div className="time-range-toggle">
-          {['Today', '7 Days', '30 Days'].map((range) => (
+          {[
+            { key: 'Today', label: 'Hôm nay' },
+            { key: '7 Days', label: '7 Ngày' },
+            { key: '30 Days', label: '30 Ngày' },
+          ].map((range) => (
             <button
-              key={range}
-              className={`range-btn ${timeRange === range ? 'active' : ''}`}
-              onClick={() => setTimeRange(range)}
+              key={range.key}
+              className={`range-btn ${timeRange === range.key ? 'active' : ''}`}
+              onClick={() => setTimeRange(range.key)}
             >
-              {range}
+              {range.label}
             </button>
           ))}
         </div>
@@ -117,7 +139,7 @@ export default function PerformanceChart() {
             <Area
               type="monotone"
               dataKey="acceleration"
-              name="Acceleration (m/s²)"
+              name="Gia tốc (m/s²)"
               stroke="#00f2fe"
               strokeWidth={2.5}
               fill="url(#cyanGrad)"
@@ -126,7 +148,7 @@ export default function PerformanceChart() {
             <Area
               type="monotone"
               dataKey="speed"
-              name="Speed (km/h)"
+              name="Tốc độ (km/h)"
               stroke="#4facfe"
               strokeWidth={2}
               fill="url(#blueGrad)"
@@ -134,7 +156,7 @@ export default function PerformanceChart() {
             <Area
               type="monotone"
               dataKey="intensity"
-              name="Movement Intensity (%)"
+              name="Cường độ vận động (%)"
               stroke="#00ff87"
               strokeWidth={2}
               fill="url(#neonGrad)"

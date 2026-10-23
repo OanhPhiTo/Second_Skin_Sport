@@ -2,7 +2,22 @@ import React from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import './StatCard.css';
 
-export default function StatCard({ title, value, unit, change, isPositive = true, icon: Icon, accent = 'cyan' }) {
+export default function StatCard({
+  title,
+  value,
+  unit,
+  change,
+  isPositive,
+  period,
+  icon: Icon,
+  accent = 'cyan',
+}) {
+  const positive = isPositive !== undefined ? isPositive : !String(change || '').trim().startsWith('-');
+  const shouldShowPeriod = period !== undefined
+    ? Boolean(period)
+    : !String(change || '').match(/(week|month|day|sess|Optimal|Good|benchmark|tuần|tháng|ngày|phiên|Hạng)/i);
+  const periodText = period !== undefined ? period : 'so với phiên trước';
+
   return (
     <div className={`stat-card accent-${accent}`}>
       <div className="stat-card-top">
@@ -21,11 +36,11 @@ export default function StatCard({ title, value, unit, change, isPositive = true
 
       {change && (
         <div className="stat-bottom-row">
-          <span className={`stat-badge ${isPositive ? 'positive' : 'negative'}`}>
-            {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+          <span className={`stat-badge ${positive ? 'positive' : 'negative'}`}>
+            {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
             {change}
           </span>
-          <span className="stat-period">vs last session</span>
+          {shouldShowPeriod && <span className="stat-period">{periodText}</span>}
         </div>
       )}
     </div>

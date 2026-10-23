@@ -25,4 +25,8 @@ public class SensorBatchDTO {
 
     public List<SensorReadingDTO> getReadings() { return readings; }
     public void setReadings(List<SensorReadingDTO> readings) { this.readings = readings; }
+
+    private Integer batteryLevel;
+    public Integer getBatteryLevel() { return batteryLevel; }
+    public void setBatteryLevel(Integer batteryLevel) { this.batteryLevel = batteryLevel; }
 }
