@@ -32,6 +32,7 @@ describe('useSensorWebSocket Hook', () => {
 
     expect(result.current.dataPoints).toEqual([]);
     expect(result.current.latestData).toBeNull();
+    expect(result.current.latestJump).toBeNull();
     expect(result.current.connected).toBe(false);
 
     // Simulate open
@@ -72,6 +73,38 @@ describe('useSensorWebSocket Hook', () => {
     // Should only retain the last 5 points
     expect(result.current.dataPoints.length).toBe(5);
     expect(result.current.latestData.accelerometerZ).toBe(9.8 + 8);
+  });
+
+  it('captures JumpEvent broadcast from backend WebSocket stream', () => {
+    const { result } = renderHook(() => useSensorWebSocket());
+
+    act(() => {
+      if (latestInstance && latestInstance.onopen) {
+        latestInstance.onopen();
+      }
+    });
+
+    // Simulate backend sending a JumpEventDTO
+    act(() => {
+      if (latestInstance && latestInstance.onmessage) {
+        latestInstance.onmessage({
+          data: JSON.stringify({
+            deviceId: 'ESP32-SUPERMINI-01',
+            airtimeSeconds: 0.35,
+            jumpHeightCm: 15.0,
+            landingImpactMs2: 26.5,
+            landingImpactG: 2.7,
+            jumpIndex: 3,
+            activityType: 'JUMP'
+          })
+        });
+      }
+    });
+
+    expect(result.current.latestJump).not.toBeNull();
+    expect(result.current.latestJump.jumpIndex).toBe(3);
+    expect(result.current.latestJump.jumpHeightCm).toBe(15.0);
+    expect(result.current.latestJump.landingImpactG).toBe(2.7);
   });
 
   it('strictly closes and cleans up WebSocket on unmount to prevent memory leaks', () => {

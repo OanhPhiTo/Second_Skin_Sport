@@ -90,4 +90,25 @@ describe('AiCoachInsightCard Component', () => {
     expect(screen.getByText('Chạy bộ')).toBeDefined();
     expect(screen.getByText('TRUNG BÌNH')).toBeDefined();
   });
+
+  it('renders a balanced 2-column layout grid to prevent vertical scrolling', () => {
+    const { container } = render(<AiCoachInsightCard insights={sampleInsights} />);
+    const grid = container.querySelector('.ai-insight-body-grid');
+    expect(grid).not.toBeNull();
+    const leftCol = container.querySelector('.ai-insight-col-left');
+    const rightCol = container.querySelector('.ai-insight-col-right');
+    expect(leftCol).not.toBeNull();
+    expect(rightCol).not.toBeNull();
+
+    // Left column contains performance & biomechanical metrics and injury risk
+    expect(leftCol.querySelector('.performance-section')).not.toBeNull();
+    expect(leftCol.querySelector('.biomech-metrics-grid')).not.toBeNull();
+    expect(leftCol.querySelector('.injury-energy-section')).not.toBeNull();
+
+    // Right column contains improvements, drills, and recovery advice
+    expect(rightCol.querySelector('.improvement-section')).not.toBeNull();
+    expect(rightCol.querySelector('.drills-section')).not.toBeNull();
+    expect(rightCol.querySelector('.recovery-card-section')).not.toBeNull();
+  });
 });
+

@@ -62,18 +62,27 @@ export function BleProvider({ children }) {
     },
   });
 
-  // Persistent in-memory Auto Session State (Zero-Touch Tracking)
+  // Persistent in-memory Auto Session State (Kinematic FSM & Zero-Touch Tracking)
   const autoSessionRef = useRef({
     status: 'idle', // 'idle' | 'recording' | 'cooldown'
     startTime: null,
     lastActiveTime: null,
+    kineState: 'GROUND', // 'GROUND' | 'TAKEOFF' | 'AIRBORNE' | 'REFRACTORY'
+    airtimeStartTime: 0,
     lastJumpTime: 0,
+    lastStepTime: 0,
     lastTurnTime: 0,
     jumpCount: 0,
+    stepCount: 0,
     directionChangeCount: 0,
     sampleCount: 0,
     accelSum: 0,
     maxAccel: 0,
+    lastJumpHeightCm: 0,
+    lastAirtime: 0,
+    lastImpactG: 0,
+    cadence: 0,
+    classifiedActivity: 'idle',
     trajectoryPoints: [], // max 60 points in RAM
   });
 
@@ -81,6 +90,9 @@ export function BleProvider({ children }) {
     status: 'idle',
     elapsedSeconds: 0,
     jumpCount: 0,
+    stepCount: 0,
+    cadence: 0,
+    jumpHeight: 0,
     directionChangeCount: 0,
     avgAccel: 0,
     sport: 'Running',
@@ -90,6 +102,7 @@ export function BleProvider({ children }) {
     airtime: 0.38,
     bilateralBalance: 94,
     trunkStability: 88,
+    classifiedActivity: 'idle',
     lastSavedSession: null,
     isSaving: false,
   });
@@ -112,7 +125,8 @@ export function BleProvider({ children }) {
         ? Math.round((session.accelSum / session.sampleCount) * 100) / 100
         : 2.85;
 
-      const detectedSport = (session.jumpCount >= 10 || session.directionChangeCount >= 30)
+      // Distinguish sport: Basketball requires true vertical jumps (>= 8) or many direction turns with jumps
+      const detectedSport = (session.jumpCount >= 8 || (session.jumpCount >= 4 && session.directionChangeCount >= 25))
         ? 'Basketball'
         : 'Running';
 
@@ -137,6 +151,9 @@ export function BleProvider({ children }) {
         status: 'idle',
         elapsedSeconds: 0,
         jumpCount: 0,
+        stepCount: 0,
+        cadence: 0,
+        jumpHeight: 0,
         directionChangeCount: 0,
         avgAccel: 0,
         sport: detectedSport,
@@ -149,13 +166,22 @@ export function BleProvider({ children }) {
         status: 'idle',
         startTime: null,
         lastActiveTime: null,
+        kineState: 'GROUND',
+        airtimeStartTime: 0,
         lastJumpTime: 0,
+        lastStepTime: 0,
         lastTurnTime: 0,
         jumpCount: 0,
+        stepCount: 0,
         directionChangeCount: 0,
         sampleCount: 0,
         accelSum: 0,
         maxAccel: 0,
+        lastJumpHeightCm: 0,
+        lastAirtime: 0,
+        lastImpactG: 0,
+        cadence: 0,
+        classifiedActivity: 'idle',
         trajectoryPoints: [],
       };
 
@@ -277,15 +303,92 @@ export function BleProvider({ children }) {
         },
       });
 
-      // Intelligent Auto-Session Processing
+      // Intelligent Auto-Session Processing (Kinematic FSM)
       const dataState = data.s || (rawMagnitude > 12.0 ? 'active' : rawMagnitude < 10.5 ? 'idle' : 'cooldown');
       const now = Date.now();
       const session = autoSessionRef.current;
 
-      // Jump spike (> 17.5 m/s²)
-      if (rawMagnitude > 17.5 && now - session.lastJumpTime > 600) {
-        session.jumpCount += 1;
-        session.lastJumpTime = now;
+      // 1. Refractory Lockout Recovery
+      if (session.kineState === 'REFRACTORY') {
+        if (now - session.lastJumpTime >= 850) {
+          session.kineState = 'GROUND';
+        }
+      }
+
+      // 2. Kinematic State Machine for Jump Detection
+      // Sequence: GROUND -> TAKEOFF -> AIRBORNE (free fall < 6.5 m/s² >= 180ms) -> LANDING (impact > 20.0 m/s²) -> REFRACTORY (850ms)
+      switch (session.kineState) {
+        case 'GROUND':
+          if (rawMagnitude < 6.5) {
+            session.kineState = 'AIRBORNE';
+            session.airtimeStartTime = now;
+          } else if (rawMagnitude > 16.5) {
+            session.kineState = 'TAKEOFF';
+          }
+          break;
+
+        case 'TAKEOFF':
+          if (rawMagnitude < 6.5) {
+            session.kineState = 'AIRBORNE';
+            session.airtimeStartTime = now;
+          } else if (rawMagnitude <= 11.5 && rawMagnitude >= 8.5) {
+            session.kineState = 'GROUND';
+          }
+          break;
+
+        case 'AIRBORNE':
+          if (rawMagnitude < 6.5) {
+            // Still in free fall hang time
+          } else if (rawMagnitude >= 20.0) {
+            // Touchdown impact!
+            const flightDurationMs = now - session.airtimeStartTime;
+            if (flightDurationMs >= 180 && flightDurationMs <= 850) {
+              // VALID VERTICAL JUMP CONFIRMED!
+              session.jumpCount += 1;
+              session.lastJumpTime = now;
+              const airtimeSec = flightDurationMs / 1000.0;
+              session.lastAirtime = Math.round(airtimeSec * 100) / 100;
+              // Jump height: h = (1/8) * g * t^2
+              session.lastJumpHeightCm = Math.round(0.125 * 9.80665 * airtimeSec * airtimeSec * 1000) / 10;
+              session.lastImpactG = Math.round((rawMagnitude / 9.80665) * 10) / 10;
+              session.kineState = 'REFRACTORY';
+              session.classifiedActivity = 'jumping';
+            } else {
+              // Too short (< 180ms) -> running footstep or hop, NOT a jump!
+              session.kineState = 'GROUND';
+            }
+          } else if (now - session.airtimeStartTime > 850) {
+            session.kineState = 'GROUND';
+          }
+          break;
+
+        case 'REFRACTORY':
+          // Rebounds and secondary steps ignored during refractory period
+          break;
+      }
+
+      // 3. Running Footstrike & Cadence Tracking (cadence 110 - 270 spm)
+      // When not in free-fall or jump refractory, running steps are counted and strictly prevented from being counted as jumps!
+      if (session.kineState !== 'AIRBORNE' && session.kineState !== 'REFRACTORY') {
+        if (rawMagnitude >= 13.5 && rawMagnitude <= 25.0) {
+          const stepInterval = now - session.lastStepTime;
+          if (stepInterval >= 220 && stepInterval <= 550) {
+            session.stepCount += 1;
+            session.lastStepTime = now;
+            session.cadence = Math.round(60000 / stepInterval);
+            session.classifiedActivity = 'running';
+          } else if (stepInterval > 550) {
+            session.lastStepTime = now;
+          }
+        }
+      }
+
+      // If firmware transmitted jump count directly ("jc" / "jh"), sync if higher
+      if (data.jc !== undefined && data.jc > session.jumpCount) {
+        session.jumpCount = data.jc;
+        if (data.jh !== undefined && data.jh > 0) {
+          session.lastJumpHeightCm = data.jh;
+        }
       }
 
       // Agility direction turn (> 120°/s)
@@ -386,12 +489,16 @@ export function BleProvider({ children }) {
         const now = Date.now();
         const elapsed = session.startTime ? Math.floor((now - session.startTime.getTime()) / 1000) : 0;
         const avg = session.sampleCount > 0 ? (session.accelSum / session.sampleCount) : 2.5;
-        const detectedSport = (session.jumpCount >= 10 || session.directionChangeCount >= 30) ? 'Basketball' : 'Running';
+        const detectedSport = (session.jumpCount >= 8 || (session.jumpCount >= 4 && session.directionChangeCount >= 25))
+          ? 'Basketball'
+          : 'Running';
 
-        const peakG = Math.round(Math.min(3.6, Math.max(1.8, ((session.maxAccel || avg) / 9.80665))) * 10) / 10;
+        const peakG = session.lastImpactG > 0
+          ? session.lastImpactG
+          : Math.round(Math.min(3.6, Math.max(1.8, ((session.maxAccel || avg) / 9.80665))) * 10) / 10;
         const softness = Math.round(100 - Math.min(55, Math.max(0, (peakG - 1.8) * 22)));
         const explosiveness = Math.min(100, Math.max(50, Math.round((session.maxAccel || avg) * 3.2)));
-        const airtime = session.jumpCount > 0 ? 0.38 : 0.0;
+        const airtime = session.lastAirtime > 0 ? session.lastAirtime : (session.jumpCount > 0 ? 0.38 : 0.0);
         const trunkStability = Math.min(96, Math.max(72, Math.round(100 - (avg * 3.5))));
 
         setAutoSessionDisplay((prev) => ({
@@ -399,6 +506,9 @@ export function BleProvider({ children }) {
           status: session.status,
           elapsedSeconds: elapsed,
           jumpCount: session.jumpCount,
+          stepCount: session.stepCount,
+          cadence: session.cadence,
+          jumpHeight: session.lastJumpHeightCm,
           directionChangeCount: session.directionChangeCount,
           avgAccel: Math.round(avg * 100) / 100,
           sport: detectedSport,
@@ -408,6 +518,7 @@ export function BleProvider({ children }) {
           airtime: airtime,
           bilateralBalance: 94,
           trunkStability: trunkStability,
+          classifiedActivity: session.classifiedActivity,
         }));
 
         // Auto finalize if user has rested for >= 180 seconds (3 mins) with sufficient data (> 50 samples)

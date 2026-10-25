@@ -61,6 +61,10 @@ float gx = 0.0, gy = 0.0, gz = 0.0;
 float pitch = 0.0, roll = 0.0, yaw = 0.0;
 float gpsLat = 10.7626, gpsLng = 106.6602, gpsSpeed = 0.0;
 
+// Low-pass filtered values (exponential smoothing to reject high-frequency vibration)
+float filtAx = 0.0, filtAy = 0.0, filtAz = 9.81;
+const float FILTER_ALPHA = 0.80f;
+
 // Dynamic Battery & Charging Management
 int batteryLevel = 98;
 float batteryVoltage = 4.15;
@@ -70,20 +74,40 @@ unsigned long lastBatteryCheck = 0;
 unsigned long lastDrainTick = 0;
 unsigned long lastChargeTick = 0;
 
-// Activity Detection (Auto Session Trigger)
-String activityState = "idle"; // "idle" | "active" | "cooldown"
+// Activity & Kinematic Detection (Jump vs Run State Machine)
+// Activity States: "idle" | "running" | "jumping" | "active" | "cooldown"
+String activityState = "idle";
+int jumpCount = 0;
+int stepCount = 0;
+float lastAirtime = 0.0;
+float lastJumpHeightCm = 0.0;
+
+// Kinematic FSM variables
+enum KinematicState { KINE_GROUND, KINE_TAKEOFF, KINE_AIRBORNE, KINE_REFRACTORY };
+KinematicState kineState = KINE_GROUND;
+unsigned long airtimeStart = 0;
+unsigned long lastJumpTime = 0;
+unsigned long lastStepTime = 0;
+const unsigned long MIN_JUMP_AIRTIME_MS = 180;  // Real vertical jump flight time >= 180ms
+const unsigned long MAX_JUMP_AIRTIME_MS = 800;  // Upper bound for human jump
+const unsigned long JUMP_REFRACTORY_MS  = 900;  // Debounce lockout to prevent multiple triggers
+const float JUMP_FREEFALL_THRESH        = 6.5f; // Free fall: acceleration magnitude < 6.5 m/s²
+const float JUMP_LANDING_IMPACT_THRESH  = 21.0f;// Hard landing impact: magnitude > 21.0 m/s²
+const float RUN_STEP_MIN_THRESH         = 13.5f;// Running footstrike impact threshold
+const float RUN_STEP_MAX_THRESH         = 24.0f;
+
 int activeStreak = 0;
 int idleStreak = 0;
-const float ACTIVE_THRESHOLD = 12.0;   // m/s² (magnitude > 12 indicates vigorous activity like running/jumping)
+const float ACTIVE_THRESHOLD = 12.0;   // m/s² (magnitude > 12 indicates vigorous activity)
 const float IDLE_THRESHOLD = 10.5;     // m/s² (near steady gravity 9.81)
 const int ACTIVE_TRIGGER_COUNT = 15;   // ~1.5s at 10Hz to confirm active
 const int COOLDOWN_TRIGGER_COUNT = 100;// ~10s low movement -> cooldown
 const int IDLE_TRIGGER_COUNT = 300;    // ~30s low movement -> idle
 
-// Wi-Fi Configuration stored in Flash
+// Wi-Fi Configuration stored in Flash (Matches Workspace Rule: POST /api/v1/sensor/batches)
 String wifiSSID = "";
 String wifiPass = "";
-String backendUrl = "http://192.168.1.100:8080/api/sensor-data";
+String backendUrl = "http://192.168.1.100:8080/api/v1/sensor/batches";
 
 unsigned long lastSensorPublish = 0;
 const unsigned long SENSOR_INTERVAL = 100; // 100ms -> 10Hz sampling rate
@@ -233,13 +257,22 @@ void readSensors() {
             int16_t rawGz = Wire.read() << 8 | Wire.read();
 
             // Convert to physical units (±2g range: 16384 LSB/g, ±250°/s: 131 LSB/(°/s))
-            ax = (rawAx / 16384.0) * 9.80665;
-            ay = (rawAy / 16384.0) * 9.80665;
-            az = (rawAz / 16384.0) * 9.80665;
+            float rawPhysAx = (rawAx / 16384.0f) * 9.80665f;
+            float rawPhysAy = (rawAy / 16384.0f) * 9.80665f;
+            float rawPhysAz = (rawAz / 16384.0f) * 9.80665f;
 
-            gx = rawGx / 131.0;
-            gy = rawGy / 131.0;
-            gz = rawGz / 131.0;
+            // Low-pass filter to dampen noise spikes while preserving dynamic impact
+            filtAx = FILTER_ALPHA * rawPhysAx + (1.0f - FILTER_ALPHA) * filtAx;
+            filtAy = FILTER_ALPHA * rawPhysAy + (1.0f - FILTER_ALPHA) * filtAy;
+            filtAz = FILTER_ALPHA * rawPhysAz + (1.0f - FILTER_ALPHA) * filtAz;
+
+            ax = rawPhysAx;
+            ay = rawPhysAy;
+            az = rawPhysAz;
+
+            gx = rawGx / 131.0f;
+            gy = rawGy / 131.0f;
+            gz = rawGz / 131.0f;
 
             // Simple pitch & roll from gravity vector
             pitch = atan2(-ax, sqrt(ay * ay + az * az)) * 180.0 / PI;
@@ -253,6 +286,10 @@ void readSensors() {
         ay = 0.3 * cos(t) + (random(-10, 10) / 100.0);
         az = 9.81 + 0.2 * sin(t * 2);
 
+        filtAx = ax;
+        filtAy = ay;
+        filtAz = az;
+
         gx = 15.0 * sin(t * 1.5);
         gy = 8.0 * cos(t * 1.2);
         gz = 4.0 * sin(t);
@@ -265,30 +302,112 @@ void readSensors() {
 }
 
 // ==========================================
-// 🏃 ON-DEVICE ACTIVITY DETECTION (HEURISTIC)
+// 🏃 KINEMATIC ACTIVITY & JUMP DETECTION (FSM)
 // ==========================================
 void detectActivity() {
-    // Vector magnitude of 3-axis acceleration
+    unsigned long now = millis();
     float magnitude = sqrt(ax * ax + ay * ay + az * az);
 
-    if (magnitude > ACTIVE_THRESHOLD) {
-        activeStreak++;
-        idleStreak = 0;
-        if (activeStreak >= ACTIVE_TRIGGER_COUNT) {
-            activityState = "active";
+    // 1. Refractory Lockout Recovery (Debounce)
+    if (kineState == KINE_REFRACTORY) {
+        if (now - lastJumpTime >= JUMP_REFRACTORY_MS) {
+            kineState = KINE_GROUND;
         }
-    } else if (magnitude < IDLE_THRESHOLD) {
-        idleStreak++;
-        activeStreak = 0;
-        if (idleStreak >= IDLE_TRIGGER_COUNT) {
-            activityState = "idle";
-        } else if (idleStreak >= COOLDOWN_TRIGGER_COUNT && activityState == "active") {
-            activityState = "cooldown";
+    }
+
+    // 2. Jumping Detection State Machine
+    // Sequence: GROUND -> TAKEOFF -> AIRBORNE (free-fall < 6.5 m/s² >= 180ms) -> LANDING (impact > 21 m/s²) -> REFRACTORY (900ms)
+    switch (kineState) {
+        case KINE_GROUND:
+            if (magnitude < JUMP_FREEFALL_THRESH) {
+                // Free-fall detected (body has left ground)
+                kineState = KINE_AIRBORNE;
+                airtimeStart = now;
+            } else if (magnitude > 16.5f) {
+                // Potential upward takeoff thrust
+                kineState = KINE_TAKEOFF;
+            }
+            break;
+
+        case KINE_TAKEOFF:
+            if (magnitude < JUMP_FREEFALL_THRESH) {
+                kineState = KINE_AIRBORNE;
+                airtimeStart = now;
+            } else if (magnitude <= 11.5f && magnitude >= 8.5f) {
+                kineState = KINE_GROUND;
+            }
+            break;
+
+        case KINE_AIRBORNE:
+            if (magnitude < JUMP_FREEFALL_THRESH) {
+                // Still airborne in free fall
+            } else if (magnitude >= JUMP_LANDING_IMPACT_THRESH) {
+                // Touchdown with hard landing impact!
+                unsigned long flightDurationMs = now - airtimeStart;
+                if (flightDurationMs >= MIN_JUMP_AIRTIME_MS && flightDurationMs <= MAX_JUMP_AIRTIME_MS) {
+                    // VALID VERTICAL JUMP CONFIRMED!
+                    jumpCount++;
+                    lastJumpTime = now;
+                    lastAirtime = flightDurationMs / 1000.0f;
+                    // Jump height h = 1/8 * g * t_air^2
+                    lastJumpHeightCm = (0.125f * 9.80665f * lastAirtime * lastAirtime) * 100.0f;
+                    activityState = "jumping";
+                    kineState = KINE_REFRACTORY;
+                    Serial.printf(">>> [FIRMWARE JUMP] Jump #%d | Airtime: %d ms | Height: %.1f cm | Impact: %.1f m/s²\n",
+                                  jumpCount, (int)flightDurationMs, lastJumpHeightCm, magnitude);
+                } else {
+                    // Flight time too short (< 180ms) -> running footstep or micro hop, NOT a jump!
+                    kineState = KINE_GROUND;
+                }
+            } else if (now - airtimeStart > MAX_JUMP_AIRTIME_MS) {
+                // Exceeded maximum plausible jump hang time
+                kineState = KINE_GROUND;
+            }
+            break;
+
+        case KINE_REFRACTORY:
+            // Lockout period in progress
+            break;
+    }
+
+    // 3. Running vs General Movement Classification
+    // Running characteristic: repetitive foot strikes (13.5 - 24 m/s²) with cadence ~260ms - 550ms without sustained free-fall
+    if (kineState != KINE_AIRBORNE && kineState != KINE_REFRACTORY) {
+        if (magnitude >= RUN_STEP_MIN_THRESH && magnitude <= RUN_STEP_MAX_THRESH) {
+            unsigned long stepInterval = now - lastStepTime;
+            if (stepInterval >= 240 && stepInterval <= 550) {
+                // Cadence matching running (110 - 250 steps/min)
+                stepCount++;
+                lastStepTime = now;
+                activityState = "running";
+                activeStreak = ACTIVE_TRIGGER_COUNT;
+                idleStreak = 0;
+            } else if (stepInterval > 550) {
+                lastStepTime = now;
+            }
         }
-    } else {
-        // Transitional zone, decay counters gradually
-        if (activeStreak > 0) activeStreak--;
-        if (idleStreak > 0) idleStreak--;
+    }
+
+    // 4. Session Active/Idle State Logic
+    if (activityState != "jumping" && activityState != "running") {
+        if (magnitude > ACTIVE_THRESHOLD) {
+            activeStreak++;
+            idleStreak = 0;
+            if (activeStreak >= ACTIVE_TRIGGER_COUNT) {
+                activityState = "active";
+            }
+        } else if (magnitude < IDLE_THRESHOLD) {
+            idleStreak++;
+            activeStreak = 0;
+            if (idleStreak >= IDLE_TRIGGER_COUNT) {
+                activityState = "idle";
+            } else if (idleStreak >= COOLDOWN_TRIGGER_COUNT && (activityState == "active" || activityState == "running")) {
+                activityState = "cooldown";
+            }
+        } else {
+            if (activeStreak > 0) activeStreak--;
+            if (idleStreak > 0) idleStreak--;
+        }
     }
 }
 
@@ -480,33 +599,33 @@ void loop() {
         lastSensorPublish = now;
 
         if (bleClientConnected) {
-            // Đóng gói JSON ngắn gọn tối ưu BLE MTU kèm flag state "s", % pin "bat" và cờ sạc "chg"
-            char jsonBuffer[256];
+            // Đóng gói JSON ngắn gọn tối ưu BLE MTU kèm flag state "s", số cú nhảy "jc", độ cao "jh", số bước "steps"
+            char jsonBuffer[280];
             snprintf(jsonBuffer, sizeof(jsonBuffer),
-                "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f,\"gx\":%.1f,\"gy\":%.1f,\"gz\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"lat\":%.4f,\"lng\":%.4f,\"spd\":%.1f,\"bat\":%d,\"chg\":%d,\"s\":\"%s\"}",
-                ax, ay, az, gx, gy, gz, pitch, roll, yaw, gpsLat, gpsLng, gpsSpeed, batteryLevel, isCharging ? 1 : 0, activityState.c_str()
+                "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f,\"gx\":%.1f,\"gy\":%.1f,\"gz\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"lat\":%.4f,\"lng\":%.4f,\"spd\":%.1f,\"bat\":%d,\"chg\":%d,\"s\":\"%s\",\"jc\":%d,\"jh\":%.1f,\"steps\":%d}",
+                ax, ay, az, gx, gy, gz, pitch, roll, yaw, gpsLat, gpsLng, gpsSpeed, batteryLevel, isCharging ? 1 : 0, activityState.c_str(), jumpCount, lastJumpHeightCm, stepCount
             );
 
             pSensorCharacteristic->setValue((uint8_t*)jsonBuffer, strlen(jsonBuffer));
             pSensorCharacteristic->notify();
         }
 
-        // Tùy chọn: Nếu có Wi-Fi và không có BLE, hoặc đồng thời, gửi HTTP POST lên Backend
+        // Tùy chọn: Nếu có Wi-Fi, gửi Batch HTTP POST lên Backend endpoint POST /api/v1/sensor/batches
         if (WiFi.status() == WL_CONNECTED && (now % 2000 < SENSOR_INTERVAL)) {
-            // Gửi định kỳ 2s một lần lên Backend qua HTTP kèm thông số pin và cờ sạc
             HTTPClient http;
             http.begin(backendUrl);
             http.addHeader("Content-Type", "application/json");
 
-            char httpPayload[350];
+            int intensity = (activityState == "jumping") ? 95 : (activityState == "running") ? 85 : (activityState == "active") ? 70 : 15;
+            char httpPayload[512];
             snprintf(httpPayload, sizeof(httpPayload),
-                "{\"deviceId\":\"ESP32-SUPERMINI-01\",\"accelerometerX\":%.2f,\"accelerometerY\":%.2f,\"accelerometerZ\":%.2f,\"gyroscopeX\":%.1f,\"gyroscopeY\":%.1f,\"gyroscopeZ\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"movementIntensity\":75,\"activityState\":\"%s\",\"batteryLevel\":%d,\"isCharging\":%s}",
-                ax, ay, az, gx, gy, gz, pitch, roll, yaw, activityState.c_str(), batteryLevel, isCharging ? "true" : "false"
+                "{\"deviceId\":\"ESP32-SUPERMINI-01\",\"batteryLevel\":%d,\"readings\":[{\"accelerometerX\":%.2f,\"accelerometerY\":%.2f,\"accelerometerZ\":%.2f,\"gyroscopeX\":%.1f,\"gyroscopeY\":%.1f,\"gyroscopeZ\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"movementIntensity\":%d}]}",
+                batteryLevel, ax, ay, az, gx, gy, gz, pitch, roll, yaw, intensity
             );
 
             int httpCode = http.POST(httpPayload);
             if (httpCode > 0) {
-                // Serial.printf(">>> [HTTP] Backend synced: %d\n", httpCode);
+                // Serial.printf(">>> [HTTP BATCH] Backend synced: %d\n", httpCode);
             }
             http.end();
         }

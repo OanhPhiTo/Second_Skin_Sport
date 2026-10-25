@@ -14,6 +14,17 @@ export interface SensorTelemetry {
   movementIntensity?: number;
 }
 
+export interface JumpEvent {
+  deviceId?: string;
+  timestamp?: string;
+  airtimeSeconds: number;
+  jumpHeightCm: number;
+  landingImpactMs2: number;
+  landingImpactG: number;
+  jumpIndex: number;
+  activityType?: string;
+}
+
 export interface UseSensorWebSocketOptions {
   url?: string;
   topic?: string;
@@ -34,6 +45,7 @@ export function useSensorWebSocket(options: UseSensorWebSocketOptions = {}) {
 
   const [dataPoints, setDataPoints] = useState<SensorTelemetry[]>([]);
   const [latestData, setLatestData] = useState<SensorTelemetry | null>(null);
+  const [latestJump, setLatestJump] = useState<JumpEvent | null>(null);
   const [connected, setConnected] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +71,23 @@ export function useSensorWebSocket(options: UseSensorWebSocketOptions = {}) {
         if (!isSubscribed) return;
         try {
           const raw = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+
+          // Detect Jump Event
+          if (raw.jumpIndex !== undefined || raw.activityType === 'JUMP') {
+            const jump: JumpEvent = {
+              deviceId: raw.deviceId,
+              timestamp: raw.timestamp || new Date().toISOString(),
+              airtimeSeconds: Number(raw.airtimeSeconds ?? 0),
+              jumpHeightCm: Number(raw.jumpHeightCm ?? 0),
+              landingImpactMs2: Number(raw.landingImpactMs2 ?? 0),
+              landingImpactG: Number(raw.landingImpactG ?? 0),
+              jumpIndex: Number(raw.jumpIndex ?? 1),
+              activityType: raw.activityType || 'JUMP',
+            };
+            setLatestJump(jump);
+            return;
+          }
+
           // Filter sensor telemetry frame
           const telemetry: SensorTelemetry = {
             timestamp: raw.timestamp || new Date().toISOString(),
@@ -121,6 +150,7 @@ export function useSensorWebSocket(options: UseSensorWebSocketOptions = {}) {
   return {
     dataPoints,
     latestData,
+    latestJump,
     connected,
     error,
   };

@@ -17,6 +17,22 @@ public class SensorReadingDTO {
 
     public SensorReadingDTO() {}
 
+    public SensorReadingDTO(LocalDateTime timestamp, double accelerometerX, double accelerometerY, double accelerometerZ,
+                            double gyroscopeX, double gyroscopeY, double gyroscopeZ,
+                            double pitch, double roll, double yaw, int movementIntensity) {
+        this.timestamp = timestamp;
+        this.accelerometerX = accelerometerX;
+        this.accelerometerY = accelerometerY;
+        this.accelerometerZ = accelerometerZ;
+        this.gyroscopeX = gyroscopeX;
+        this.gyroscopeY = gyroscopeY;
+        this.gyroscopeZ = gyroscopeZ;
+        this.pitch = pitch;
+        this.roll = roll;
+        this.yaw = yaw;
+        this.movementIntensity = movementIntensity;
+    }
+
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
 

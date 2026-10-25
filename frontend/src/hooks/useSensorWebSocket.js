@@ -14,6 +14,7 @@ export function useSensorWebSocket(options = {}) {
 
   const [dataPoints, setDataPoints] = useState([]);
   const [latestData, setLatestData] = useState(null);
+  const [latestJump, setLatestJump] = useState(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState(null);
 
@@ -39,6 +40,23 @@ export function useSensorWebSocket(options = {}) {
         if (!isSubscribed) return;
         try {
           const raw = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+
+          // Detect Jump Event
+          if (raw.jumpIndex !== undefined || raw.activityType === 'JUMP') {
+            const jump = {
+              deviceId: raw.deviceId,
+              timestamp: raw.timestamp || new Date().toISOString(),
+              airtimeSeconds: Number(raw.airtimeSeconds ?? 0),
+              jumpHeightCm: Number(raw.jumpHeightCm ?? 0),
+              landingImpactMs2: Number(raw.landingImpactMs2 ?? 0),
+              landingImpactG: Number(raw.landingImpactG ?? 0),
+              jumpIndex: Number(raw.jumpIndex ?? 1),
+              activityType: raw.activityType || 'JUMP',
+            };
+            setLatestJump(jump);
+            return;
+          }
+
           const telemetry = {
             timestamp: raw.timestamp || new Date().toISOString(),
             accelerometerX: Number(raw.accelerometerX ?? raw.ax ?? 0),
@@ -100,6 +118,7 @@ export function useSensorWebSocket(options = {}) {
   return {
     dataPoints,
     latestData,
+    latestJump,
     connected,
     error,
   };

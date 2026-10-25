@@ -351,7 +351,16 @@ export default function Sensors() {
               </div>
               <div className="auto-stat-item">
                 <span className="auto-stat-label"><Zap size={14} /> Cú bật nhảy</span>
-                <span className="auto-stat-val highlight-cyan">{autoSessionDisplay.jumpCount} lần</span>
+                <span className="auto-stat-val highlight-cyan">
+                  {autoSessionDisplay.jumpCount} lần
+                  {autoSessionDisplay.jumpHeight > 0 && <small> ({autoSessionDisplay.jumpHeight}cm)</small>}
+                </span>
+              </div>
+              <div className="auto-stat-item">
+                <span className="auto-stat-label"><Activity size={14} /> Bước chạy / Cadence</span>
+                <span className="auto-stat-val green">
+                  {autoSessionDisplay.stepCount ?? 0} <small>bước ({autoSessionDisplay.cadence ?? 0} spm)</small>
+                </span>
               </div>
               <div className="auto-stat-item">
                 <span className="auto-stat-label"><Compass size={14} /> Đổi hướng</span>

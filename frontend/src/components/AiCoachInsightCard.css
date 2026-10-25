@@ -1,53 +1,55 @@
 .ai-coach-insight-card {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
-  border: 1px solid rgba(0, 242, 254, 0.25);
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(13, 20, 36, 0.75), rgba(20, 30, 48, 0.65));
+  border: 1px solid rgba(0, 242, 254, 0.2);
   border-radius: var(--radius-lg, 14px);
-  padding: 24px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-  animation: fadeIn 0.4s ease;
+  padding: 16px 18px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  animation: fadeIn 0.3s ease;
 }
 
-/* TOP BANNER */
+/* ====================================================
+   TOP BANNER
+   ==================================================== */
 .ai-insight-top-banner {
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 18px;
+  padding-bottom: 10px;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 10px;
 }
 
 .ai-coach-identity {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .ai-sparkle-avatar {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   background: rgba(0, 242, 254, 0.12);
   border: 1px solid rgba(0, 242, 254, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 15px rgba(0, 242, 254, 0.25);
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.22);
 }
 
 .ai-coach-tagline {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .badge-ai-coach {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 800;
   color: var(--accent-cyan);
   text-transform: uppercase;
@@ -55,18 +57,23 @@
 }
 
 .ai-engine-tag {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
   background: rgba(255, 255, 255, 0.06);
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: var(--radius-full);
 }
 
 .ai-insight-title {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: #fff;
   margin: 0;
+}
+
+.ai-score-pill-wrap {
+  display: flex;
+  align-items: center;
 }
 
 .ai-score-box {
@@ -75,47 +82,74 @@
   align-items: flex-end;
   background: rgba(15, 23, 42, 0.7);
   border: 1px solid rgba(0, 255, 135, 0.3);
-  padding: 8px 16px;
+  padding: 5px 14px;
   border-radius: var(--radius-md, 8px);
 }
 
 .ai-score-label {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
   text-transform: uppercase;
   font-weight: 600;
 }
 
 .ai-score-val {
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   font-weight: 800;
   font-family: 'Outfit', sans-serif;
 }
 
-/* SECTION COMMONS */
+/* ====================================================
+   2-COLUMN BALANCED DASHBOARD BODY
+   ==================================================== */
+.ai-insight-body-grid {
+  display: grid;
+  grid-template-columns: 1.14fr 0.86fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.ai-insight-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-insight-col-left {
+  justify-content: flex-start;
+}
+
+.ai-insight-col-right {
+  justify-content: flex-start;
+}
+
+/* ====================================================
+   SECTION COMMON CARDS
+   ==================================================== */
 .ai-card-section {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  background: rgba(15, 23, 42, 0.5);
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-md, 10px);
-  padding: 18px 20px;
+  padding: 10px 12px;
 }
 
 .section-header-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .section-icon-badge {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .section-icon-badge.cyan {
@@ -134,7 +168,7 @@
 }
 
 .section-title {
-  font-size: 1.05rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: #fff;
   margin: 0;
@@ -142,32 +176,43 @@
 
 /* 1. PERFORMANCE TEXT */
 .human-performance-text {
-  font-size: 0.95rem;
-  line-height: 1.6;
+  font-size: 0.84rem;
+  line-height: 1.45;
   color: #e2e8f0;
   margin: 0;
   background: rgba(0, 242, 254, 0.04);
   border-left: 3px solid var(--accent-cyan);
-  padding: 12px 16px;
-  border-radius: 0 8px 8px 0;
+  padding: 7px 10px;
+  border-radius: 0 6px 6px 0;
 }
 
-/* BIOMECHANICAL METRIC BARS */
+/* 5 BIOMECHANICAL METRIC BARS - 3 on top row, 2 on bottom row (6-col grid) */
 .biomech-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  margin-top: 6px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .biomech-metric-item {
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(15, 23, 42, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  padding: 12px 14px;
+  border-radius: 7px;
+  padding: 7px 9px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
+}
+
+.biomech-metric-item:nth-child(1),
+.biomech-metric-item:nth-child(2),
+.biomech-metric-item:nth-child(3) {
+  grid-column: span 2;
+}
+
+.biomech-metric-item:nth-child(4),
+.biomech-metric-item:nth-child(5) {
+  grid-column: span 3;
 }
 
 .metric-header {
@@ -179,21 +224,21 @@
 .metric-label {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
+  gap: 5px;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-secondary);
 }
 
 .metric-val {
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   font-weight: 700;
   font-family: 'Outfit', sans-serif;
 }
 
 .metric-progress-bg {
   width: 100%;
-  height: 6px;
+  height: 5px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-full);
   overflow: hidden;
@@ -212,113 +257,47 @@
 .neon-fill { background: linear-gradient(90deg, #00ff87, #00f2fe); }
 
 .metric-sub-note {
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* 2. IMPROVEMENT CARDS */
-.improvement-cards-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* ====================================================
+   INJURY & ENERGY (SIDE-BY-SIDE IN LEFT COL)
+   ==================================================== */
+.injury-energy-section {
+  padding: 8px 10px;
 }
 
-.improvement-card-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  border-radius: 8px;
-  padding: 12px 14px;
-}
-
-.imp-number-badge {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(245, 158, 11, 0.25);
-  color: #fbbf24;
-  font-size: 0.78rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.imp-text {
-  font-size: 0.9rem;
-  color: #fde68a;
-  margin: 0;
-  line-height: 1.5;
-}
-
-/* 3. ACTIONABLE DRILLS */
-.drills-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
-}
-
-.drill-box {
-  background: rgba(0, 255, 135, 0.06);
-  border: 1px solid rgba(0, 255, 135, 0.25);
-  border-radius: 8px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.drill-icon-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.drill-tag {
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: #00ff87;
-  letter-spacing: 0.5px;
-}
-
-.drill-text {
-  font-size: 0.88rem;
-  color: #e2e8f0;
-  margin: 0;
-  line-height: 1.5;
-}
-
-/* 4. INJURY & RECOVERY */
 .injury-recovery-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 12px;
+  grid-template-columns: 1.38fr 1fr;
+  gap: 8px;
 }
 
 .risk-alert-box {
-  border-radius: 8px;
-  padding: 14px 16px;
+  border-radius: 7px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .risk-alert-box.low {
   background: rgba(0, 255, 135, 0.08);
-  border: 1px solid rgba(0, 255, 135, 0.3);
+  border: 1px solid rgba(0, 255, 135, 0.28);
 }
 
 .risk-alert-box.medium {
   background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid rgba(245, 158, 11, 0.28);
 }
 
 .risk-alert-box.high {
   background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  border: 1px solid rgba(239, 68, 68, 0.35);
 }
 
 .risk-header-row {
@@ -330,16 +309,16 @@
 .risk-title-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.8rem;
+  gap: 5px;
+  font-size: 0.72rem;
   font-weight: 700;
   color: #fff;
 }
 
 .risk-status-pill {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 800;
-  padding: 4px 10px;
+  padding: 2px 7px;
   border-radius: var(--radius-full);
 }
 
@@ -348,28 +327,28 @@
 .risk-status-pill.high { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
 
 .risk-explanation-text {
-  font-size: 0.88rem;
+  font-size: 0.76rem;
   color: var(--text-secondary);
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.35;
 }
 
 .calories-burned-box {
   background: rgba(255, 107, 107, 0.08);
   border: 1px solid rgba(255, 107, 107, 0.25);
-  border-radius: 8px;
-  padding: 14px 16px;
+  border-radius: 7px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .cal-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
+  gap: 5px;
+  font-size: 0.7rem;
   font-weight: 700;
   color: #ff8787;
 }
@@ -381,39 +360,123 @@
 }
 
 .cal-number {
-  font-size: 1.8rem;
+  font-size: 1.45rem;
   font-weight: 800;
   color: #fff;
   font-family: 'Outfit', sans-serif;
+  line-height: 1.1;
 }
 
 .cal-unit {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
 }
 
 .cal-sub {
-  font-size: 0.7rem;
+  font-size: 0.64rem;
   color: var(--text-muted);
 }
 
-.recovery-advice-block {
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(0, 242, 254, 0.15);
-  border-radius: 8px;
-  padding: 14px 16px;
+/* ====================================================
+   RIGHT COLUMN: IMPROVEMENTS, DRILLS & RECOVERY
+   ==================================================== */
+/* 2. IMPROVEMENT CARDS */
+.improvement-cards-list {
   display: flex;
   flex-direction: column;
+  gap: 6px;
+}
+
+.improvement-card-item {
+  display: flex;
+  align-items: flex-start;
   gap: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 7px;
+  padding: 7px 9px;
+}
+
+.imp-number-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.imp-text {
+  font-size: 0.79rem;
+  color: #fde68a;
+  margin: 0;
+  line-height: 1.38;
+}
+
+/* 3. ACTIONABLE DRILLS */
+.drills-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.drill-box {
+  background: rgba(0, 255, 135, 0.06);
+  border: 1px solid rgba(0, 255, 135, 0.22);
+  border-radius: 7px;
+  padding: 7px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.drill-icon-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drill-tag {
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: #00ff87;
+  letter-spacing: 0.5px;
+}
+
+.drill-text {
+  font-size: 0.78rem;
+  color: #e2e8f0;
+  margin: 0;
+  line-height: 1.38;
+}
+
+/* 4B. RECOVERY ADVICE BLOCK */
+.recovery-card-section {
+  padding: 8px 10px;
+}
+
+.recovery-advice-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .recovery-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
+  gap: 6px;
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--accent-cyan);
+}
+
+.recovery-title {
+  margin: 0;
 }
 
 .recovery-list {
@@ -422,19 +485,42 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .recovery-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  font-size: 0.88rem;
+  gap: 6px;
+  font-size: 0.78rem;
   color: #cbd5e1;
-  line-height: 1.4;
+  line-height: 1.35;
 }
 
-@media (max-width: 768px) {
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
+/* ====================================================
+   RESPONSIVE BREAKPOINTS
+   ==================================================== */
+@media (max-width: 1040px) {
+  .ai-insight-body-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .biomech-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .biomech-metric-item:nth-child(1),
+  .biomech-metric-item:nth-child(2),
+  .biomech-metric-item:nth-child(3),
+  .biomech-metric-item:nth-child(4),
+  .biomech-metric-item:nth-child(5) {
+    grid-column: span 1;
+  }
   .injury-recovery-grid {
     grid-template-columns: 1fr;
   }
