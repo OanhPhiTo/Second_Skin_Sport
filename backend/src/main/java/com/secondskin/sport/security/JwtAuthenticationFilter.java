@@ -46,6 +46,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
                 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
+                    // F04: Immediately reject banned or disabled accounts
+                    if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        response.setContentType("application/json");
+                        response.setCharacterEncoding("UTF-8");
+                        response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"message\":\"Tài khoản đã bị khóa hoặc vô hiệu hóa.\"}");
+                        return;
+                    }
+
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,

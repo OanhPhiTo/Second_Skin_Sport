@@ -18,6 +18,8 @@ public class DataInitializer implements CommandLineRunner {
     private final SportSessionRepository sessionRepository;
     private final SensorDataRepository sensorDataRepository;
     private final PerformanceStatisticRepository statisticRepository;
+    private final TeamRepository teamRepository;
+    private final TeamAthleteRepository athleteRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     public DataInitializer(UserRepository userRepository,
@@ -25,12 +27,16 @@ public class DataInitializer implements CommandLineRunner {
                            SportSessionRepository sessionRepository,
                            SensorDataRepository sensorDataRepository,
                            PerformanceStatisticRepository statisticRepository,
+                           TeamRepository teamRepository,
+                           TeamAthleteRepository athleteRepository,
                            org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.deviceRepository = deviceRepository;
         this.sessionRepository = sessionRepository;
         this.sensorDataRepository = sensorDataRepository;
         this.statisticRepository = statisticRepository;
+        this.teamRepository = teamRepository;
+        this.athleteRepository = athleteRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -40,18 +46,78 @@ public class DataInitializer implements CommandLineRunner {
             return; // Data already exists
         }
 
-        // 1. Create Default Athletes in Database (Admin is handled by AdminSeeder)
+        // 1. Create Default Athletes & Coach in Database (Admin is handled by AdminSeeder)
         User user = new User("Alex Johnson", "alex.athlete@secondskin.io", passwordEncoder.encode("password"), Role.USER, "Basketball");
         User user2 = new User("Sarah Jenkins", "sarah.runner@secondskin.io", passwordEncoder.encode("password"), Role.USER, "Running");
-        User user3 = new User("Mike Torres", "mike.coach@secondskin.io", passwordEncoder.encode("password"), Role.USER, "Basketball");
+        User user3 = new User("Mike Torres", "mike.coach@secondskin.io", passwordEncoder.encode("password"), Role.COACH, "Basketball");
         User user4 = new User("Emma Watson", "emma.fitness@secondskin.io", passwordEncoder.encode("password"), Role.USER, "Running");
         User user5 = new User("David Beckham", "david.swimmer@secondskin.io", passwordEncoder.encode("password"), Role.USER, "Basketball");
         userRepository.saveAll(List.of(user, user2, user3, user4, user5));
 
         // 2. Create Devices
         Device patch1 = new Device("Second Skin Patch #001", "SSS-PATCH-001", true, 82, "v2.4.1", "BLE 5.2");
-        Device patch2 = new Device("Second Skin Patch #002", "SSS-PATCH-002", false, 45, "v2.3.8", "BLE 5.2");
-        deviceRepository.saveAll(List.of(patch1, patch2));
+        Device patch2 = new Device("Second Skin Patch #002", "SSS-PATCH-002", true, 78, "v2.3.8", "BLE 5.2");
+        Device patch3 = new Device("Second Skin Patch #003", "SSS-PATCH-003", true, 91, "v2.4.1", "BLE 5.2");
+        Device patch4 = new Device("Second Skin Patch #004", "SSS-PATCH-004", true, 95, "v2.4.1", "BLE 5.2");
+        Device patch5 = new Device("Second Skin Patch #005", "SSS-PATCH-005", true, 88, "v2.4.1", "BLE 5.2");
+        Device patch6 = new Device("Second Skin Patch #006", "SSS-PATCH-006", true, 90, "v2.4.1", "BLE 5.2");
+        deviceRepository.saveAll(List.of(patch1, patch2, patch3, patch4, patch5, patch6));
+
+        // 2.1 Create Default Squad for Coach Mike Torres
+        Team dragons = new Team("Hanoi Dragons Pro", "Basketball", user3.getId(), "Đội tuyển bóng rổ chuyên nghiệp Second Skin");
+        Team savedTeam = teamRepository.save(dragons);
+
+        // Starters (ON_FIELD)
+        TeamAthlete ath1 = new TeamAthlete(savedTeam.getId(), user.getId(), "Alex Johnson", 7, "PG", "SSS-PATCH-001", AthleteStatus.ON_FIELD);
+        ath1.setMinutesPlayed(32);
+        ath1.setFatigueIndex(82.5);
+        ath1.setCurrentIntensity(88.0);
+        ath1.setJumpCount(42);
+        ath1.setHighImpactLandings(14);
+        ath1.setHeartRate(168);
+
+        TeamAthlete ath2 = new TeamAthlete(savedTeam.getId(), user2.getId(), "Sarah Jenkins", 23, "SG", "SSS-PATCH-002", AthleteStatus.ON_FIELD);
+        ath2.setMinutesPlayed(24);
+        ath2.setFatigueIndex(58.0);
+        ath2.setCurrentIntensity(74.0);
+        ath2.setJumpCount(28);
+        ath2.setHighImpactLandings(6);
+        ath2.setHeartRate(152);
+
+        TeamAthlete ath3 = new TeamAthlete(savedTeam.getId(), user5.getId(), "David Beckham", 34, "C", "SSS-PATCH-003", AthleteStatus.ON_FIELD);
+        ath3.setMinutesPlayed(29);
+        ath3.setFatigueIndex(76.4);
+        ath3.setCurrentIntensity(82.0);
+        ath3.setJumpCount(35);
+        ath3.setHighImpactLandings(11);
+        ath3.setHeartRate(162);
+
+        // Substitutes (BENCH)
+        TeamAthlete ath4 = new TeamAthlete(savedTeam.getId(), null, "Chris Paul", 11, "PG", "SSS-PATCH-004", AthleteStatus.BENCH);
+        ath4.setMinutesPlayed(0);
+        ath4.setFatigueIndex(12.0);
+        ath4.setCurrentIntensity(20.0);
+        ath4.setJumpCount(0);
+        ath4.setHighImpactLandings(0);
+        ath4.setHeartRate(78);
+
+        TeamAthlete ath5 = new TeamAthlete(savedTeam.getId(), user4.getId(), "Emma Watson", 15, "SG", "SSS-PATCH-005", AthleteStatus.BENCH);
+        ath5.setMinutesPlayed(8);
+        ath5.setFatigueIndex(22.0);
+        ath5.setCurrentIntensity(35.0);
+        ath5.setJumpCount(4);
+        ath5.setHighImpactLandings(1);
+        ath5.setHeartRate(88);
+
+        TeamAthlete ath6 = new TeamAthlete(savedTeam.getId(), null, "Marcus Smart", 55, "C", "SSS-PATCH-006", AthleteStatus.BENCH);
+        ath6.setMinutesPlayed(6);
+        ath6.setFatigueIndex(18.5);
+        ath6.setCurrentIntensity(30.0);
+        ath6.setJumpCount(2);
+        ath6.setHighImpactLandings(0);
+        ath6.setHeartRate(82);
+
+        athleteRepository.saveAll(List.of(ath1, ath2, ath3, ath4, ath5, ath6));
 
         // 3. Create Realistic Sport Sessions with dynamic recent dates relative to now
         LocalDateTime now = LocalDateTime.now();

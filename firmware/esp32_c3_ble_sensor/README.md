@@ -62,3 +62,16 @@ Tài liệu này hướng dẫn nạp mã nguồn cho bo mạch **ESP32-C3 Super
    - Ngay trên bảng điều khiển Bluetooth ở Web, nhập Tên Wi-Fi (SSID) và Mật khẩu nhà bạn.
    - Bấm **"Gửi Cấu Hình Xuống ESP32"**.
    - ESP32 nhận lệnh qua BLE, lưu vào bộ nhớ Flash vĩnh viễn và tự động kết nối Wi-Fi, sau đó báo địa chỉ IP thành công về Web.
+
+---
+
+## 🏀 4. Chế Độ Mô Phỏng Đội Hình Nhiều VĐV (Coach Squad Simulator)
+
+Để kiểm thử tính năng **Huấn Luyện Viên (Coach)** với dữ liệu thời gian thực từ nhiều vận động viên cùng lúc trên sân:
+1. Chạy script mô phỏng đội hình trong thư mục firmware:
+   ```bash
+   python firmware/esp32_c3_ble_sensor/simulate_squad_telemetry.py --iterations 20 --interval 2.0 --fatigue-target SSS-PATCH-001
+   ```
+2. Dữ liệu gia tốc ($m/s^2$) và vận tốc góc ($^\circ/s$) kèm các cú nhảy va đập cao sẽ được gửi đồng thời cho các cầu thủ.
+3. Bàn điều khiển chiến thuật của Coach (`/coach`) sẽ tự động tính toán chỉ số mỏi, phát hiện rủi ro chấn thương và đưa ra đề xuất xoay tua cầu thủ ngay lập tức.
+

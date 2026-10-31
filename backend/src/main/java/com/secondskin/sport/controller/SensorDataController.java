@@ -1,6 +1,6 @@
 package com.secondskin.sport.controller;
 
-import com.secondskin.sport.entity.SensorData;
+import com.secondskin.sport.dto.SensorDataDTO;
 import com.secondskin.sport.service.SensorDataService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,19 +17,19 @@ public class SensorDataController {
     }
 
     @PostMapping
-    public ResponseEntity<SensorData> postSensorData(@RequestBody SensorData sensorData) {
-        return ResponseEntity.ok(sensorDataService.saveSensorData(sensorData));
+    public ResponseEntity<SensorDataDTO> postSensorData(@RequestBody SensorDataDTO sensorDataDTO) {
+        return ResponseEntity.ok(sensorDataService.saveSensorDataDTO(sensorDataDTO));
     }
 
     @GetMapping("/latest")
-    public ResponseEntity<SensorData> getLatestSensorData() {
-        return sensorDataService.getLatestSensorData()
+    public ResponseEntity<SensorDataDTO> getLatestSensorData() {
+        return sensorDataService.getLatestSensorDataDTO()
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/session/{sessionId}")
-    public ResponseEntity<List<SensorData>> getRecentDataPoints(@PathVariable Long sessionId) {
-        return ResponseEntity.ok(sensorDataService.getSensorDataBySessionId(sessionId));
+    public ResponseEntity<List<SensorDataDTO>> getRecentDataPoints(@PathVariable Long sessionId) {
+        return ResponseEntity.ok(sensorDataService.getSensorDataDTOBySessionId(sessionId));
     }
 }

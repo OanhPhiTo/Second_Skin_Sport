@@ -147,6 +147,11 @@ export function BleProvider({ children }) {
       const saved = await sessionService.createAutoSession(payload);
       setActionMessage(`🎉 Buổi tập ${detectedSport} đã tự động lưu! Điểm đánh giá: ${saved.performanceScore || 88}/100.`);
       
+      // Dispatch global session completed event for Notification Engine
+      try {
+        window.dispatchEvent(new CustomEvent('sss_session_completed', { detail: saved }));
+      } catch (e) {}
+      
       setAutoSessionDisplay({
         status: 'idle',
         elapsedSeconds: 0,

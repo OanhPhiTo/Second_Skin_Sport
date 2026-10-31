@@ -4,9 +4,11 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -16,13 +18,31 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    // Ideally, this should be in application.properties. Using a hardcoded key for now.
-    private static final String SECRET_KEY = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970"; 
-    private static final long JWT_EXPIRATION = 900000; // 15 minutes
-    private static final long REFRESH_EXPIRATION = 604800000; // 7 days
+    @Value("${application.security.jwt.secret-key:${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}}")
+    private String secretKey = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970"; 
+
+    @Value("${application.security.jwt.expiration:900000}")
+    private long jwtExpiration = 900000; // 15 minutes
+
+    @Value("${application.security.jwt.refresh-token.expiration:604800000}")
+    private long refreshExpiration = 604800000; // 7 days
+
+    public JwtService() {}
+
+    public JwtService(String secretKey) {
+        this.secretKey = secretKey;
+    }
+
+    public void setSecretKey(String secretKey) {
+        this.secretKey = secretKey;
+    }
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -40,11 +60,11 @@ public class JwtService {
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
-        return buildToken(extraClaims, userDetails, JWT_EXPIRATION);
+        return buildToken(extraClaims, userDetails, jwtExpiration);
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
-        return buildToken(new HashMap<>(), userDetails, REFRESH_EXPIRATION);
+        return buildToken(new HashMap<>(), userDetails, refreshExpiration);
     }
 
     private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long expiration) {
@@ -81,7 +101,15 @@ public class JwtService {
     }
 
     private Key getSignInKey() {
-        byte[] keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(SECRET_KEY);
+        byte[] keyBytes;
+        try {
+            keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(secretKey);
+            if (keyBytes.length < 32) {
+                keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
+            }
+        } catch (Exception e) {
+            keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
+        }
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }

@@ -258,6 +258,19 @@
   box-shadow: 0 3px 12px rgba(239, 68, 68, 0.2);
 }
 
+.auth-demo-chip.coach {
+  border-color: rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.08);
+  color: #fbbf24;
+}
+
+.auth-demo-chip.coach:hover,
+.auth-demo-chip.coach.active {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.6);
+  box-shadow: 0 3px 12px rgba(245, 158, 11, 0.2);
+}
+
 .auth-demo-chip.athlete {
   border-color: rgba(0, 242, 254, 0.25);
   background: rgba(0, 242, 254, 0.08);
@@ -565,4 +578,302 @@
   .auth-brand-large-logo {
     max-width: 300px;
   }
+}
+
+/* ==========================================================================
+   FORGOT PASSWORD MODAL (CYBERNETIC SPORT-TECH DESIGN)
+   ========================================================================== */
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+  animation: modalFadeIn 0.25s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.auth-modal-card {
+  width: 100%;
+  max-width: 440px;
+  background: rgba(13, 17, 28, 0.96);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  border-radius: 20px;
+  padding: 30px 26px;
+  box-shadow: 
+    0 24px 60px rgba(0, 0, 0, 0.85),
+    0 0 35px rgba(0, 242, 254, 0.12);
+  position: relative;
+  box-sizing: border-box;
+  animation: modalScaleUp 0.25s ease-out;
+}
+
+@keyframes modalScaleUp {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.auth-modal-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00f2fe 30%, #00ff87 70%, transparent);
+}
+
+.auth-modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-modal-close:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Steps Header */
+.auth-modal-steps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding: 0 4px;
+}
+
+.auth-step-pill {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #64748b;
+  transition: all 0.25s ease;
+}
+
+.auth-step-pill.active {
+  color: #00f2fe;
+  text-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
+}
+
+.auth-step-divider {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 10px;
+}
+
+/* Header inside modal */
+.auth-modal-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.auth-modal-icon-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.18) 0%, rgba(79, 172, 254, 0.06) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  color: #00f2fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px auto;
+  box-shadow: 0 0 20px rgba(0, 242, 254, 0.2);
+}
+
+.auth-modal-icon-badge.otp {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(217, 119, 6, 0.06) 100%);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+}
+
+.auth-modal-icon-badge.security {
+  background: linear-gradient(135deg, rgba(0, 255, 135, 0.18) 0%, rgba(16, 185, 129, 0.06) 100%);
+  border-color: rgba(0, 255, 135, 0.4);
+  color: #00ff87;
+  box-shadow: 0 0 20px rgba(0, 255, 135, 0.2);
+}
+
+.auth-modal-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.01em;
+}
+
+.auth-modal-title.success {
+  color: #00ff87;
+}
+
+.auth-modal-desc {
+  font-size: 0.86rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.auth-modal-label {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #cbd5e1;
+  margin-bottom: 7px;
+}
+
+/* Info banner */
+.auth-info-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  color: #7dd3fc;
+  padding: 10px 12px;
+  border-radius: 9px;
+  margin-bottom: 16px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.auth-debug-otp-hint {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px dashed rgba(245, 158, 11, 0.45);
+  color: #fde68a;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+/* OTP Specific Field */
+.auth-otp-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.auth-otp-timer {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #00f2fe;
+}
+
+.auth-otp-timer.urgent {
+  color: #ef4444;
+  animation: pulseTimer 1s infinite alternate;
+}
+
+@keyframes pulseTimer {
+  0% { opacity: 0.7; }
+  100% { opacity: 1; transform: scale(1.02); }
+}
+
+.auth-otp-input {
+  text-align: center;
+  font-size: 1.6rem !important;
+  font-weight: 700;
+  letter-spacing: 10px;
+  font-family: 'Courier New', Courier, monospace !important;
+  color: #00ff87 !important;
+}
+
+/* OTP Resend Row */
+.auth-otp-resend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -6px;
+  margin-bottom: 18px;
+}
+
+.auth-resend-btn,
+.auth-change-email-btn {
+  background: none;
+  border: none;
+  font-size: 0.82rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s;
+  padding: 0;
+  font-family: inherit;
+}
+
+.auth-resend-btn {
+  color: #00f2fe;
+}
+
+.auth-resend-btn:hover:not(:disabled) {
+  text-decoration: underline;
+  color: #38bdf8;
+}
+
+.auth-resend-btn:disabled {
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.auth-change-email-btn {
+  color: #94a3b8;
+}
+
+.auth-change-email-btn:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+.auth-button.modal-submit {
+  width: 100%;
+  margin-top: 6px;
+}
+
+/* Success View */
+.auth-modal-success {
+  text-align: center;
+  padding: 10px 0;
+}
+
+.auth-success-badge-large {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(0, 255, 135, 0.12);
+  border: 2px solid #00ff87;
+  color: #00ff87;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px auto;
+  box-shadow: 0 0 30px rgba(0, 255, 135, 0.35);
+  animation: pulseGlowSuccess 2s infinite alternate;
+}
+
+@keyframes pulseGlowSuccess {
+  0% { transform: scale(0.96); box-shadow: 0 0 20px rgba(0, 255, 135, 0.25); }
+  100% { transform: scale(1.04); box-shadow: 0 0 35px rgba(0, 255, 135, 0.5); }
 }

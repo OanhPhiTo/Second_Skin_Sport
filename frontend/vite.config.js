@@ -22,10 +22,30 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     allowedHosts: ['relax-playable-chewable.ngrok-free.dev'],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'http://localhost:8080',
+        ws: true,
+      },
+    },
   },
   preview: {
     host: '0.0.0.0',
     allowedHosts: ['relax-playable-chewable.ngrok-free.dev'],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'http://localhost:8080',
+        ws: true,
+      },
+    },
   },
   build: {
     chunkSizeWarningLimit: 1000,

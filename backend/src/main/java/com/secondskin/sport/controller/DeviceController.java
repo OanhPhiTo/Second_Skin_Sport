@@ -1,11 +1,12 @@
 package com.secondskin.sport.controller;
 
+import com.secondskin.sport.dto.DeviceDTO;
 import com.secondskin.sport.dto.SensorStatusDTO;
-import com.secondskin.sport.entity.Device;
 import com.secondskin.sport.service.DeviceService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -19,12 +20,12 @@ public class DeviceController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Device>> getAllDevices() {
+    public ResponseEntity<List<DeviceDTO>> getAllDevices() {
         return ResponseEntity.ok(deviceService.getAllDevices());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Device> getDeviceById(@PathVariable Long id) {
+    public ResponseEntity<DeviceDTO> getDeviceById(@PathVariable Long id) {
         return deviceService.getDeviceById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -36,33 +37,36 @@ public class DeviceController {
     }
 
     @PostMapping("/{id}/connect")
-    public ResponseEntity<Device> connectDevice(@PathVariable Long id) {
+    public ResponseEntity<DeviceDTO> connectDevice(@PathVariable Long id) {
         return ResponseEntity.ok(deviceService.updateConnectionStatus(id, true));
     }
 
     @PostMapping("/{id}/disconnect")
-    public ResponseEntity<Device> disconnectDevice(@PathVariable Long id) {
+    public ResponseEntity<DeviceDTO> disconnectDevice(@PathVariable Long id) {
         return ResponseEntity.ok(deviceService.updateConnectionStatus(id, false));
     }
 
     @PostMapping("/{id}/sync")
     public ResponseEntity<Map<String, Object>> syncDevice(@PathVariable Long id) {
+        DeviceDTO synced = deviceService.syncDevice(id);
         return ResponseEntity.ok(Map.of(
                 "status", "success",
                 "message", "Đồng bộ thiết bị thành công",
-                "syncedAt", java.time.LocalDateTime.now()
+                "deviceId", synced.getDeviceId() != null ? synced.getDeviceId() : "",
+                "syncedAt", synced.getLastSyncTime() != null ? synced.getLastSyncTime() : LocalDateTime.now()
         ));
     }
 
     @PutMapping("/{id}/battery")
-    public ResponseEntity<Map<String, Object>> updateBattery(@PathVariable Long id, @RequestBody Map<String, Integer> payload) {
-        int battery = payload.getOrDefault("batteryLevel", 100);
-        Device updated = deviceService.updateBatteryLevel(id, battery);
+    public ResponseEntity<Map<String, Object>> updateBattery(@PathVariable Long id, @RequestBody(required = false) Map<String, Integer> payload) {
+        Integer val = (payload != null) ? payload.get("batteryLevel") : null;
+        int battery = (val != null) ? val : 100;
+        DeviceDTO updated = deviceService.updateBatteryLevel(id, battery);
         return ResponseEntity.ok(Map.of(
                 "status", "success",
-                "deviceId", updated.getDeviceId(),
+                "deviceId", updated.getDeviceId() != null ? updated.getDeviceId() : "",
                 "batteryLevel", updated.getBatteryLevel(),
-                "updatedAt", java.time.LocalDateTime.now()
+                "updatedAt", LocalDateTime.now()
         ));
     }
 }

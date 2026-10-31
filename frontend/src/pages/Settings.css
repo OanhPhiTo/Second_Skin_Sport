@@ -74,6 +74,23 @@
   color: var(--text-secondary);
 }
 
+.calibration-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.calibration-status {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.calibration-status.ready {
+  color: var(--status-success);
+}
+
 /* Toggle Switch */
 .switch {
   position: relative;

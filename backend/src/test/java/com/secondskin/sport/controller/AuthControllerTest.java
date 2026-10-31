@@ -1,9 +1,13 @@
 package com.secondskin.sport.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.secondskin.sport.dto.AuthMessageResponse;
 import com.secondskin.sport.dto.AuthRequest;
 import com.secondskin.sport.dto.AuthResponse;
+import com.secondskin.sport.dto.ForgotPasswordRequest;
 import com.secondskin.sport.dto.RegisterRequest;
+import com.secondskin.sport.dto.ResetPasswordRequest;
+import com.secondskin.sport.dto.VerifyOtpRequest;
 import com.secondskin.sport.security.JwtService;
 import com.secondskin.sport.security.CustomUserDetailsService;
 import com.secondskin.sport.service.AuthService;
@@ -80,5 +84,58 @@ class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("mockJwtToken"));
+    }
+
+    @Test
+    void testForgotPassword() throws Exception {
+        ForgotPasswordRequest request = new ForgotPasswordRequest("user@example.com");
+        AuthMessageResponse response = AuthMessageResponse.builder()
+                .success(true)
+                .message("OTP đã gửi thành công")
+                .debugOtp("123456")
+                .build();
+
+        Mockito.when(authService.sendForgotPasswordOtp(any(ForgotPasswordRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/auth/forgot-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("OTP đã gửi thành công"));
+    }
+
+    @Test
+    void testVerifyOtp() throws Exception {
+        VerifyOtpRequest request = new VerifyOtpRequest("user@example.com", "123456");
+        AuthMessageResponse response = AuthMessageResponse.builder()
+                .success(true)
+                .message("Xác thực OTP thành công")
+                .build();
+
+        Mockito.when(authService.verifyOtp(any(VerifyOtpRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/auth/verify-otp")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void testResetPassword() throws Exception {
+        ResetPasswordRequest request = new ResetPasswordRequest("user@example.com", "123456", "newPassword123");
+        AuthMessageResponse response = AuthMessageResponse.builder()
+                .success(true)
+                .message("Đặt lại mật khẩu thành công")
+                .build();
+
+        Mockito.when(authService.resetPassword(any(ResetPasswordRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
     }
 }

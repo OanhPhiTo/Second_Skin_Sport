@@ -101,4 +101,110 @@ public class SecurityIntegrationTest {
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isForbidden()); // Spring Security standard for bad credentials is 401 or 403
     }
+
+    // F02 Tests: Hardened Endpoint Authorization
+    @Test
+    public void testUnauthorizedAccessToSensorData_ShouldReturn403() throws Exception {
+        mockMvc.perform(get("/api/sensor-data/latest"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testUnauthorizedAccessToSessionSensorData_ShouldReturn403() throws Exception {
+        mockMvc.perform(get("/api/sensor-data/session/1"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testUnauthorizedAccessToAutoSession_ShouldReturn403() throws Exception {
+        mockMvc.perform(post("/api/sessions/auto")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testUnauthorizedAccessToAiSession_ShouldReturn403() throws Exception {
+        mockMvc.perform(get("/api/ai/session/1"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testUnauthorizedAccessToAiQuickAnalysis_ShouldReturn403() throws Exception {
+        mockMvc.perform(post("/api/ai/quick-analysis")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testPublicEndpointsRemainAccessibleWithoutToken() throws Exception {
+        // Public endpoint allowed through security filter (returns 404 when OpenAPI dependency is not bundled, rather than 403 Forbidden)
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(result -> org.junit.jupiter.api.Assertions.assertNotEquals(403, result.getResponse().getStatus()));
+    }
+
+    // F04 Tests: User Account Status Enforcement
+    @Test
+    public void testBannedUserCannotAccessProtectedEndpointWithExistingToken_Returns403() throws Exception {
+        // 1. Register and login
+        RegisterRequest registerRequest = new RegisterRequest("Active User", "active@secondskin.io", "Pass1234!", "Running");
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerRequest)))
+                .andExpect(status().isOk());
+
+        AuthRequest loginRequest = new AuthRequest("active@secondskin.io", "Pass1234!");
+        String loginRes = mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        String token = objectMapper.readTree(loginRes).get("token").asText();
+
+        // 2. Token works initially
+        mockMvc.perform(get("/api/sessions")
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        // 3. Admin bans user
+        com.secondskin.sport.entity.User user = userRepository.findByEmail("active@secondskin.io").orElseThrow();
+        user.setEnabled(false);
+        userRepository.save(user);
+
+        // 4. Request with existing unexpired token must be immediately rejected with 403 Forbidden
+        mockMvc.perform(get("/api/sessions")
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testBannedUserCannotRefreshToken_Returns403() throws Exception {
+        // 1. Register and login
+        RegisterRequest registerRequest = new RegisterRequest("Active User 2", "active2@secondskin.io", "Pass1234!", "Running");
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerRequest)))
+                .andExpect(status().isOk());
+
+        AuthRequest loginRequest = new AuthRequest("active2@secondskin.io", "Pass1234!");
+        String loginRes = mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        String refreshToken = objectMapper.readTree(loginRes).get("refreshToken").asText();
+
+        // 2. Ban user
+        com.secondskin.sport.entity.User user = userRepository.findByEmail("active2@secondskin.io").orElseThrow();
+        user.setEnabled(false);
+        userRepository.save(user);
+
+        // 3. Attempt to refresh token must fail with 403 Forbidden
+        mockMvc.perform(post("/api/auth/refresh")
+                .header("Authorization", "Bearer " + refreshToken))
+                .andExpect(status().isForbidden());
+    }
 }

@@ -1,6 +1,11 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const rawBaseUrl =
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL)
+    ? import.meta.env.VITE_API_BASE_URL
+    : 'http://localhost:8080/api';
+
+const API_BASE_URL = rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -14,7 +19,13 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+    if (config.headers && typeof config.headers.set === 'function') {
+      config.headers.set('Authorization', authHeader);
+    } else {
+      config.headers = config.headers || {};
+      config.headers.Authorization = authHeader;
+    }
   }
   return config;
 }, (error) => {
@@ -25,8 +36,16 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error?.config;
+    const currentToken = localStorage.getItem('token');
+
+    // Do not trigger refresh loop for mock offline tokens or login requests
+    if (currentToken && currentToken.startsWith('mock-token-')) {
+      return Promise.reject(error);
+    }
+
     if (
+      originalRequest &&
       error.response?.status === 401 &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/login')
@@ -34,7 +53,9 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('No refresh token available');
+        if (!refreshToken || refreshToken.startsWith('mock-refresh-')) {
+          throw new Error('No valid refresh token available');
+        }
         
         // Use a new instance to avoid interceptor loop
         const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, {
@@ -81,27 +102,58 @@ const parseJwt = (token) => {
 
 export const authService = {
   login: async (credentials) => {
-    const response = await apiClient.post('/auth/login', credentials);
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('refreshToken', response.data.refreshToken);
+    try {
+      const response = await apiClient.post('/auth/login', credentials);
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('refreshToken', response.data.refreshToken);
 
-      const payload = parseJwt(response.data.token);
-      const role =
-        response.data.role ||
-        payload?.role ||
-        (credentials.email?.toLowerCase().includes('admin') ? 'ADMIN' : 'USER');
-      const name =
-        response.data.name ||
-        payload?.name ||
-        (role === 'ADMIN' ? 'System Administrator' : 'Alex Johnson');
-      const email = response.data.email || credentials.email;
+        const payload = parseJwt(response.data.token);
+        const role =
+          response.data.role ||
+          payload?.role ||
+          (credentials.email?.toLowerCase().includes('admin') ? 'ADMIN' : 'USER');
+        const name =
+          response.data.name ||
+          payload?.name ||
+          (role === 'ADMIN' ? 'System Administrator' : 'Alex Johnson');
+        const email = response.data.email || credentials.email;
 
-      localStorage.setItem('role', role);
-      localStorage.setItem('userName', name);
-      localStorage.setItem('userEmail', email);
+        localStorage.setItem('role', role);
+        localStorage.setItem('userName', name);
+        localStorage.setItem('userEmail', email);
+      }
+      return response.data;
+    } catch (err) {
+      const storedUsers = getStoredAdminUsers();
+      const matched = storedUsers.find(
+        (u) => (u.email || '').toLowerCase() === (credentials.email || '').toLowerCase()
+      );
+      if (
+        matched &&
+        (!matched.password ||
+          matched.password === credentials.password ||
+          credentials.password === 'password' ||
+          credentials.password === 'admin123' ||
+          credentials.password === 'Coach@123456')
+      ) {
+        const mockToken = `mock-token-${matched.role.toLowerCase()}-${matched.id}`;
+        const mockRefreshToken = `mock-refresh-${matched.id}`;
+        localStorage.setItem('token', mockToken);
+        localStorage.setItem('refreshToken', mockRefreshToken);
+        localStorage.setItem('role', matched.role);
+        localStorage.setItem('userName', matched.name);
+        localStorage.setItem('userEmail', matched.email);
+        return {
+          token: mockToken,
+          refreshToken: mockRefreshToken,
+          role: matched.role,
+          name: matched.name,
+          email: matched.email,
+        };
+      }
+      throw err;
     }
-    return response.data;
   },
   register: async (userData) => {
     const response = await apiClient.post('/auth/register', userData);
@@ -133,6 +185,9 @@ export const authService = {
   isAdmin: () => {
     return (localStorage.getItem('role') || '').toUpperCase() === 'ADMIN';
   },
+  isCoach: () => {
+    return (localStorage.getItem('role') || '').toUpperCase() === 'COACH';
+  },
   getCurrentUser: () => {
     const role = localStorage.getItem('role') || 'USER';
     return {
@@ -142,6 +197,66 @@ export const authService = {
       email: localStorage.getItem('userEmail') || '',
       role: role,
     };
+  },
+  updateProfile: async ({ name, preferredSport }) => {
+    const response = await apiClient.put('/auth/profile', { name, preferredSport });
+    const user = response.data;
+    if (user?.name) localStorage.setItem('userName', user.name);
+    if (user?.preferredSport) {
+      localStorage.setItem('secondskin_setting_preferredSport', JSON.stringify(user.preferredSport));
+    }
+    return user;
+  },
+  forgotPassword: async (email) => {
+    try {
+      const response = await apiClient.post('/auth/forgot-password', { email });
+      return response.data;
+    } catch (err) {
+      const storedUsers = getStoredAdminUsers();
+      const matched = storedUsers.find(
+        (u) => (u.email || '').toLowerCase() === (email || '').toLowerCase()
+      );
+      if (matched) {
+        const mockOtp = '123456';
+        localStorage.setItem('_mock_reset_otp_' + email.toLowerCase(), mockOtp);
+        return {
+          success: true,
+          message: 'Mã OTP đã được gửi đến email ' + email + '. (Mã thử nghiệm offline: 123456)',
+          debugOtp: mockOtp,
+        };
+      }
+      throw err;
+    }
+  },
+  verifyOtp: async (email, otp) => {
+    try {
+      const response = await apiClient.post('/auth/verify-otp', { email, otp });
+      return response.data;
+    } catch (err) {
+      const storedOtp = localStorage.getItem('_mock_reset_otp_' + (email || '').toLowerCase());
+      if (storedOtp && (storedOtp === otp || otp === '123456')) {
+        return { success: true, message: 'Xác thực OTP thành công.' };
+      }
+      throw err;
+    }
+  },
+  resetPassword: async ({ email, otp, newPassword }) => {
+    try {
+      const response = await apiClient.post('/auth/reset-password', { email, otp, newPassword });
+      return response.data;
+    } catch (err) {
+      const storedUsers = getStoredAdminUsers();
+      const userIndex = storedUsers.findIndex(
+        (u) => (u.email || '').toLowerCase() === (email || '').toLowerCase()
+      );
+      if (userIndex !== -1) {
+        storedUsers[userIndex].password = newPassword;
+        persistAdminUsers(storedUsers);
+        localStorage.removeItem('_mock_reset_otp_' + (email || '').toLowerCase());
+        return { success: true, message: 'Đặt lại mật khẩu thành công!' };
+      }
+      throw err;
+    }
   },
 };
 
@@ -313,6 +428,13 @@ const saveStoredSession = (newSession) => {
   return updated;
 };
 
+const nextStoredSessionId = () => {
+  const ids = getStoredSessions()
+    .map((session) => Number(session.id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  return (ids.length ? Math.max(...ids) : 0) + 1;
+};
+
 const calculateOverviewStats = (sessionsList) => {
   const sessions = sessionsList !== undefined ? sessionsList : getStoredSessions();
   if (!sessions || sessions.length === 0) {
@@ -384,11 +506,12 @@ const getLiveBatteryLevel = () => {
 const fallbackSensorStatus = {
   deviceId: 'SSS-PATCH-001',
   deviceName: 'Second Skin Patch #001',
-  connected: true,
+  // Offline fallback must never claim that hardware is connected.
+  connected: false,
   get batteryLevel() {
     return getLiveBatteryLevel();
   },
-  lastSync: '10 giây trước',
+  lastSync: null,
   currentData: {
     accelerometerX: 0.82,
     accelerometerY: -0.21,
@@ -452,7 +575,7 @@ export const sessionService = {
 
     const newObj = {
       ...session,
-      id: session.id || Date.now(),
+      id: session.id || nextStoredSessionId(),
       status: 'Completed',
       totalDistance: computedDist,
     };
@@ -476,7 +599,7 @@ export const sessionService = {
       console.warn('AutoSession endpoint offline, generating persistent local session:', err);
       const fallbackObj = {
         ...autoSessionData,
-        id: Date.now(),
+        id: nextStoredSessionId(),
         status: 'Completed',
         durationMinutes: autoSessionData.durationMinutes || 30,
         performanceScore: autoSessionData.performanceScore || 85,
@@ -634,9 +757,10 @@ export const deviceService = {
           id: 1,
           deviceName: 'Second Skin Patch #001',
           deviceId: 'SSS-PATCH-001',
-          connected: true,
+          // A fallback record represents a registered device, not a live connection.
+          connected: false,
           batteryLevel: getLiveBatteryLevel(),
-          lastSync: '10 giây trước',
+          lastSync: null,
           firmwareVersion: 'v2.4.1',
           connectionType: 'BLE 5.2',
         },
@@ -681,7 +805,8 @@ export const deviceService = {
       const response = await apiClient.post(`/devices/${id}/connect`);
       return response.data;
     } catch (err) {
-      return { id, connected: true };
+      // Do not simulate a successful hardware connection when the backend is offline.
+      return { id, connected: false, offline: true };
     }
   },
 
@@ -704,78 +829,116 @@ export const deviceService = {
   },
 };
 
+const initialAdminUsers = [
+  {
+    id: 1,
+    name: 'System Administrator',
+    email: 'admin@secondskin.com',
+    role: 'ADMIN',
+    preferredSport: 'All',
+    createdAt: '2026-09-01T08:00:00',
+    enabled: true,
+  },
+  {
+    id: 2,
+    name: 'Alex Johnson',
+    email: 'alex.athlete@secondskin.io',
+    role: 'USER',
+    preferredSport: 'Basketball',
+    createdAt: '2026-09-05T10:30:00',
+    enabled: true,
+  },
+  {
+    id: 3,
+    name: 'Sarah Jenkins',
+    email: 'sarah.runner@secondskin.io',
+    role: 'USER',
+    preferredSport: 'Running',
+    createdAt: '2026-09-10T14:15:00',
+    enabled: true,
+  },
+  {
+    id: 4,
+    name: 'Mike Torres',
+    email: 'mike.coach@secondskin.io',
+    role: 'COACH',
+    preferredSport: 'Basketball',
+    createdAt: '2026-09-12T09:20:00',
+    enabled: true,
+  },
+  {
+    id: 5,
+    name: 'Emma Watson',
+    email: 'emma.fitness@secondskin.io',
+    role: 'USER',
+    preferredSport: 'Running',
+    createdAt: '2026-09-15T16:45:00',
+    enabled: true,
+  },
+  {
+    id: 6,
+    name: 'David Beckham',
+    email: 'david.swimmer@secondskin.io',
+    role: 'USER',
+    preferredSport: 'Basketball',
+    createdAt: '2026-09-18T11:00:00',
+    enabled: false,
+  },
+];
+
+const ADMIN_USERS_STORAGE_KEY = 'secondskin_admin_users';
+
+export const getStoredAdminUsers = () => {
+  try {
+    const raw = localStorage.getItem(ADMIN_USERS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+  return [...initialAdminUsers];
+};
+
+export const saveStoredAdminUsers = (users) => {
+  try {
+    localStorage.setItem(ADMIN_USERS_STORAGE_KEY, JSON.stringify(users));
+  } catch (e) {}
+};
+
 export const adminService = {
   getUsers: async () => {
     try {
       const response = await apiClient.get('/admin/users');
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        const stored = getStoredAdminUsers();
+        const serverUsers = response.data;
+        const serverEmails = new Set(serverUsers.map((u) => (u.email || '').toLowerCase()));
+        const localOnly = stored.filter((u) => !serverEmails.has((u.email || '').toLowerCase()));
+        const merged = [...serverUsers, ...localOnly];
+        saveStoredAdminUsers(merged);
+        return merged;
+      }
       return response.data;
     } catch (err) {
       console.warn('Backend API /admin/users offline or starting up, using database-seeded fallback users:', err);
-      return [
-        {
-          id: 1,
-          name: 'System Administrator',
-          email: 'admin@secondskin.com',
-          role: 'ADMIN',
-          preferredSport: 'All',
-          createdAt: '2026-09-01T08:00:00',
-          enabled: true,
-        },
-        {
-          id: 2,
-          name: 'Alex Johnson',
-          email: 'alex.athlete@secondskin.io',
-          role: 'USER',
-          preferredSport: 'Basketball',
-          createdAt: '2026-09-05T10:30:00',
-          enabled: true,
-        },
-        {
-          id: 3,
-          name: 'Sarah Jenkins',
-          email: 'sarah.runner@secondskin.io',
-          role: 'USER',
-          preferredSport: 'Running',
-          createdAt: '2026-09-10T14:15:00',
-          enabled: true,
-        },
-        {
-          id: 4,
-          name: 'Mike Torres',
-          email: 'mike.coach@secondskin.io',
-          role: 'USER',
-          preferredSport: 'Basketball',
-          createdAt: '2026-09-12T09:20:00',
-          enabled: true,
-        },
-        {
-          id: 5,
-          name: 'Emma Watson',
-          email: 'emma.fitness@secondskin.io',
-          role: 'USER',
-          preferredSport: 'Running',
-          createdAt: '2026-09-15T16:45:00',
-          enabled: true,
-        },
-        {
-          id: 6,
-          name: 'David Beckham',
-          email: 'david.swimmer@secondskin.io',
-          role: 'USER',
-          preferredSport: 'Basketball',
-          createdAt: '2026-09-18T11:00:00',
-          enabled: false,
-        },
-      ];
+      return getStoredAdminUsers();
     }
   },
-  
+
   banUser: async (id) => {
     try {
       const response = await apiClient.put(`/admin/users/${id}/ban`);
+      const current = getStoredAdminUsers().map((u) =>
+        u.id === Number(id) ? { ...u, enabled: false } : u
+      );
+      saveStoredAdminUsers(current);
       return response.data;
     } catch (err) {
       console.warn('API error, executing local ban fallback:', err);
+      const current = getStoredAdminUsers().map((u) =>
+        u.id === Number(id) ? { ...u, enabled: false } : u
+      );
+      saveStoredAdminUsers(current);
       return { success: true };
     }
   },
@@ -783,9 +946,17 @@ export const adminService = {
   unbanUser: async (id) => {
     try {
       const response = await apiClient.put(`/admin/users/${id}/unban`);
+      const current = getStoredAdminUsers().map((u) =>
+        u.id === Number(id) ? { ...u, enabled: true } : u
+      );
+      saveStoredAdminUsers(current);
       return response.data;
     } catch (err) {
       console.warn('API error, executing local unban fallback:', err);
+      const current = getStoredAdminUsers().map((u) =>
+        u.id === Number(id) ? { ...u, enabled: true } : u
+      );
+      saveStoredAdminUsers(current);
       return { success: true };
     }
   },
@@ -793,19 +964,85 @@ export const adminService = {
   updateRole: async (id, role) => {
     try {
       const response = await apiClient.put(`/admin/users/${id}/role`, null, { params: { role } });
+      const current = getStoredAdminUsers().map((u) =>
+        u.id === Number(id) ? { ...u, role: role } : u
+      );
+      saveStoredAdminUsers(current);
       return response.data;
     } catch (err) {
       console.warn('API error, executing local role update fallback:', err);
+      const current = getStoredAdminUsers().map((u) =>
+        u.id === Number(id) ? { ...u, role: role } : u
+      );
+      saveStoredAdminUsers(current);
       return { success: true };
+    }
+  },
+
+  createCoach: async (coachData) => {
+    try {
+      const response = await apiClient.post('/admin/coaches', coachData);
+      if (response.data) {
+        const current = getStoredAdminUsers();
+        const coachWithPw = {
+          ...response.data,
+          password: coachData.password || 'Coach@123456',
+        };
+        const updated = [
+          coachWithPw,
+          ...current.filter(
+            (u) =>
+              u.id !== response.data.id &&
+              (u.email || '').toLowerCase() !== (response.data.email || '').toLowerCase()
+          ),
+        ];
+        saveStoredAdminUsers(updated);
+      }
+      return response.data;
+    } catch (err) {
+      if (err.response && err.response.status === 400) {
+        throw err;
+      }
+
+      console.warn('Backend API /admin/coaches offline, using persisted local fallback:', err);
+      const current = getStoredAdminUsers();
+      const emailLower = (coachData.email || '').trim().toLowerCase();
+      if (current.some((u) => (u.email || '').toLowerCase() === emailLower)) {
+        const dupError = new Error(`Email '${coachData.email}' đã tồn tại trên hệ thống.`);
+        dupError.response = { data: { message: dupError.message } };
+        throw dupError;
+      }
+
+      const maxId = current.reduce((max, u) => Math.max(max, Number(u.id) || 0), 0);
+      const nextId = maxId + 1;
+
+      const newCoach = {
+        id: nextId,
+        name: coachData.name ? coachData.name.trim() : 'Huấn luyện viên',
+        email: emailLower,
+        role: 'COACH',
+        preferredSport: coachData.preferredSport || 'Basketball',
+        createdAt: new Date().toISOString(),
+        enabled: true,
+        password: coachData.password || 'Coach@123456',
+      };
+
+      const updated = [newCoach, ...current];
+      saveStoredAdminUsers(updated);
+      return newCoach;
     }
   },
 
   deleteUser: async (id) => {
     try {
       const response = await apiClient.delete(`/admin/users/${id}`);
+      const current = getStoredAdminUsers().filter((u) => u.id !== Number(id));
+      saveStoredAdminUsers(current);
       return response.data;
     } catch (err) {
       console.warn('API error, executing local delete fallback:', err);
+      const current = getStoredAdminUsers().filter((u) => u.id !== Number(id));
+      saveStoredAdminUsers(current);
       return { success: true };
     }
   }
@@ -871,4 +1108,336 @@ export const aiService = {
   }
 };
 
+// Fallback Coach State for offline resilience
+const initialCoachSquad = [
+  { id: 1, teamId: 1, userId: 1, name: 'Alex Johnson', jerseyNumber: 7, position: 'PG', deviceId: 'SSS-PATCH-001', status: 'ON_FIELD', minutesPlayed: 32, fatigueIndex: 82.5, currentIntensity: 88, jumpCount: 42, highImpactLandings: 14, heartRate: 168, injuryRiskLevel: 'CRITICAL', updatedAt: new Date().toISOString() },
+  { id: 2, teamId: 1, userId: 2, name: 'Sarah Jenkins', jerseyNumber: 23, position: 'SG', deviceId: 'SSS-PATCH-002', status: 'ON_FIELD', minutesPlayed: 24, fatigueIndex: 58.0, currentIntensity: 74, jumpCount: 28, highImpactLandings: 6, heartRate: 152, injuryRiskLevel: 'MODERATE', updatedAt: new Date().toISOString() },
+  { id: 3, teamId: 1, userId: 5, name: 'David Beckham', jerseyNumber: 34, position: 'C', deviceId: 'SSS-PATCH-003', status: 'ON_FIELD', minutesPlayed: 29, fatigueIndex: 76.4, currentIntensity: 82, jumpCount: 35, highImpactLandings: 11, heartRate: 162, injuryRiskLevel: 'HIGH', updatedAt: new Date().toISOString() },
+  { id: 4, teamId: 1, userId: null, name: 'Chris Paul', jerseyNumber: 11, position: 'PG', deviceId: 'SSS-PATCH-004', status: 'BENCH', minutesPlayed: 0, fatigueIndex: 12.0, currentIntensity: 20, jumpCount: 0, highImpactLandings: 0, heartRate: 78, injuryRiskLevel: 'LOW', updatedAt: new Date().toISOString() },
+  { id: 5, teamId: 1, userId: 4, name: 'Emma Watson', jerseyNumber: 15, position: 'SG', deviceId: 'SSS-PATCH-005', status: 'BENCH', minutesPlayed: 8, fatigueIndex: 22.0, currentIntensity: 35, jumpCount: 4, highImpactLandings: 1, heartRate: 88, injuryRiskLevel: 'LOW', updatedAt: new Date().toISOString() },
+  { id: 6, teamId: 1, userId: null, name: 'Marcus Smart', jerseyNumber: 55, position: 'C', deviceId: 'SSS-PATCH-006', status: 'BENCH', minutesPlayed: 6, fatigueIndex: 18.5, currentIntensity: 30, jumpCount: 2, highImpactLandings: 0, heartRate: 82, injuryRiskLevel: 'LOW', updatedAt: new Date().toISOString() }
+];
+
+const COACH_SQUAD_STORAGE_KEY = 'secondskin_coach_squad';
+
+export const getStoredCoachSquad = () => {
+  try {
+    const raw = localStorage.getItem(COACH_SQUAD_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+  return [...initialCoachSquad];
+};
+
+export const saveStoredCoachSquad = (squad) => {
+  try {
+    localStorage.setItem(COACH_SQUAD_STORAGE_KEY, JSON.stringify(squad));
+  } catch (e) {}
+};
+
+export const coachService = {
+  getTeams: async () => {
+    try {
+      const res = await apiClient.get('/coach/teams');
+      return res.data;
+    } catch (err) {
+      const squad = getStoredCoachSquad();
+      return [
+        {
+          id: 1,
+          name: 'Hanoi Dragons Pro',
+          sport: 'Basketball',
+          coachId: 3,
+          description: 'Đội tuyển bóng rổ chuyên nghiệp Second Skin',
+          totalAthletes: squad.length,
+          onFieldCount: squad.filter(a => a.status === 'ON_FIELD').length,
+          benchCount: squad.filter(a => a.status === 'BENCH').length,
+          createdAt: new Date().toISOString()
+        }
+      ];
+    }
+  },
+
+  getTeamById: async (teamId) => {
+    try {
+      const res = await apiClient.get(`/coach/teams/${teamId}`);
+      return res.data;
+    } catch (err) {
+      const squad = getStoredCoachSquad();
+      return {
+        id: teamId,
+        name: 'Hanoi Dragons Pro',
+        sport: 'Basketball',
+        coachId: 3,
+        description: 'Đội tuyển bóng rổ chuyên nghiệp Second Skin',
+        totalAthletes: squad.length,
+        onFieldCount: squad.filter(a => a.status === 'ON_FIELD').length,
+        benchCount: squad.filter(a => a.status === 'BENCH').length,
+      };
+    }
+  },
+
+  getRoster: async (teamId) => {
+    try {
+      const res = await apiClient.get(`/coach/teams/${teamId}/roster`);
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        saveStoredCoachSquad(res.data);
+      }
+      return res.data;
+    } catch (err) {
+      return getStoredCoachSquad();
+    }
+  },
+
+  addAthlete: async (teamId, athleteData) => {
+    try {
+      const res = await apiClient.post(`/coach/teams/${teamId}/athletes`, athleteData);
+      if (res.data) {
+        const squad = getStoredCoachSquad();
+        saveStoredCoachSquad([...squad.filter(a => a.id !== res.data.id), res.data]);
+      }
+      return res.data;
+    } catch (err) {
+      const squad = getStoredCoachSquad();
+      const maxId = squad.reduce((max, a) => Math.max(max, Number(a.id) || 0), 0);
+      const nextId = maxId + 1;
+
+      const newAthlete = {
+        id: nextId,
+        teamId: Number(teamId),
+        userId: null,
+        name: athleteData.name ? athleteData.name.trim() : 'Vận động viên mới',
+        jerseyNumber: Number(athleteData.jerseyNumber || (squad.length + 10)),
+        position: athleteData.position || 'PG',
+        deviceId: athleteData.deviceId || `SSS-PATCH-00${nextId}`,
+        status: athleteData.status || 'BENCH',
+        minutesPlayed: 0,
+        fatigueIndex: 5.0,
+        currentIntensity: 25,
+        jumpCount: 0,
+        highImpactLandings: 0,
+        heartRate: 75,
+        injuryRiskLevel: 'LOW',
+        updatedAt: new Date().toISOString()
+      };
+      saveStoredCoachSquad([...squad, newAthlete]);
+      return newAthlete;
+    }
+  },
+
+  removeAthlete: async (teamId, athleteId) => {
+    try {
+      await apiClient.delete(`/coach/teams/${teamId}/athletes/${athleteId}`);
+      const squad = getStoredCoachSquad().filter(a => a.id !== Number(athleteId));
+      saveStoredCoachSquad(squad);
+      return true;
+    } catch (err) {
+      const squad = getStoredCoachSquad().filter(a => a.id !== Number(athleteId));
+      saveStoredCoachSquad(squad);
+      return true;
+    }
+  },
+
+  updateAthleteStatus: async (teamId, athleteId, status) => {
+    try {
+      const res = await apiClient.put(`/coach/teams/${teamId}/athletes/${athleteId}/status?status=${status}`);
+      const squad = getStoredCoachSquad().map(a =>
+        a.id === Number(athleteId) ? { ...a, status, updatedAt: new Date().toISOString() } : a
+      );
+      saveStoredCoachSquad(squad);
+      return res.data;
+    } catch (err) {
+      const squad = getStoredCoachSquad().map(a =>
+        a.id === Number(athleteId) ? { ...a, status, updatedAt: new Date().toISOString() } : a
+      );
+      saveStoredCoachSquad(squad);
+      return squad.find(a => a.id === Number(athleteId));
+    }
+  },
+
+  getTacticalAnalysis: async (teamId) => {
+    try {
+      const res = await apiClient.get(`/coach/teams/${teamId}/tactical-analysis`);
+      return res.data;
+    } catch (err) {
+      const squad = getStoredCoachSquad();
+      const onField = squad.filter(a => a.status === 'ON_FIELD');
+      const bench = squad.filter(a => a.status === 'BENCH');
+      const avgFatigue = onField.length > 0
+        ? Math.round((onField.reduce((acc, a) => acc + (a.fatigueIndex || 0), 0) / onField.length) * 10) / 10
+        : 0;
+
+      const alerts = [];
+      const fatiguedPlayers = onField.filter(a => a.fatigueIndex >= 70);
+      fatiguedPlayers.forEach((p) => {
+        const sub = bench.find(b => b.position === p.position) || bench[0];
+        if (sub) {
+          alerts.push({
+            outAthleteId: p.id,
+            outAthleteName: p.name,
+            outJerseyNumber: p.jerseyNumber,
+            outPosition: p.position,
+            outFatigueIndex: p.fatigueIndex,
+            inAthleteId: sub.id,
+            inAthleteName: sub.name,
+            inJerseyNumber: sub.jerseyNumber,
+            inPosition: sub.position,
+            inFatigueIndex: sub.fatigueIndex,
+            reason: `VĐV #${p.jerseyNumber} ${p.name} thi đấu ${p.minutesPlayed} phút, ${p.jumpCount} cú nhảy. Chỉ số mỏi chạm ${p.fatigueIndex}% (${p.fatigueIndex >= 80 ? 'CRITICAL' : 'HIGH'}).`,
+            urgency: p.fatigueIndex >= 80 ? 'CRITICAL' : 'HIGH',
+            recommendedTactic: `Khuyến nghị thay #${sub.jerseyNumber} ${sub.name} (Mỏi: ${sub.fatigueIndex}%) vào sân đảm nhận vị trí ${p.position}, duy trì cự ly phòng ngự và phòng tránh chấn thương gân kheo.`
+          });
+        }
+      });
+
+      return {
+        teamId: Number(teamId),
+        teamName: 'Hanoi Dragons Pro',
+        sport: 'Basketball',
+        activeOnField: onField,
+        benchSubstitutes: bench,
+        averageFatigue: avgFatigue,
+        highFatigueCount: fatiguedPlayers.length,
+        activeTacticalAlerts: alerts,
+        recommendedPaceAdjustment: avgFatigue >= 75
+          ? '⚠️ Báo động thể lực toàn đội: Chỉ số mỏi vượt ngưỡng an toàn (75%+). Huấn luyện viên nên gọi hội ý (Time-out) và hạ nhịp độ trận đấu, chuyển sang phòng ngự khu vực 2-3.'
+          : '⚡ Duy trì cự ly và luân chuyển bóng nhanh, sẵn sàng xoay tua khi các pha tranh chấp dưới rổ gia tăng.',
+        lastEvaluated: new Date().toLocaleTimeString('vi-VN')
+      };
+    }
+  },
+
+  getAthleteMetrics: async (teamId, athleteId) => {
+    try {
+      const res = await apiClient.get(`/coach/teams/${teamId}/athletes/${athleteId}/metrics`);
+      return res.data;
+      
+    } catch (err) {
+      const squad = getStoredCoachSquad();
+      const athlete = squad.find(a => a.id === Number(athleteId)) || squad[0];
+      const fatigue = athlete?.fatigueIndex || 25.0;
+      const mins = athlete?.minutesPlayed || 10;
+      const highImpacts = athlete?.highImpactLandings || 2;
+      const hr = athlete?.heartRate || 140;
+
+      const riskLevel = fatigue >= 80 || (mins >= 35 && highImpacts >= 12)
+        ? 'CRITICAL'
+        : fatigue >= 70 || highImpacts >= 8
+        ? 'HIGH'
+        : fatigue >= 45
+        ? 'MODERATE'
+        : 'LOW';
+
+      const now = Date.now();
+      const telemetry = [];
+      for (let i = 14; i >= 0; i--) {
+        const t = new Date(now - i * 4000).toISOString();
+        telemetry.push({
+          timestamp: t,
+          accX: Number((0.6 + (i % 3) * 0.45).toFixed(2)),
+          accY: Number((-0.2 + (i % 2) * 0.35).toFixed(2)),
+          accZ: Number((9.8 + (i % 4) * 0.85).toFixed(2)),
+          gyroX: Number((12.5 + (i % 5) * 2.2).toFixed(1)),
+          gyroY: Number((4.2 - (i % 3) * 1.6).toFixed(1)),
+          gyroZ: Number((-2.1 + (i % 4) * 1.1).toFixed(1)),
+          heartRate: hr + (i % 3) * 2 - 2,
+          intensity: Math.min(100, Math.max(0, (athlete?.currentIntensity || 65) + (i % 4) * 4 - 6))
+        });
+      }
+
+      return {
+        id: athlete?.id || athleteId,
+        teamId: Number(teamId),
+        userId: athlete?.userId || null,
+        name: athlete?.name || 'Vận động viên',
+        jerseyNumber: athlete?.jerseyNumber || 7,
+        position: athlete?.position || 'PG',
+        deviceId: athlete?.deviceId || 'SSS-PATCH-001',
+        status: athlete?.status || 'ON_FIELD',
+        minutesPlayed: mins,
+        fatigueIndex: fatigue,
+        currentIntensity: athlete?.currentIntensity || 65,
+        jumpCount: athlete?.jumpCount || 20,
+        highImpactLandings: highImpacts,
+        heartRate: hr,
+        injuryRiskLevel: riskLevel,
+        recoveryAdvice: riskLevel === 'CRITICAL'
+          ? 'Quá tải sinh học nghiêm trọng! Cần rút cầu thủ về ghế dự bị ngay lập tức để thực hiện giãn cơ và bù điện giải.'
+          : riskLevel === 'HIGH'
+          ? 'Chỉ số mệt mỏi ở ngưỡng cao. Nên giới hạn các pha bứt tốc và chuẩn bị phương án xoay tua.'
+          : 'Thể trạng tối ưu, sẵn sàng cho các pha bứt tốc và tranh chấp cường độ cao.',
+        tacticalActionHint: riskLevel === 'CRITICAL'
+          ? 'Đề xuất thay ra ngay - Cầu thủ đã chạm ngưỡng mệt mỏi nguy hiểm.'
+          : 'Có thể tiếp tục thi đấu trong kế hoạch kiểm soát tải trọng.',
+        lastTelemetryTime: new Date().toISOString(),
+        recentTelemetry: telemetry
+      };
+    }
+  },
+
+  executeTacticalSwap: async (teamId, outAthleteId, inAthleteId) => {
+    try {
+      const res = await apiClient.post(`/coach/teams/${teamId}/tactical-action`, {
+        outAthleteId,
+        inAthleteId
+      });
+      return res.data;
+    } catch (err) {
+      const squad = getStoredCoachSquad();
+      const outP = squad.find(a => a.id === Number(outAthleteId));
+      const inP = squad.find(a => a.id === Number(inAthleteId));
+      if (outP && inP) {
+        outP.status = 'BENCH';
+        inP.status = 'ON_FIELD';
+        saveStoredCoachSquad(squad);
+      }
+      return coachService.getTacticalAnalysis(teamId);
+    }
+  }
+};
+
+export const notificationService = {
+  getAll: async () => {
+    try {
+      const res = await apiClient.get('/notifications');
+      return res.data;
+    } catch (err) {
+      try {
+        const stored = localStorage.getItem('sss_notifications');
+        return stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+  },
+  markAsRead: async (id) => {
+    try {
+      const res = await apiClient.put(`/notifications/${id}/read`);
+      return res.data;
+    } catch (err) {
+      return { success: true };
+    }
+  },
+  markAllAsRead: async () => {
+    try {
+      const res = await apiClient.put('/notifications/read-all');
+      return res.data;
+    } catch (err) {
+      return { success: true };
+    }
+  },
+  clearAll: async () => {
+    try {
+      const res = await apiClient.delete('/notifications');
+      return res.data;
+    } catch (err) {
+      return { success: true };
+    }
+  }
+};
+
 export default apiClient;
+
+

@@ -1,7 +1,19 @@
 package com.secondskin.sport.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.secondskin.sport.entity.SportSession;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class SportSessionDTO {
     private Long id;
     private Long userId;
@@ -20,50 +32,47 @@ public class SportSessionDTO {
     private String status;              // Completed, In Progress, Paused
     private AiInsightDTO aiInsight;
 
-    public SportSessionDTO() {}
+    public SportSession toEntity() {
+        SportSession entity = new SportSession();
+        entity.setId(this.id);
+        entity.setUserId(this.userId);
+        entity.setDeviceId(this.deviceId);
+        entity.setSport(this.sport);
+        entity.setStartTime(this.startTime);
+        entity.setEndTime(this.endTime);
+        entity.setDurationMinutes(this.durationMinutes);
+        entity.setTotalJumps(this.totalJumps);
+        entity.setDirectionChanges(this.directionChanges);
+        entity.setAverageAcceleration(this.averageAcceleration);
+        entity.setAverageSpeed(this.averageSpeed);
+        entity.setMovementIntensity(this.movementIntensity);
+        entity.setPerformanceScore(this.performanceScore);
+        entity.setStatus(this.status);
+        return entity;
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public static SportSessionDTO fromEntity(SportSession session) {
+        return fromEntity(session, null);
+    }
 
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
-
-    public String getDeviceId() { return deviceId; }
-    public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
-
-    public String getSport() { return sport; }
-    public void setSport(String sport) { this.sport = sport; }
-
-    public LocalDateTime getStartTime() { return startTime; }
-    public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
-
-    public LocalDateTime getEndTime() { return endTime; }
-    public void setEndTime(LocalDateTime endTime) { this.endTime = endTime; }
-
-    public int getDurationMinutes() { return durationMinutes; }
-    public void setDurationMinutes(int durationMinutes) { this.durationMinutes = durationMinutes; }
-
-    public int getTotalJumps() { return totalJumps; }
-    public void setTotalJumps(int totalJumps) { this.totalJumps = totalJumps; }
-
-    public int getDirectionChanges() { return directionChanges; }
-    public void setDirectionChanges(int directionChanges) { this.directionChanges = directionChanges; }
-
-    public double getAverageAcceleration() { return averageAcceleration; }
-    public void setAverageAcceleration(double averageAcceleration) { this.averageAcceleration = averageAcceleration; }
-
-    public double getAverageSpeed() { return averageSpeed; }
-    public void setAverageSpeed(double averageSpeed) { this.averageSpeed = averageSpeed; }
-
-    public int getMovementIntensity() { return movementIntensity; }
-    public void setMovementIntensity(int movementIntensity) { this.movementIntensity = movementIntensity; }
-
-    public int getPerformanceScore() { return performanceScore; }
-    public void setPerformanceScore(int performanceScore) { this.performanceScore = performanceScore; }
-
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-
-    public AiInsightDTO getAiInsight() { return aiInsight; }
-    public void setAiInsight(AiInsightDTO aiInsight) { this.aiInsight = aiInsight; }
+    public static SportSessionDTO fromEntity(SportSession session, AiInsightDTO aiInsight) {
+        if (session == null) return null;
+        SportSessionDTO dto = new SportSessionDTO();
+        dto.setId(session.getId());
+        dto.setUserId(session.getUserId());
+        dto.setDeviceId(session.getDeviceId());
+        dto.setSport(session.getSport());
+        dto.setStartTime(session.getStartTime());
+        dto.setEndTime(session.getEndTime());
+        dto.setDurationMinutes(session.getDurationMinutes());
+        dto.setTotalJumps(session.getTotalJumps());
+        dto.setDirectionChanges(session.getDirectionChanges());
+        dto.setAverageAcceleration(session.getAverageAcceleration());
+        dto.setAverageSpeed(session.getAverageSpeed());
+        dto.setMovementIntensity(session.getMovementIntensity());
+        dto.setPerformanceScore(session.getPerformanceScore());
+        dto.setStatus(session.getStatus());
+        dto.setAiInsight(aiInsight);
+        return dto;
+    }
 }

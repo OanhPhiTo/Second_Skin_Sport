@@ -29,15 +29,18 @@ public class SensorBatchService {
     private final DeviceRepository deviceRepository;
     private final JumpDetectionService jumpDetectionService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final CoachService coachService;
 
     public SensorBatchService(SensorDataRepository sensorDataRepository,
                               DeviceRepository deviceRepository,
                               JumpDetectionService jumpDetectionService,
-                              @Autowired(required = false) SimpMessagingTemplate messagingTemplate) {
+                              @Autowired(required = false) SimpMessagingTemplate messagingTemplate,
+                              @Autowired(required = false) CoachService coachService) {
         this.sensorDataRepository = sensorDataRepository;
         this.deviceRepository = deviceRepository;
         this.jumpDetectionService = jumpDetectionService;
         this.messagingTemplate = messagingTemplate;
+        this.coachService = coachService;
     }
 
     @Transactional
@@ -94,6 +97,21 @@ public class SensorBatchService {
                 messagingTemplate.convertAndSend("/topic/devices/" + deviceId + "/telemetry", latest);
             } catch (Exception e) {
                 log.warn("WebSocket publish telemetry failed: {}", e.getMessage());
+            }
+        }
+
+        // 5. Cập nhật phân tích chiến thuật cho Huấn luyện viên (Coach Tactical Engine)
+        if (coachService != null && !batchDTO.getReadings().isEmpty()) {
+            try {
+                double avgIntensity = batchDTO.getReadings().stream()
+                        .mapToDouble(r -> (double) r.getMovementIntensity())
+                        .average().orElse(50.0);
+                int highImpacts = (int) jumps.stream()
+                        .filter(j -> j.getLandingImpactG() >= 4.0 || j.getLandingImpactMs2() >= 39.2)
+                        .count();
+                coachService.updateAthleteTelemetry(deviceId, avgIntensity, jumps.size(), highImpacts, 115);
+            } catch (Exception e) {
+                log.warn("Coach telemetry update warning: {}", e.getMessage());
             }
         }
 

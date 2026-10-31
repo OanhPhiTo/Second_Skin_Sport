@@ -9,7 +9,9 @@ import {
   Settings,
   Radio,
   X,
+  Trophy,
 } from 'lucide-react';
+import { authService } from '../services/api';
 import logoImg from '../assets/logo-slogan.png';
 import { useBle } from '../context/BleContext';
 import './Sidebar.css';
@@ -21,8 +23,12 @@ export default function Sidebar({ isOpen, onClose, patchStatus }) {
   const battery = isBle ? (bleTelemetry?.bat ?? patchStatus?.batteryLevel ?? 92) : (patchStatus?.batteryLevel ?? bleTelemetry?.bat ?? 92);
   const deviceName = isBle ? (bleDevice?.deviceName || 'SecondSkin_ESP32') : (patchStatus?.deviceName || 'PATCH #001');
 
+  const role = authService.getUserRole();
+  const isCoachOrAdmin = role === 'COACH' || role === 'ADMIN';
+
   const navItems = [
     { to: '/', label: 'Tổng quan', icon: LayoutDashboard },
+    ...(isCoachOrAdmin ? [{ to: '/coach', label: 'Chiến thuật Coach', icon: Trophy }] : []),
     { to: '/statistics', label: 'Thống kê', icon: BarChart3 },
     { to: '/activities', label: 'Hoạt động', icon: Activity },
     { to: '/sensors', label: 'Cảm biến', icon: Cpu },

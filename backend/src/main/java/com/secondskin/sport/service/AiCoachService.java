@@ -4,8 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.secondskin.sport.dto.AiInsightDTO;
 import com.secondskin.sport.dto.BiomechanicalMetricsDTO;
+import com.secondskin.sport.dto.SportSessionDTO;
 import com.secondskin.sport.entity.SensorData;
 import com.secondskin.sport.entity.SportSession;
+import com.secondskin.sport.exception.ResourceNotFoundException;
+import com.secondskin.sport.repository.SensorDataRepository;
+import com.secondskin.sport.repository.SportSessionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -25,11 +30,48 @@ public class AiCoachService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final BiomechanicalFeatureExtractor featureExtractor;
+    private final SportSessionRepository sessionRepository;
+    private final SensorDataRepository sensorDataRepository;
 
-    public AiCoachService(BiomechanicalFeatureExtractor featureExtractor) {
+    @Autowired
+    public AiCoachService(BiomechanicalFeatureExtractor featureExtractor,
+                          @Autowired(required = false) SportSessionRepository sessionRepository,
+                          @Autowired(required = false) SensorDataRepository sensorDataRepository) {
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
         this.featureExtractor = featureExtractor;
+        this.sessionRepository = sessionRepository;
+        this.sensorDataRepository = sensorDataRepository;
+    }
+
+    public AiCoachService(BiomechanicalFeatureExtractor featureExtractor) {
+        this(featureExtractor, null, null);
+    }
+
+    /**
+     * Session retrieval & AI analysis moved from AiCoachController to Service layer (F09)
+     */
+    public AiInsightDTO analyzeSessionById(Long sessionId) {
+        if (sessionRepository == null || sensorDataRepository == null) {
+            throw new IllegalStateException("Repositories not configured in AiCoachService");
+        }
+        SportSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found: " + sessionId));
+        List<SensorData> rawData = sensorDataRepository.findBySessionIdOrderByTimestampAsc(sessionId);
+        return analyzeSession(session, rawData);
+    }
+
+    /**
+     * DTO-based ad-hoc AI analysis (F08)
+     */
+    public AiInsightDTO analyzeSession(SportSessionDTO sessionDto) {
+        return analyzeSession(sessionDto, Collections.emptyList());
+    }
+
+    public AiInsightDTO analyzeSession(SportSessionDTO sessionDto, List<SensorData> rawData) {
+        if (sessionDto == null) return null;
+        SportSession session = sessionDto.toEntity();
+        return analyzeSession(session, rawData);
     }
 
     /**

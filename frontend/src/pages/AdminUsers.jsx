@@ -10,6 +10,9 @@ import {
   Flame,
   UserX,
   UserCheck,
+  Trophy,
+  UserPlus,
+  X,
 } from 'lucide-react';
 import { adminService } from '../services/api';
 import './AdminUsers.css';
@@ -23,6 +26,14 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [actionNotice, setActionNotice] = useState(null);
+
+  // Modal State for adding new coach
+  const [showCoachModal, setShowCoachModal] = useState(false);
+  const [coachName, setCoachName] = useState('');
+  const [coachEmail, setCoachEmail] = useState('');
+  const [coachPassword, setCoachPassword] = useState('');
+  const [coachSport, setCoachSport] = useState('Basketball');
+  const [submittingCoach, setSubmittingCoach] = useState(false);
 
   const fetchUsers = async (isManual = false) => {
     if (isManual) setRefreshing(true);
@@ -48,7 +59,7 @@ export default function AdminUsers() {
     setActionNotice({ message, type });
     setTimeout(() => {
       setActionNotice(null);
-    }, 3000);
+    }, 3500);
   };
 
   const handleToggleBan = async (user) => {
@@ -68,10 +79,10 @@ export default function AdminUsers() {
     }
   };
 
-  const handleToggleRole = async (user) => {
-    const nextRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN';
+  const handleRoleChange = async (user, nextRole) => {
+    if (user.role === nextRole) return;
     const confirmChange = window.confirm(
-      `Bạn có chắc muốn chuyển vai trò của ${user.name} sang ${nextRole}?`
+      `Xác nhận chuyển vai trò của "${user.name}" từ ${user.role} sang ${nextRole}?`
     );
     if (!confirmChange) return;
 
@@ -80,7 +91,7 @@ export default function AdminUsers() {
       setUsers((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, role: nextRole } : u))
       );
-      showToast(`Đã đổi quyền ${user.name} thành ${nextRole}`, 'success');
+      showToast(`Đã cập nhật vai trò của ${user.name} thành ${nextRole}`, 'success');
     } catch (err) {
       showToast('Cập nhật quyền thất bại', 'error');
     }
@@ -102,6 +113,30 @@ export default function AdminUsers() {
       showToast(`Đã xóa vĩnh viễn ${user.name}`, 'warning');
     } catch (err) {
       showToast('Xóa người dùng thất bại', 'error');
+    }
+  };
+
+  const handleCreateCoach = async (e) => {
+    e.preventDefault();
+    setSubmittingCoach(true);
+    try {
+      const newCoach = await adminService.createCoach({
+        name: coachName,
+        email: coachEmail,
+        password: coachPassword,
+        preferredSport: coachSport,
+      });
+      setUsers((prev) => [newCoach, ...prev.filter((u) => u.id !== newCoach.id)]);
+      showToast(`Đã cấp tài khoản Huấn Luyện Viên thành công cho ${newCoach.name}!`, 'success');
+      setShowCoachModal(false);
+      setCoachName('');
+      setCoachEmail('');
+      setCoachPassword('');
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Không thể tạo tài khoản HLV. Vui lòng thử lại.';
+      showToast(msg, 'error');
+    } finally {
+      setSubmittingCoach(false);
     }
   };
 
@@ -141,20 +176,30 @@ export default function AdminUsers() {
       {/* Header */}
       <div className="admin-users-top">
         <div>
-          <h1 className="admin-page-title">Quản Lý Người Dùng</h1>
+          <h1 className="admin-page-title">Quản Lý Người Dùng & Phân Quyền</h1>
           <p className="admin-page-desc">
-            Danh sách người dùng và phân quyền vận động viên trong hệ thống (Đồng bộ SQL).
+            Cấp quyền Huấn luyện viên, Quản trị viên và giám sát vận động viên toàn hệ thống.
           </p>
         </div>
 
-        <button
-          className="btn-refresh-simple"
-          onClick={() => fetchUsers(true)}
-          disabled={loading || refreshing}
-        >
-          <RefreshCw size={14} className={refreshing ? 'spin-icon' : ''} />
-          <span>{refreshing ? 'Đang tải...' : 'Làm mới'}</span>
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            className="btn-add-coach-trigger"
+            onClick={() => setShowCoachModal(true)}
+          >
+            <UserPlus size={15} />
+            <span>Thêm HLV Mới</span>
+          </button>
+
+          <button
+            className="btn-refresh-simple"
+            onClick={() => fetchUsers(true)}
+            disabled={loading || refreshing}
+          >
+            <RefreshCw size={14} className={refreshing ? 'spin-icon' : ''} />
+            <span>{refreshing ? 'Đang tải...' : 'Làm mới'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -177,6 +222,7 @@ export default function AdminUsers() {
           >
             <option value="ALL">Tất cả vai trò</option>
             <option value="USER">Vận động viên (USER)</option>
+            <option value="COACH">Huấn luyện viên (COACH)</option>
             <option value="ADMIN">Quản trị viên (ADMIN)</option>
           </select>
 
@@ -218,15 +264,16 @@ export default function AdminUsers() {
                 <th style={{ width: '60px' }}>ID</th>
                 <th>HỌ TÊN</th>
                 <th>EMAIL</th>
-                <th>VAI TRÒ</th>
+                <th>VAI TRÒ HIỆN TẠI</th>
                 <th>MÔN THỂ THAO</th>
                 <th>TRẠNG THÁI</th>
-                <th style={{ textAlign: 'right' }}>THAO TÁC</th>
+                <th style={{ textAlign: 'right' }}>THAO TÁC PHÂN QUYỀN</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.map((u) => {
                 const isAdmin = u.role === 'ADMIN';
+                const isCoach = u.role === 'COACH';
                 return (
                   <tr key={u.id} className={!u.enabled ? 'row-disabled' : ''}>
                     <td className="col-id">#{u.id}</td>
@@ -236,6 +283,10 @@ export default function AdminUsers() {
                       {isAdmin ? (
                         <span className="pill-role-admin">
                           <ShieldCheck size={12} /> QUẢN TRỊ VIÊN
+                        </span>
+                      ) : isCoach ? (
+                        <span className="pill-role-coach">
+                          <Trophy size={12} /> HUẤN LUYỆN VIÊN
                         </span>
                       ) : (
                         <span className="pill-role-user">
@@ -251,15 +302,17 @@ export default function AdminUsers() {
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div className="action-btns-wrap">
-                        {/* Toggle Role Button */}
-                        <button
-                          type="button"
-                          className="btn-opt role"
-                          onClick={() => handleToggleRole(u)}
-                          title={`Chuyển quyền thành ${isAdmin ? 'USER' : 'ADMIN'}`}
+                        {/* Role Select Dropdown for direct elevation */}
+                        <select
+                          className="role-quick-select"
+                          value={u.role}
+                          onChange={(e) => handleRoleChange(u, e.target.value)}
+                          title="Chuyển đổi vai trò tài khoản"
                         >
-                          {isAdmin ? 'Hạ quyền' : 'Thăng Admin'}
-                        </button>
+                          <option value="USER">USER (VĐV)</option>
+                          <option value="COACH">COACH (HLV)</option>
+                          <option value="ADMIN">ADMIN</option>
+                        </select>
 
                         {/* Ban/Unban Button */}
                         <button
@@ -301,6 +354,93 @@ export default function AdminUsers() {
           </table>
         )}
       </div>
+
+      {/* Modal Thêm Huấn Luyện Viên Mới */}
+      {showCoachModal && (
+        <div className="admin-modal-backdrop" onClick={() => setShowCoachModal(false)}>
+          <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Trophy size={20} color="#f59e0b" />
+                <h3>Cấp Tài Khoản Huấn Luyện Viên (COACH)</h3>
+              </div>
+              <button className="btn-modal-close" onClick={() => setShowCoachModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="admin-modal-desc">
+              Tạo tài khoản chính thức cho Huấn luyện viên câu lạc bộ / đội tuyển. Coach sẽ có quyền tạo đội và gán thiết bị Smart Patch cho VĐV.
+            </p>
+
+            <form onSubmit={handleCreateCoach} className="admin-modal-form">
+              <div className="form-group-item">
+                <label>Họ và tên Huấn luyện viên</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: HLV Nguyễn Văn An"
+                  value={coachName}
+                  onChange={(e) => setCoachName(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group-item">
+                <label>Email đăng nhập</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="coach.an@secondskin.io"
+                  value={coachEmail}
+                  onChange={(e) => setCoachEmail(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group-item">
+                <label>Mật khẩu khởi tạo</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Tối thiểu 6 ký tự"
+                  value={coachPassword}
+                  onChange={(e) => setCoachPassword(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group-item">
+                <label>Bộ môn phụ trách</label>
+                <select
+                  value={coachSport}
+                  onChange={(e) => setCoachSport(e.target.value)}
+                >
+                  <option value="Basketball">Bóng rổ (Basketball)</option>
+                  <option value="Running">Điền kinh / Chạy bộ (Running)</option>
+                  <option value="Football">Bóng đá (Football)</option>
+                  <option value="Cycling">Đạp xe (Cycling)</option>
+                  <option value="Swimming">Bơi lội (Swimming)</option>
+                </select>
+              </div>
+
+              <div className="admin-modal-actions">
+                <button
+                  type="button"
+                  className="btn-modal-cancel"
+                  onClick={() => setShowCoachModal(false)}
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="btn-modal-submit"
+                  disabled={submittingCoach}
+                >
+                  {submittingCoach ? 'Đang tạo...' : 'Tạo Tài Khoản Coach'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

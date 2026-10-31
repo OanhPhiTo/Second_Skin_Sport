@@ -68,7 +68,8 @@ export default function Statistics() {
               distance: Number(dist.toFixed(1)),
             };
           });
-          setStatsList(formatted);
+          // Keep chart rendering bounded for long-running athlete histories.
+          setStatsList(formatted.slice(-100));
         } else {
           setStatsList([]);
         }

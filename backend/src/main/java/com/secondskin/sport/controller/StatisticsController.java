@@ -2,7 +2,7 @@ package com.secondskin.sport.controller;
 
 import com.secondskin.sport.dto.ActivityAnalysisDTO;
 import com.secondskin.sport.dto.OverviewStatsDTO;
-import com.secondskin.sport.entity.PerformanceStatistic;
+import com.secondskin.sport.dto.PerformanceStatisticDTO;
 import com.secondskin.sport.service.StatisticsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,15 +29,15 @@ public class StatisticsController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PerformanceStatistic>> getStatistics(
+    public ResponseEntity<List<PerformanceStatisticDTO>> getStatistics(
             @RequestParam(required = false) String sport,
             @RequestParam(required = false) String timeRange) {
-        return ResponseEntity.ok(statisticsService.getStatistics(sport, timeRange));
+        return ResponseEntity.ok(statisticsService.getStatisticsDTO(sport, timeRange));
     }
 
     @GetMapping("/{sessionId}")
-    public ResponseEntity<PerformanceStatistic> getStatisticBySessionId(@PathVariable Long sessionId) {
-        return statisticsService.getStatisticBySessionId(sessionId)
+    public ResponseEntity<PerformanceStatisticDTO> getStatisticBySessionId(@PathVariable Long sessionId) {
+        return statisticsService.getStatisticDTOBySessionId(sessionId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

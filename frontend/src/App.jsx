@@ -4,6 +4,9 @@ import DashboardLayout from './layouts/DashboardLayout';
 import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { BleProvider } from './context/BleContext';
+import { NotificationProvider } from './context/NotificationContext';
+import NotificationToast from './components/NotificationToast';
+import ErrorBoundary from './components/ErrorBoundary';
 import './styles/global.css';
 
 // Lazy load route pages for high Lighthouse Performance & code-splitting
@@ -17,6 +20,9 @@ const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
+const CoachLayout = lazy(() => import('./layouts/CoachLayout'));
+const CoachDashboard = lazy(() => import('./pages/CoachDashboard'));
+const CoachRoster = lazy(() => import('./pages/CoachRoster'));
 
 function PageFallback() {
   return (
@@ -45,99 +51,130 @@ function PageFallback() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
       <BleProvider>
-        <Routes>
-        <Route path="/login" element={
-          <Suspense fallback={<PageFallback />}>
-            <Login />
-          </Suspense>
-        } />
-        <Route path="/register" element={
-          <Suspense fallback={<PageFallback />}>
-            <Register />
-          </Suspense>
-        } />
-        
-        {/* Athlete Protected Routes */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<DashboardLayout />}>
-            <Route
-              index
-              element={
-                <Suspense fallback={<PageFallback />}>
-                  <Dashboard />
-                </Suspense>
-              }
-            />
-            <Route
-              path="statistics"
-              element={
-                <Suspense fallback={<PageFallback />}>
-                  <Statistics />
-                </Suspense>
-              }
-            />
-            <Route
-              path="activities"
-              element={
-                <Suspense fallback={<PageFallback />}>
-                  <Activities />
-                </Suspense>
-              }
-            />
-            <Route
-              path="sensors"
-              element={
-                <Suspense fallback={<PageFallback />}>
-                  <Sensors />
-                </Suspense>
-              }
-            />
-            <Route
-              path="reports"
-              element={
-                <Suspense fallback={<PageFallback />}>
-                  <Reports />
-                </Suspense>
-              }
-            />
-            <Route
-              path="settings"
-              element={
-                <Suspense fallback={<PageFallback />}>
-                  <Settings />
-                </Suspense>
-              }
-            />
-          </Route>
-        </Route>
+        <NotificationProvider>
+          <NotificationToast />
+          <Routes>
+            <Route path="/login" element={
+              <Suspense fallback={<PageFallback />}>
+                <Login />
+              </Suspense>
+            } />
+            <Route path="/register" element={
+              <Suspense fallback={<PageFallback />}>
+                <Register />
+              </Suspense>
+            } />
+            
+            {/* Athlete Protected Routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/" element={<DashboardLayout />}>
+                <Route
+                  index
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <Dashboard />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="statistics"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <Statistics />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="activities"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <Activities />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="sensors"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <Sensors />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="reports"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <Reports />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="settings"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <Settings />
+                    </Suspense>
+                  }
+                />
+              </Route>
+            </Route>
 
-        {/* Dedicated Admin Protected Routes (Simple, High Performance) */}
-        <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route
-              index
-              element={
-                <Suspense fallback={<PageFallback />}>
-                  <AdminDashboard />
-                </Suspense>
-              }
-            />
-            <Route
-              path="users"
-              element={
-                <Suspense fallback={<PageFallback />}>
-                  <AdminUsers />
-                </Suspense>
-              }
-            />
-          </Route>
-        </Route>
+            {/* Dedicated Admin Protected Routes (Simple, High Performance) */}
+            <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route
+                  index
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <AdminDashboard />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="users"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <AdminUsers />
+                    </Suspense>
+                  }
+                />
+              </Route>
+            </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+            {/* Dedicated Coach Protected Routes (Tactical & Squad Management) */}
+            <Route element={<ProtectedRoute requiredRole="COACH" />}>
+              <Route path="/coach" element={
+                <Suspense fallback={<PageFallback />}>
+                  <CoachLayout />
+                </Suspense>
+              }>
+                <Route
+                  index
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <CoachDashboard />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="roster"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <CoachRoster />
+                    </Suspense>
+                  }
+                />
+              </Route>
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </NotificationProvider>
       </BleProvider>
-    </BrowserRouter>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

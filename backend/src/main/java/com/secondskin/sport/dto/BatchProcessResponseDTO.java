@@ -38,6 +38,10 @@ public class BatchProcessResponseDTO {
     public int getProcessedCount() { return processedCount; }
     public void setProcessedCount(int processedCount) { this.processedCount = processedCount; }
 
+    /** Backward-compatible API name used by the E2E contract. */
+    public int getRecordsProcessed() { return processedCount; }
+    public void setRecordsProcessed(int recordsProcessed) { this.processedCount = recordsProcessed; }
+
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
 

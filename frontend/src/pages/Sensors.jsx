@@ -65,7 +65,7 @@ export default function Sensors() {
   // Wi-Fi Provisioning Form State
   const [wifiSsid, setWifiSsid] = useState('');
   const [wifiPassword, setWifiPassword] = useState('');
-  const [backendUrl, setBackendUrl] = useState('http://localhost:8080/api/sensor-data');
+  const [backendUrl, setBackendUrl] = useState('http://localhost:8080/api/v1/sensor/batches');
 
   const actionMessage = globalActionMessage || localActionMessage;
   const sensorStatus = bleStatus === 'connected' ? liveSensorStatus : backendSensorStatus;
@@ -146,8 +146,10 @@ export default function Sensors() {
         await deviceService.disconnect(deviceId);
         setLocalActionMessage(`Thiết bị #${deviceId} đã ngắt kết nối.`);
       } else {
-        await deviceService.connect(deviceId);
-        setLocalActionMessage(`Thiết bị #${deviceId} đã kết nối.`);
+        const result = await deviceService.connect(deviceId);
+        setLocalActionMessage(result?.connected
+          ? `Thiết bị #${deviceId} đã kết nối.`
+          : 'Không thể xác nhận kết nối thiết bị. Hãy kiểm tra BLE hoặc backend.');
       }
       loadData();
       setTimeout(() => setLocalActionMessage(''), 3500);
@@ -453,7 +455,7 @@ export default function Sensors() {
                 <label>URL Backend Nhận Dữ Liệu</label>
                 <input
                   type="text"
-                  placeholder="http://192.168.1.100:8080/api/sensor-data"
+                  placeholder="http://192.168.1.100:8080/api/v1/sensor/batches"
                   value={backendUrl}
                   onChange={(e) => setBackendUrl(e.target.value)}
                 />
@@ -508,7 +510,7 @@ export default function Sensors() {
         <div className="section-title-wrap">
           <h2 className="section-heading">Luồng Dữ Liệu Sinh Trắc Học Thời Gian Thực</h2>
           <span className="section-tag">
-            {bleStatus === 'connected' ? 'LIVE TỪ ESP32-C3 HARDWARE (RAM 0-DELAY)' : 'MÔ PHỎNG IMU 6-DOF'}
+          {bleStatus === 'connected' ? 'LIVE TỪ ESP32-C3 HARDWARE (RAM 0-DELAY)' : 'CHƯA KẾT NỐI THIẾT BỊ'}
           </span>
         </div>
         <SensorCard sensorStatus={sensorStatus} />

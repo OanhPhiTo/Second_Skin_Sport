@@ -262,6 +262,19 @@ class BleService {
     await this.commandChar.writeValue(dataBuffer);
     return true;
   }
+
+  async sendSensorConfig({ samplingRate, calibrate = false }) {
+    if (!this.isConnected || !this.commandChar) {
+      throw new Error('Chưa kết nối Bluetooth với thiết bị ESP32.');
+    }
+
+    const payload = JSON.stringify({
+      cmd: calibrate ? 'calibrate_imu' : 'sensor_config',
+      sampling_rate_hz: Number.parseInt(String(samplingRate).replace(/[^0-9]/g, ''), 10),
+    });
+    await this.commandChar.writeValue(new TextEncoder().encode(payload));
+    return true;
+  }
 }
 
 export const bleService = new BleService();

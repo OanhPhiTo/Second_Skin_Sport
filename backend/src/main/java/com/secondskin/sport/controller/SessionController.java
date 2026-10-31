@@ -1,9 +1,8 @@
 package com.secondskin.sport.controller;
 
 import com.secondskin.sport.dto.AutoSessionDTO;
+import com.secondskin.sport.dto.SensorDataDTO;
 import com.secondskin.sport.dto.SportSessionDTO;
-import com.secondskin.sport.entity.SensorData;
-import com.secondskin.sport.entity.SportSession;
 import com.secondskin.sport.service.SensorDataService;
 import com.secondskin.sport.service.SessionService;
 import org.springframework.http.ResponseEntity;
@@ -36,7 +35,7 @@ public class SessionController {
     }
 
     @PostMapping
-    public ResponseEntity<SportSessionDTO> createSession(@RequestBody SportSession session) {
+    public ResponseEntity<SportSessionDTO> createSession(@RequestBody SportSessionDTO session) {
         return ResponseEntity.ok(sessionService.createSession(session));
     }
 
@@ -46,7 +45,7 @@ public class SessionController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<SportSessionDTO> updateSession(@PathVariable Long id, @RequestBody SportSession session) {
+    public ResponseEntity<SportSessionDTO> updateSession(@PathVariable Long id, @RequestBody SportSessionDTO session) {
         return ResponseEntity.ok(sessionService.updateSession(id, session));
     }
 
@@ -57,7 +56,7 @@ public class SessionController {
     }
 
     @GetMapping("/{id}/sensor-data")
-    public ResponseEntity<List<SensorData>> getSessionSensorData(@PathVariable Long id) {
-        return ResponseEntity.ok(sensorDataService.getSensorDataBySessionId(id));
+    public ResponseEntity<List<SensorDataDTO>> getSessionSensorData(@PathVariable Long id) {
+        return ResponseEntity.ok(sessionService.getSessionSensorData(id));
     }
 }

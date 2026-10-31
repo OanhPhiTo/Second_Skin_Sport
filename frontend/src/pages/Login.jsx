@@ -6,9 +6,11 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  Loader2
+  Loader2,
+  CheckCircle2
 } from 'lucide-react';
 import { authService } from '../services/api';
+import ForgotPasswordModal from '../components/ForgotPasswordModal';
 import logoSloganImg from '../assets/logo-slogan.png';
 import './Auth.css';
 
@@ -18,18 +20,23 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
     setLoading(true);
     try {
       const data = await authService.login({ email, password });
       if (data?.role === 'ADMIN' || (typeof authService.isAdmin === 'function' && authService.isAdmin())) {
         navigate('/admin');
+      } else if (data?.role === 'COACH' || (typeof authService.isCoach === 'function' && authService.isCoach())) {
+        navigate('/coach');
       } else {
         navigate('/');
       }
@@ -44,6 +51,14 @@ export default function Login() {
     setEmail(quickEmail);
     setPassword(quickPassword);
     setSelectedRole(role);
+    setError('');
+    setSuccessMessage('');
+  };
+
+  const handleResetPasswordSuccess = (updatedEmail) => {
+    setEmail(updatedEmail);
+    setPassword('');
+    setSuccessMessage('Đổi mật khẩu thành công! Vui lòng nhập mật khẩu mới để đăng nhập.');
     setError('');
   };
 
@@ -79,6 +94,13 @@ export default function Login() {
                 <span>{error}</span>
               </div>
             )}
+
+            {successMessage && (
+              <div className="auth-info-banner" style={{ borderColor: 'rgba(0, 255, 135, 0.4)', color: '#6ee7b7', backgroundColor: 'rgba(0, 255, 135, 0.1)' }} role="status">
+                <CheckCircle2 size={16} color="#00ff87" />
+                <span>{successMessage}</span>
+              </div>
+            )}
             
             {/* Quick Demo Credentials (Clean & No Icons) */}
             <div className="auth-demo-switcher">
@@ -89,6 +111,14 @@ export default function Login() {
                   onClick={() => handleQuickLogin('admin@secondskin.com', 'admin123', 'ADMIN')}
                 >
                   <span className="auth-demo-chip-title">Vai trò: QUẢN TRỊ VIÊN</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`auth-demo-chip coach ${selectedRole === 'COACH' ? 'active' : ''}`}
+                  onClick={() => handleQuickLogin('mike.coach@secondskin.io', 'password', 'COACH')}
+                >
+                  <span className="auth-demo-chip-title">Vai trò: HUẤN LUYỆN VIÊN</span>
                 </button>
 
                 <button
@@ -153,16 +183,18 @@ export default function Login() {
                   />
                   <span>Ghi nhớ</span>
                 </label>
-                <a 
-                  href="#forgot" 
+                <button 
+                  type="button"
                   className="auth-forgot-link"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setError('Vui lòng liên hệ admin@secondskin.com để cấp lại mật khẩu.');
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit' }}
+                  onClick={() => {
+                    setError('');
+                    setSuccessMessage('');
+                    setIsForgotModalOpen(true);
                   }}
                 >
                   Quên mật khẩu?
-                </a>
+                </button>
               </div>
 
               {/* Submit Action */}
@@ -194,6 +226,13 @@ export default function Login() {
         </section>
 
       </div>
+
+      {/* Forgot Password Modal (OAuth2 Email OTP Verification & Reset) */}
+      <ForgotPasswordModal
+        isOpen={isForgotModalOpen}
+        onClose={() => setIsForgotModalOpen(false)}
+        onSuccess={handleResetPasswordSuccess}
+      />
     </div>
   );
 }

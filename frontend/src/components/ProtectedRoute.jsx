@@ -11,12 +11,17 @@ const ProtectedRoute = ({ redirectPath = '/login', requiredRole }) => {
 
   // If a specific role is required and user does not match
   if (requiredRole && role !== requiredRole) {
-    return <Navigate to={role === 'ADMIN' ? '/admin' : '/'} replace />;
+    if (role === 'ADMIN') return <Navigate to="/admin" replace />;
+    if (role === 'COACH') return <Navigate to="/coach" replace />;
+    return <Navigate to="/" replace />;
   }
 
-  // If athlete route (no specific role required), but user is ADMIN, redirect to admin console
+  // If athlete route (no specific role required), but user is ADMIN or COACH, redirect appropriately
   if (!requiredRole && role === 'ADMIN') {
     return <Navigate to="/admin" replace />;
+  }
+  if (!requiredRole && role === 'COACH') {
+    return <Navigate to="/coach" replace />;
   }
 
   return <Outlet />;

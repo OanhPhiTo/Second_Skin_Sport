@@ -1,22 +1,32 @@
 package com.secondskin.sport.service;
 
 import com.secondskin.sport.dto.AiInsightDTO;
+import com.secondskin.sport.dto.SportSessionDTO;
 import com.secondskin.sport.entity.SportSession;
+import com.secondskin.sport.repository.SensorDataRepository;
+import com.secondskin.sport.repository.SportSessionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class AiCoachServiceTest {
 
     private AiCoachService aiCoachService;
+    private SportSessionRepository sessionRepository;
+    private SensorDataRepository sensorDataRepository;
 
     @BeforeEach
     void setUp() {
         BiomechanicalFeatureExtractor extractor = new BiomechanicalFeatureExtractor();
-        aiCoachService = new AiCoachService(extractor);
+        sessionRepository = Mockito.mock(SportSessionRepository.class);
+        sensorDataRepository = Mockito.mock(SensorDataRepository.class);
+        aiCoachService = new AiCoachService(extractor, sessionRepository, sensorDataRepository);
     }
 
     @Test
@@ -85,5 +95,52 @@ public class AiCoachServiceTest {
         assertTrue(result.getInjuryRiskExplanation().contains("Achilles") ||
                    result.getInjuryRiskExplanation().contains("cẳng chân") ||
                    result.getInjuryRiskExplanation().contains("quá tải"));
+    }
+
+    @Test
+    void testAnalyzeSession_WithSportSessionDTO() {
+        SportSessionDTO dto = new SportSessionDTO();
+        dto.setId(1L);
+        dto.setDeviceId("DEV-DTO-01");
+        dto.setSport("Running");
+        dto.setStartTime(LocalDateTime.now().minusMinutes(30));
+        dto.setEndTime(LocalDateTime.now());
+        dto.setDurationMinutes(30);
+        dto.setTotalJumps(0);
+        dto.setDirectionChanges(10);
+        dto.setAverageAcceleration(2.5);
+        dto.setAverageSpeed(12.0);
+        dto.setMovementIntensity(70);
+        dto.setPerformanceScore(80);
+        dto.setStatus("Completed");
+
+        AiInsightDTO result = aiCoachService.analyzeSession(dto);
+        assertNotNull(result);
+        assertNotNull(result.getCurrentPerformance());
+        assertNotNull(result.getBiomechanicalMetrics());
+    }
+
+    @Test
+    void testAnalyzeSessionById_FoundInRepository() {
+        SportSession session = new SportSession(
+                10L, "DEV-01", "Basketball",
+                LocalDateTime.now().minusMinutes(40), LocalDateTime.now(),
+                40, 35, 90, 3.1, 16.0, 85, 88, "Completed"
+        );
+
+        Mockito.when(sessionRepository.findById(10L)).thenReturn(Optional.of(session));
+        Mockito.when(sensorDataRepository.findBySessionIdOrderByTimestampAsc(10L)).thenReturn(Collections.emptyList());
+
+        AiInsightDTO result = aiCoachService.analyzeSessionById(10L);
+        assertNotNull(result);
+        assertTrue(result.getPerformanceScore() > 0);
+    }
+
+    @Test
+    void testAnalyzeSessionById_NotFound_ThrowsResourceNotFoundException() {
+        Mockito.when(sessionRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(com.secondskin.sport.exception.ResourceNotFoundException.class,
+                () -> aiCoachService.analyzeSessionById(999L));
     }
 }

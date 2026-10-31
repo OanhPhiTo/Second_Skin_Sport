@@ -50,6 +50,10 @@ public class OverviewStatsDTO {
     public String getTotalActivityTime() { return totalActivityTime; }
     public void setTotalActivityTime(String totalActivityTime) { this.totalActivityTime = totalActivityTime; }
 
+    // Alias getter and setter for backward compatibility
+    public String getTotalTime() { return totalActivityTime; }
+    public void setTotalTime(String totalTime) { this.totalActivityTime = totalTime; }
+
     public String getTotalActivityTimeChange() { return totalActivityTimeChange; }
     public void setTotalActivityTimeChange(String totalActivityTimeChange) { this.totalActivityTimeChange = totalActivityTimeChange; }
 

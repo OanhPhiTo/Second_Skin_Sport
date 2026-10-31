@@ -9,23 +9,52 @@ import {
   Shield,
   Smartphone,
 } from 'lucide-react';
+import { authService } from '../services/api';
+import bleService from '../services/bleService';
+import { useBle } from '../context/BleContext';
 import './Settings.css';
 
 export default function Settings() {
-  const [name, setName] = useState('Alex Johnson');
-  const [email, setEmail] = useState('alex.athlete@secondskin.io');
-  const [preferredSport, setPreferredSport] = useState('Basketball');
-  const [units, setUnits] = useState('Hệ mét (m/s², km/h, cm)');
-  const [samplingRate, setSamplingRate] = useState('100 Hz');
-  const [autoSync, setAutoSync] = useState(true);
-  const [pushAlerts, setPushAlerts] = useState(true);
-  const [fatigueWarning, setFatigueWarning] = useState(true);
+  const { bleStatus } = useBle();
+  const currentUser = authService.getCurrentUser();
+  const readSetting = (key, fallback) => {
+    try { return JSON.parse(localStorage.getItem(`secondskin_setting_${key}`)) ?? fallback; } catch { return fallback; }
+  };
+  const [name, setName] = useState(() => currentUser.name || 'Vận động viên');
+  const [email, setEmail] = useState(() => currentUser.email || '');
+  const [preferredSport, setPreferredSport] = useState(() => readSetting('preferredSport', 'Basketball'));
+  const [units, setUnits] = useState(() => readSetting('units', 'Hệ mét (m/s², km/h, cm)'));
+  const [samplingRate, setSamplingRate] = useState(() => readSetting('samplingRate', '100 Hz'));
+  const [autoSync, setAutoSync] = useState(() => readSetting('autoSync', true));
+  const [pushAlerts, setPushAlerts] = useState(() => readSetting('pushAlerts', true));
+  const [fatigueWarning, setFatigueWarning] = useState(() => readSetting('fatigueWarning', true));
   const [savedMessage, setSavedMessage] = useState('');
+  const [calibrationStatus, setCalibrationStatus] = useState('Chưa kết nối thiết bị');
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    setSavedMessage('Cấu hình và hiệu chuẩn thiết bị đã được lưu thành công.');
+    const settings = { name, email, preferredSport, units, samplingRate, autoSync, pushAlerts, fatigueWarning };
+    Object.entries(settings).forEach(([key, value]) => localStorage.setItem(`secondskin_setting_${key}`, JSON.stringify(value)));
+    try {
+      await authService.updateProfile({ name, preferredSport });
+      setSavedMessage('Đã lưu hồ sơ vào tài khoản và cập nhật cấu hình ứng dụng.');
+    } catch {
+      setSavedMessage('Backend chưa sẵn sàng; hồ sơ đã được lưu tạm trên thiết bị này.');
+    }
     setTimeout(() => setSavedMessage(''), 3500);
+  };
+
+  const handleCalibration = async () => {
+    if (bleStatus !== 'connected') {
+      setCalibrationStatus('Hãy kết nối ESP32 qua Bluetooth trước');
+      return;
+    }
+    try {
+      await bleService.sendSensorConfig({ samplingRate, calibrate: true });
+      setCalibrationStatus(`Đã gửi lệnh hiệu chuẩn (${samplingRate})`);
+    } catch (error) {
+      setCalibrationStatus(error.message || 'Không thể hiệu chuẩn thiết bị');
+    }
   };
 
   return (
@@ -141,7 +170,12 @@ export default function Settings() {
                 <span className="toggle-title">Hiệu chuẩn phần cứng IMU</span>
                 <p className="toggle-desc">Tự động khử trôi con quay hồi chuyển khi bắt đầu buổi tập</p>
               </div>
-              <span className="badge badge-success">ĐÃ HIỆU CHUẨN</span>
+              <div className="calibration-control">
+                <span className={`calibration-status ${bleStatus === 'connected' ? 'ready' : ''}`}>{calibrationStatus}</span>
+                <button type="button" className="btn btn-outline-cyan btn-sm" onClick={handleCalibration}>
+                  Hiệu chuẩn ngay
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -10,8 +10,10 @@ import com.secondskin.sport.entity.SportSession;
 import com.secondskin.sport.repository.PerformanceStatisticRepository;
 import com.secondskin.sport.repository.SensorDataRepository;
 import com.secondskin.sport.repository.SportSessionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -25,15 +27,20 @@ public class AutoSessionService {
     private final SensorDataRepository sensorDataRepository;
     private final PerformanceStatisticRepository statisticRepository;
     private final AiCoachService aiCoachService;
+    private final NotificationService notificationService;
 
-    public AutoSessionService(SportSessionRepository sessionRepository,
-                              SensorDataRepository sensorDataRepository,
-                              PerformanceStatisticRepository statisticRepository,
-                              AiCoachService aiCoachService) {
+    public AutoSessionService(
+            SportSessionRepository sessionRepository,
+            SensorDataRepository sensorDataRepository,
+            PerformanceStatisticRepository statisticRepository,
+            AiCoachService aiCoachService,
+            ObjectProvider<NotificationService> notificationServiceProvider) {
+
         this.sessionRepository = sessionRepository;
         this.sensorDataRepository = sensorDataRepository;
         this.statisticRepository = statisticRepository;
         this.aiCoachService = aiCoachService;
+        this.notificationService = notificationServiceProvider.getIfAvailable();
     }
 
     @Transactional
@@ -65,8 +72,15 @@ public class AutoSessionService {
         int score = dto.getPerformanceScore() != null ? dto.getPerformanceScore() :
                 Math.min(100, Math.max(50, (int) Math.round(intensity * 0.5 + Math.min(scoreFromMetrics(sport, jumps, directionChanges, avgAccel), 50))));
 
-        Long userId = dto.getUserId() != null ? dto.getUserId() :
-                com.secondskin.sport.security.SecurityUtils.getCurrentUser().map(com.secondskin.sport.entity.User::getId).orElse(1L);
+        com.secondskin.sport.entity.User currentUser = com.secondskin.sport.security.SecurityUtils.getCurrentUser().orElse(null);
+        Long userId;
+        if (currentUser != null && currentUser.getRole() == com.secondskin.sport.entity.Role.ADMIN && dto.getUserId() != null) {
+            userId = dto.getUserId();
+        } else if (currentUser != null) {
+            userId = currentUser.getId();
+        } else {
+            userId = dto.getUserId() != null ? dto.getUserId() : 1L;
+        }
         String deviceId = dto.getDeviceId() != null ? dto.getDeviceId() : "ESP32-SUPERMINI-01";
         String status = dto.getStatus() != null ? dto.getStatus() : "Completed";
 
@@ -125,6 +139,11 @@ public class AutoSessionService {
 
         // Run AI Coach Biomechanical Analysis with raw points
         AiInsightDTO aiInsight = aiCoachService.analyzeSession(savedSession, entitiesToSave);
+
+        // Phát thông báo phiên tập kết thúc
+        if (notificationService != null && "Completed".equalsIgnoreCase(savedSession.getStatus())) {
+            notificationService.sendSessionCompletedNotification(savedSession);
+        }
 
         // Map to SportSessionDTO
         return mapToDTO(savedSession, aiInsight);

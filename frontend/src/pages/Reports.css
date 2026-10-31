@@ -32,6 +32,16 @@
   padding-left: 38px;
 }
 
+.current-user-field {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  cursor: default;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .report-btn-wrap {
   display: flex;
 }
@@ -69,6 +79,10 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   color: #fff;
+}
+
+.sheet-print-footer {
+  display: none;
 }
 
 .sheet-doc-type {
@@ -168,5 +182,103 @@
   }
   .report-sections-container {
     grid-template-columns: 1fr;
+  }
+}
+
+/* PDF export: print only the generated seven-day report sheet. */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .report-sheet-card,
+  .report-sheet-card * {
+    visibility: visible !important;
+  }
+
+  .report-sheet-card {
+    position: static;
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    background: #fff;
+    color: #111827;
+  }
+
+  .reports-page {
+    display: block;
+  }
+
+  .report-config-card {
+    display: none !important;
+  }
+
+  .report-sections-container {
+    display: block;
+  }
+
+  .report-subblock {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 14px;
+  }
+
+  .sheet-header,
+  .sheet-meta-bar {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-sheet-card .export-action-btns {
+    display: none !important;
+  }
+
+  .sheet-print-footer {
+    display: block;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    z-index: 10;
+  }
+
+  .sheet-print-footer img {
+    display: block;
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+  }
+
+  .sheet-header,
+  .sheet-meta-bar,
+  .report-subblock {
+    border-color: #d1d5db;
+    background: #fff;
+  }
+
+  .sheet-logo-title,
+  .subblock-header h4,
+  .report-row strong,
+  .sheet-meta-bar strong {
+    color: #111827;
+  }
+
+  .sheet-doc-type,
+  .highlight-cyan,
+  .highlight-neon {
+    color: #0369a1 !important;
+  }
+
+  .report-row,
+  .recommendation-text,
+  .sheet-meta-bar {
+    color: #374151;
   }
 }
