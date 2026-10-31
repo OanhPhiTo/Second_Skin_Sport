@@ -390,6 +390,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, onSuccess }) {
                 <input
                   id="new-password"
                   type={showPassword ? 'text' : 'password'}
+                    className="auth-password-input"
                   required
                   placeholder="Tối thiểu 6 ký tự"
                   value={newPassword}
@@ -415,6 +416,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, onSuccess }) {
                 <input
                   id="confirm-password"
                   type={showConfirmPassword ? 'text' : 'password'}
+                    className="auth-password-input"
                   required
                   placeholder="Nhập lại mật khẩu mới"
                   value={confirmPassword}

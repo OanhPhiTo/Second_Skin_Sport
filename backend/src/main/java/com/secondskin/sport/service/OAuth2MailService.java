@@ -22,7 +22,6 @@ import java.util.Map;
  */
 @Slf4j
 @Service
-@Primary
 public class OAuth2MailService implements EmailService {
 
     @Value("${mail.oauth2.enabled:false}")

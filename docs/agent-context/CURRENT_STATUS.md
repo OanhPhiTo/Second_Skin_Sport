@@ -39,6 +39,7 @@ Tài liệu này ghi nhận hiện trạng triển khai thực tế của hệ t
 - PDF report print layout now flows across multiple A4 pages without clipping and includes the project logo in the report header.
 - Report filters now provide 3-day, 7-day and 1-month ranges; the logged-in athlete profile is read-only without a dropdown control.
 - Settings now persists app preferences, updates the authenticated user's name/preferred sport through `PUT /api/auth/profile`, and sends real IMU calibration/sampling commands over BLE when an ESP32 connection exists; it no longer claims calibration when disconnected.
+- Email OTP delivery now uses Gmail SMTP with `spring-boot-starter-mail`, `MAIL_USERNAME`, and `MAIL_APP_PASSWORD`; OAuth2 mail remains only as a non-primary compatibility service.
 
 ## 2B. Milestone 5 — Đã hoàn tất
 

@@ -742,6 +742,71 @@
   margin-bottom: 7px;
 }
 
+/* Modal forms use the same field language as the login card.  Keep these
+   selectors scoped so the recovery dialog does not inherit browser defaults. */
+.auth-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-modal-form .form-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.auth-modal-form .auth-input-wrapper {
+  width: 100%;
+}
+
+.auth-modal-form input {
+  width: 100%;
+  min-height: 48px;
+  padding: 13px 14px;
+  border-radius: 11px;
+  background: #0c101a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  font-size: 0.92rem;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-modal-form input:focus {
+  outline: none;
+  border-color: #00f2fe;
+  background: #0e1422;
+  box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.14);
+}
+
+.auth-modal-form input::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+.auth-modal-form .auth-input-icon ~ input {
+  padding-left: 44px;
+}
+
+.auth-modal-form .auth-password-input {
+  padding-right: 46px;
+}
+
+.auth-modal-form input:-webkit-autofill,
+.auth-modal-form input:-webkit-autofill:hover,
+.auth-modal-form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f8fafc !important;
+  -webkit-box-shadow: 0 0 0 1000px #0c101a inset !important;
+  box-shadow: 0 0 0 1000px #0c101a inset !important;
+  caret-color: #00f2fe;
+}
+
+.auth-modal-form .auth-input-wrapper:focus-within .auth-input-icon {
+  color: #00f2fe;
+}
+
 /* Info banner */
 .auth-info-banner {
   display: flex;
