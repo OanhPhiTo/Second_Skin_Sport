@@ -28,7 +28,6 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
-import java.net.URI;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
@@ -68,20 +67,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             @Override
             public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
                                            WebSocketHandler wsHandler, Map<String, Object> attributes) {
-                // 1. Extract query parameter ?token=...
-                URI uri = request.getURI();
-                String query = uri.getQuery();
-                if (query != null && !query.isEmpty()) {
-                    for (String param : query.split("&")) {
-                        String[] pair = param.split("=", 2);
-                        if (pair.length == 2 && "token".equalsIgnoreCase(pair[0])) {
-                            attributes.put("handshake_token", pair[1]);
-                            break;
-                        }
-                    }
-                }
-
-                // 2. Extract Authorization header from handshake if present
+                // Browser WebSocket clients cannot set an Authorization header
+                // during the handshake. Authentication is therefore performed
+                // on the STOMP CONNECT frame, avoiding tokens in the URL.
                 List<String> authHeaders = request.getHeaders().get("Authorization");
                 if (authHeaders != null && !authHeaders.isEmpty()) {
                     String authHeader = authHeaders.get(0);

@@ -7,9 +7,16 @@ const rawBaseUrl =
 
 const API_BASE_URL = rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl;
 
+// Access tokens live only for the lifetime of this JavaScript context.
+// Refresh tokens are kept by the backend in an HttpOnly cookie and are never
+// readable by application JavaScript or persisted in Web Storage.
+let accessToken = null;
+let currentUser = null;
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 5000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -17,7 +24,7 @@ const apiClient = axios.create({
 
 // Add JWT Interceptor
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = accessToken;
   if (token) {
     const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
     if (config.headers && typeof config.headers.set === 'function') {
@@ -37,7 +44,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error?.config;
-    const currentToken = localStorage.getItem('token');
+    const currentToken = accessToken;
 
     // Do not trigger refresh loop for mock offline tokens or login requests
     if (currentToken && currentToken.startsWith('mock-token-')) {
@@ -52,21 +59,14 @@ apiClient.interceptors.response.use(
     ) {
       originalRequest._retry = true;
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken || refreshToken.startsWith('mock-refresh-')) {
-          throw new Error('No valid refresh token available');
-        }
-        
         // Use a new instance to avoid interceptor loop
         const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, {
-          headers: { Authorization: `Bearer ${refreshToken}` }
+          withCredentials: true,
         });
         
         const newAccessToken = refreshResponse.data.token;
-        localStorage.setItem('token', newAccessToken);
-        if (refreshResponse.data.refreshToken) {
-           localStorage.setItem('refreshToken', refreshResponse.data.refreshToken);
-        }
+        accessToken = newAccessToken;
+        updateCurrentUser(refreshResponse.data);
         
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(originalRequest);
@@ -100,28 +100,41 @@ const parseJwt = (token) => {
   }
 };
 
+const updateCurrentUser = (data = {}) => {
+  const payload = parseJwt(data.token || accessToken || '');
+  const role = data.role || payload?.role || currentUser?.role || 'USER';
+  currentUser = {
+    name: data.name || payload?.name || currentUser?.name || '',
+    email: data.email || payload?.sub || currentUser?.email || '',
+    role: String(role).toUpperCase(),
+  };
+  return currentUser;
+};
+
+const clearLegacyAuthStorage = () => {
+  [
+    'token',
+    'refreshToken',
+    'role',
+    'userName',
+    'userEmail',
+    'secondskin_admin_users',
+    'secondskin_coach_squad',
+    'sss_notifications',
+  ].forEach((key) => localStorage.removeItem(key));
+  Object.keys(localStorage)
+    .filter((key) => key.startsWith('secondskin_sessions_') || key.startsWith('_mock_reset_otp_'))
+    .forEach((key) => localStorage.removeItem(key));
+};
+
 export const authService = {
   login: async (credentials) => {
     try {
       const response = await apiClient.post('/auth/login', credentials);
       if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('refreshToken', response.data.refreshToken);
-
-        const payload = parseJwt(response.data.token);
-        const role =
-          response.data.role ||
-          payload?.role ||
-          (credentials.email?.toLowerCase().includes('admin') ? 'ADMIN' : 'USER');
-        const name =
-          response.data.name ||
-          payload?.name ||
-          (role === 'ADMIN' ? 'System Administrator' : 'Alex Johnson');
-        const email = response.data.email || credentials.email;
-
-        localStorage.setItem('role', role);
-        localStorage.setItem('userName', name);
-        localStorage.setItem('userEmail', email);
+        accessToken = response.data.token;
+        updateCurrentUser({ ...response.data, email: response.data.email || credentials.email });
+        clearLegacyAuthStorage();
       }
       return response.data;
     } catch (err) {
@@ -138,15 +151,11 @@ export const authService = {
           credentials.password === 'Coach@123456')
       ) {
         const mockToken = `mock-token-${matched.role.toLowerCase()}-${matched.id}`;
-        const mockRefreshToken = `mock-refresh-${matched.id}`;
-        localStorage.setItem('token', mockToken);
-        localStorage.setItem('refreshToken', mockRefreshToken);
-        localStorage.setItem('role', matched.role);
-        localStorage.setItem('userName', matched.name);
-        localStorage.setItem('userEmail', matched.email);
+        accessToken = mockToken;
+        currentUser = { name: matched.name, email: matched.email, role: matched.role };
+        clearLegacyAuthStorage();
         return {
           token: mockToken,
-          refreshToken: mockRefreshToken,
           role: matched.role,
           name: matched.name,
           email: matched.email,
@@ -158,50 +167,59 @@ export const authService = {
   register: async (userData) => {
     const response = await apiClient.post('/auth/register', userData);
     if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('refreshToken', response.data.refreshToken);
-      const role = response.data.role || 'USER';
-      const name = response.data.name || userData.name;
-      const email = response.data.email || userData.email;
-      localStorage.setItem('role', role);
-      localStorage.setItem('userName', name);
-      localStorage.setItem('userEmail', email);
+      accessToken = response.data.token;
+      updateCurrentUser({ ...response.data, name: response.data.name || userData.name, email: response.data.email || userData.email });
+      clearLegacyAuthStorage();
     }
     return response.data;
   },
   logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('role');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userEmail');
+    void axios.post(`${API_BASE_URL}/auth/logout`, {}, { withCredentials: true }).catch(() => {});
+    accessToken = null;
+    currentUser = null;
+    clearLegacyAuthStorage();
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('secondskin_sessions_') || key.startsWith('_mock_reset_otp_'))
+      .forEach((key) => localStorage.removeItem(key));
+    Object.keys(sessionStorage)
+      .filter((key) => key.startsWith('secondskin_sessions_') || key.startsWith('_mock_reset_otp_') || key === 'secondskin_admin_users' || key === 'secondskin_coach_squad' || key === 'sss_notifications')
+      .forEach((key) => sessionStorage.removeItem(key));
   },
   isAuthenticated: () => {
-    return !!localStorage.getItem('token');
+    return !!accessToken;
   },
   getUserRole: () => {
-    return localStorage.getItem('role') || 'USER';
+    return currentUser?.role || 'USER';
   },
   isAdmin: () => {
-    return (localStorage.getItem('role') || '').toUpperCase() === 'ADMIN';
+    return (currentUser?.role || '').toUpperCase() === 'ADMIN';
   },
   isCoach: () => {
-    return (localStorage.getItem('role') || '').toUpperCase() === 'COACH';
+    return (currentUser?.role || '').toUpperCase() === 'COACH';
   },
   getCurrentUser: () => {
-    const role = localStorage.getItem('role') || 'USER';
-    return {
-      name:
-        localStorage.getItem('userName') ||
-        (role === 'ADMIN' ? 'System Administrator' : 'Alex Johnson'),
-      email: localStorage.getItem('userEmail') || '',
-      role: role,
-    };
+    return currentUser || { name: '', email: '', role: 'USER' };
+  },
+  getAccessToken: () => accessToken,
+  restoreSession: async () => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true });
+      if (!response.data?.token) return false;
+      accessToken = response.data.token;
+      updateCurrentUser(response.data);
+      clearLegacyAuthStorage();
+      return true;
+    } catch {
+      accessToken = null;
+      currentUser = null;
+      clearLegacyAuthStorage();
+      return false;
+    }
   },
   updateProfile: async ({ name, preferredSport }) => {
     const response = await apiClient.put('/auth/profile', { name, preferredSport });
     const user = response.data;
-    if (user?.name) localStorage.setItem('userName', user.name);
+    if (user?.name && currentUser) currentUser.name = user.name;
     if (user?.preferredSport) {
       localStorage.setItem('secondskin_setting_preferredSport', JSON.stringify(user.preferredSport));
     }
@@ -218,7 +236,7 @@ export const authService = {
       );
       if (matched) {
         const mockOtp = '123456';
-        localStorage.setItem('_mock_reset_otp_' + email.toLowerCase(), mockOtp);
+        sessionStorage.setItem('_mock_reset_otp_' + email.toLowerCase(), mockOtp);
         return {
           success: true,
           message: 'Mã OTP đã được gửi đến email ' + email + '. (Mã thử nghiệm offline: 123456)',
@@ -233,7 +251,7 @@ export const authService = {
       const response = await apiClient.post('/auth/verify-otp', { email, otp });
       return response.data;
     } catch (err) {
-      const storedOtp = localStorage.getItem('_mock_reset_otp_' + (email || '').toLowerCase());
+      const storedOtp = sessionStorage.getItem('_mock_reset_otp_' + (email || '').toLowerCase());
       if (storedOtp && (storedOtp === otp || otp === '123456')) {
         return { success: true, message: 'Xác thực OTP thành công.' };
       }
@@ -252,7 +270,7 @@ export const authService = {
       if (userIndex !== -1) {
         storedUsers[userIndex].password = newPassword;
         persistAdminUsers(storedUsers);
-        localStorage.removeItem('_mock_reset_otp_' + (email || '').toLowerCase());
+        sessionStorage.removeItem('_mock_reset_otp_' + (email || '').toLowerCase());
         return { success: true, message: 'Đặt lại mật khẩu thành công!' };
       }
       throw err;
@@ -398,7 +416,7 @@ const getStoredSessions = () => {
   const key = getUserSessionsStorageKey();
 
   try {
-    const raw = localStorage.getItem(key);
+      const raw = sessionStorage.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
@@ -409,7 +427,7 @@ const getStoredSessions = () => {
   if (email.includes('alex.athlete') || email === 'default' || !email) {
     const initial = generateInitialSessions();
     try {
-      localStorage.setItem(key, JSON.stringify(initial));
+      sessionStorage.setItem(key, JSON.stringify(initial));
     } catch (e) {}
     return initial;
   }
@@ -423,7 +441,7 @@ const saveStoredSession = (newSession) => {
   const current = getStoredSessions();
   const updated = [newSession, ...current.filter((s) => s.id !== newSession.id)];
   try {
-    localStorage.setItem(key, JSON.stringify(updated));
+    sessionStorage.setItem(key, JSON.stringify(updated));
   } catch (e) {}
   return updated;
 };
@@ -890,7 +908,7 @@ const ADMIN_USERS_STORAGE_KEY = 'secondskin_admin_users';
 
 export const getStoredAdminUsers = () => {
   try {
-    const raw = localStorage.getItem(ADMIN_USERS_STORAGE_KEY);
+    const raw = sessionStorage.getItem(ADMIN_USERS_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -901,7 +919,7 @@ export const getStoredAdminUsers = () => {
 
 export const saveStoredAdminUsers = (users) => {
   try {
-    localStorage.setItem(ADMIN_USERS_STORAGE_KEY, JSON.stringify(users));
+    sessionStorage.setItem(ADMIN_USERS_STORAGE_KEY, JSON.stringify(users));
   } catch (e) {}
 };
 
@@ -1122,7 +1140,7 @@ const COACH_SQUAD_STORAGE_KEY = 'secondskin_coach_squad';
 
 export const getStoredCoachSquad = () => {
   try {
-    const raw = localStorage.getItem(COACH_SQUAD_STORAGE_KEY);
+    const raw = sessionStorage.getItem(COACH_SQUAD_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -1133,7 +1151,7 @@ export const getStoredCoachSquad = () => {
 
 export const saveStoredCoachSquad = (squad) => {
   try {
-    localStorage.setItem(COACH_SQUAD_STORAGE_KEY, JSON.stringify(squad));
+    sessionStorage.setItem(COACH_SQUAD_STORAGE_KEY, JSON.stringify(squad));
   } catch (e) {}
 };
 

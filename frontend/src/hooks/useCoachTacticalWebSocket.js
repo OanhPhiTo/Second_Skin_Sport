@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { authService } from '../services/api';
 
 /**
  * Hook kết nối WebSocket cho Bàn điều khiển chiến thuật của Huấn luyện viên (Coach).
@@ -33,12 +34,16 @@ export function useCoachTacticalWebSocket(teamId = 1, options = {}) {
         }
         setConnected(true);
         setError(null);
+        const token = authService.getAccessToken();
+        if (token) ws.send(`CONNECT\naccept-version:1.2\nAuthorization: Bearer ${token}\n\n\0`);
       };
 
       ws.onmessage = (event) => {
         if (!isSubscribed) return;
         try {
-          const raw = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+          const frame = typeof event.data === 'string' ? event.data : '';
+          const body = frame.includes('\n\n') ? frame.slice(frame.indexOf('\n\n') + 2).replace(/\0$/, '') : frame;
+          const raw = typeof event.data === 'string' ? JSON.parse(body) : event.data;
 
           // Check if payload is squad tactical summary
           if (raw.activeOnField !== undefined || raw.benchSubstitutes !== undefined || raw.teamId !== undefined) {

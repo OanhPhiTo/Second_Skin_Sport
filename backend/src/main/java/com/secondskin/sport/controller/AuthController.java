@@ -23,6 +23,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.CookieValue;
+
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.ResponseCookie;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Map;
 
@@ -33,18 +38,33 @@ public class AuthController {
 
     private final AuthService service;
 
+    @Value("${auth.refresh-cookie-name:sss_refresh}")
+    private String refreshCookieName;
+
+    @Value("${auth.refresh-cookie-secure:false}")
+    private boolean refreshCookieSecure;
+
+    @Value("${application.security.jwt.refresh-token.expiration:604800000}")
+    private long refreshTokenExpirationMs;
+
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(
-            @RequestBody RegisterRequest request
+            @RequestBody RegisterRequest request,
+            HttpServletResponse response
     ) {
-        return ResponseEntity.ok(service.register(request));
+        AuthResponse authResponse = service.register(request);
+        addRefreshCookie(response, authResponse.getRefreshToken());
+        return ResponseEntity.ok(authResponse);
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> authenticate(
-            @RequestBody AuthRequest request
+            @RequestBody AuthRequest request,
+            HttpServletResponse response
     ) {
-        return ResponseEntity.ok(service.authenticate(request));
+        AuthResponse authResponse = service.authenticate(request);
+        addRefreshCookie(response, authResponse.getRefreshToken());
+        return ResponseEntity.ok(authResponse);
     }
 
     @PutMapping("/profile")
@@ -54,13 +74,44 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refreshToken(
-            @RequestHeader("Authorization") String authorizationHeader
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @CookieValue(value = "${auth.refresh-cookie-name:sss_refresh}", required = false) String refreshCookie,
+            HttpServletResponse response
     ) {
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            String refreshToken = authorizationHeader.substring(7);
-            return ResponseEntity.ok(service.refreshToken(refreshToken));
+        String refreshToken = refreshCookie;
+        if (refreshToken == null && authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            refreshToken = authorizationHeader.substring(7);
         }
-        return ResponseEntity.badRequest().build();
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            AuthResponse authResponse = service.refreshToken(refreshToken);
+            addRefreshCookie(response, authResponse.getRefreshToken());
+            return ResponseEntity.ok(authResponse);
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        ResponseCookie expiredCookie = ResponseCookie.from(refreshCookieName, "")
+                .httpOnly(true)
+                .secure(refreshCookieSecure)
+                .sameSite("Lax")
+                .path("/api/auth")
+                .maxAge(0)
+                .build();
+        response.addHeader("Set-Cookie", expiredCookie.toString());
+        return ResponseEntity.noContent().build();
+    }
+
+    private void addRefreshCookie(HttpServletResponse response, String refreshToken) {
+        ResponseCookie cookie = ResponseCookie.from(refreshCookieName, refreshToken)
+                .httpOnly(true)
+                .secure(refreshCookieSecure)
+                .sameSite("Lax")
+                .path("/api/auth")
+                .maxAge(Math.max(1, refreshTokenExpirationMs / 1000))
+                .build();
+        response.addHeader("Set-Cookie", cookie.toString());
     }
 
     @PostMapping("/forgot-password")

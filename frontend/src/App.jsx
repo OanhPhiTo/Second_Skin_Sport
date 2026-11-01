@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
 import AdminLayout from './layouts/AdminLayout';
@@ -7,6 +7,7 @@ import { BleProvider } from './context/BleContext';
 import { NotificationProvider } from './context/NotificationContext';
 import NotificationToast from './components/NotificationToast';
 import ErrorBoundary from './components/ErrorBoundary';
+import { authService } from './services/api';
 import './styles/global.css';
 
 // Lazy load route pages for high Lighthouse Performance & code-splitting
@@ -50,6 +51,16 @@ function PageFallback() {
 }
 
 export default function App() {
+  const [sessionReady, setSessionReady] = useState(false);
+
+  useEffect(() => {
+    authService.restoreSession().finally(() => setSessionReady(true));
+  }, []);
+
+  if (!sessionReady) {
+    return <PageFallback />;
+  }
+
   return (
     <ErrorBoundary>
       <BrowserRouter>

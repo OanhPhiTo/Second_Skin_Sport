@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { notificationService } from '../services/api';
+import { authService, notificationService } from '../services/api';
 
 const NotificationContext = createContext(null);
 
@@ -37,7 +37,7 @@ const DEFAULT_INITIAL_NOTIFICATIONS = [
 export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState(() => {
     try {
-      const stored = localStorage.getItem('sss_notifications');
+      const stored = sessionStorage.getItem('sss_notifications');
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -50,10 +50,10 @@ export function NotificationProvider({ children }) {
 
   const [toasts, setToasts] = useState([]);
 
-  // Persist to localStorage whenever notifications change
+  // Persist only for the current browser tab; notifications are not durable user data.
   useEffect(() => {
     try {
-      localStorage.setItem('sss_notifications', JSON.stringify(notifications));
+      sessionStorage.setItem('sss_notifications', JSON.stringify(notifications));
     } catch (e) {}
   }, [notifications]);
 
@@ -165,11 +165,13 @@ export function NotificationProvider({ children }) {
         (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
         'http://localhost:8080/api';
       const wsUrl = rawBaseUrl.replace(/^http/, 'ws').replace(/\/api$/, '') + '/ws/sensor-data';
-      const token = localStorage.getItem('token');
+      const token = authService.getAccessToken();
+      if (!token) return () => { isSubscribed = false; };
+      ws = new WebSocket(wsUrl);
 
-      // Native WebSocket connection with token
-      const fullUrl = token ? `${wsUrl}?token=${encodeURIComponent(token)}` : wsUrl;
-      ws = new WebSocket(fullUrl);
+      ws.onopen = () => {
+        ws.send(`CONNECT\naccept-version:1.2\nAuthorization: Bearer ${token}\n\n\0`);
+      };
 
       ws.onmessage = (event) => {
         if (!isSubscribed) return;

@@ -38,14 +38,16 @@ Module chịu trách nhiệm:
 1. **Đăng nhập:**
    - Client gửi `POST /api/auth/login` với email và password.
    - `AuthService` xác thực qua `AuthenticationManager`. Nếu hợp lệ, sinh cặp `token` (access token) và `refreshToken`.
-   - Client lưu `token`, `refreshToken`, và `role` vào `localStorage`.
+   - Backend đặt refresh token trong cookie `HttpOnly; SameSite=Lax`; frontend chỉ giữ access token ngắn hạn trong memory.
 2. **Ủy quyền Request:**
    - Axios Request Interceptor tự động thêm header `Authorization: Bearer <token>`.
    - Backend `JwtAuthenticationFilter` đọc header, kiểm tra chữ ký token. Nếu hợp lệ, nạp quyền vào `SecurityContext`.
 3. **Làm mới Token (Auto-Refresh):**
    - Khi token hết hạn, Backend trả về HTTP `401 Unauthorized`.
-   - Axios Response Interceptor chặn lỗi 401, gửi `POST /api/auth/refresh` bằng refresh token.
-   - Nhận access token mới, cập nhật `localStorage` và gửi lại request ban đầu một cách trong suốt.
+   - Axios Response Interceptor chặn lỗi 401, gửi `POST /api/auth/refresh` kèm cookie HttpOnly.
+   - Nhận access token mới vào memory và gửi lại request ban đầu một cách trong suốt.
+
+WebSocket STOMP xác thực bằng header `Authorization` trên frame `CONNECT`; token không còn được truyền trong query string.
 
 4. **Quên Mật Khẩu & Xác Thực OTP (OAuth2 Email):**
    - Bước 1: Người dùng click "Quên mật khẩu?" trên Login page, popup mở ra yêu cầu nhập email.
@@ -58,7 +60,7 @@ Module chịu trách nhiệm:
 ## 4. API & Dependencies Liên Quan
 - `POST /api/auth/register` (Public)
 - `POST /api/auth/login` (Public)
-- `POST /api/auth/refresh` (Yêu cầu header Authorization chứa Bearer refresh token)
+- `POST /api/auth/refresh` (Ưu tiên refresh token trong HttpOnly cookie; vẫn hỗ trợ header cho tương thích)
 - `POST /api/auth/forgot-password` (Public, gửi OTP đặt lại mật khẩu)
 - `POST /api/auth/verify-otp` (Public, xác thực mã OTP)
 - `POST /api/auth/reset-password` (Public, đặt mật khẩu mới sau khi xác thực OTP)

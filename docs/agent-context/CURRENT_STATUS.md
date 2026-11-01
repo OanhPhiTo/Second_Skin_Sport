@@ -40,6 +40,7 @@ Tài liệu này ghi nhận hiện trạng triển khai thực tế của hệ t
 - Report filters now provide 3-day, 7-day and 1-month ranges; the logged-in athlete profile is read-only without a dropdown control.
 - Settings now persists app preferences, updates the authenticated user's name/preferred sport through `PUT /api/auth/profile`, and sends real IMU calibration/sampling commands over BLE when an ESP32 connection exists; it no longer claims calibration when disconnected.
 - Email OTP delivery now uses Gmail SMTP with `spring-boot-starter-mail`, `MAIL_USERNAME`, and `MAIL_APP_PASSWORD`; OAuth2 mail remains only as a non-primary compatibility service.
+- Authentication hardening now stores refresh tokens in an HttpOnly SameSite cookie, keeps access tokens in frontend memory only, moves session/team/notification fallback caches to `sessionStorage`, and authenticates STOMP WebSocket connections via CONNECT headers instead of URL query tokens.
 
 ## 2B. Milestone 5 — Đã hoàn tất
 
