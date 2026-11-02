@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Mail, Lock, Activity, ArrowRight, ShieldCheck } from 'lucide-react';
+import { User, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { authService } from '../services/api';
 import logoIcon from '../assets/logo.png';
 import './Auth.css';
@@ -9,7 +9,7 @@ export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [preferredSport, setPreferredSport] = useState('Running');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -17,9 +17,17 @@ export default function Register() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (password !== confirmPassword) {
+      setError('Mật khẩu xác nhận không khớp.');
+      return;
+    }
+
     setLoading(true);
     try {
-      await authService.register({ name, email, password, preferredSport });
+      // preferredSport remains a profile field on the API. Registration now
+      // uses the backend default because it is not part of this form anymore.
+      await authService.register({ name, email, password });
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.');
@@ -96,17 +104,18 @@ export default function Register() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="register-sport">Môn thể thao trọng tâm</label>
+            <label htmlFor="register-confirm-password">Xác nhận mật khẩu</label>
             <div className="auth-input-wrapper">
-              <Activity size={18} className="auth-input-icon" />
-              <select 
-                id="register-sport"
-                value={preferredSport} 
-                onChange={(e) => setPreferredSport(e.target.value)}
-              >
-                <option value="Running">Chạy bộ (Running)</option>
-                <option value="Basketball">Bóng rổ (Basketball)</option>
-              </select>
+              <Lock size={18} className="auth-input-icon" />
+              <input
+                id="register-confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                placeholder="Nhập lại mật khẩu"
+                autoComplete="new-password"
+              />
             </div>
           </div>
 

@@ -39,9 +39,11 @@ export default function Navbar({ onToggleSidebar, patchStatus }) {
   const notifDropdownRef = useRef(null);
 
   const isBle = bleStatus === 'connected';
-  const isConnected = isBle || Boolean(patchStatus?.connected);
+  // The browser BLE state is the source of truth for the directly connected ESP32.
+  // Backend registration/status must not keep the UI online after GATT disconnects.
+  const isConnected = isBle;
   const deviceName = isBle ? (bleDevice?.deviceName || 'ESP32-C3') : (patchStatus?.deviceName || 'Second Skin Patch');
-  const battery = isBle ? (bleTelemetry?.bat ?? patchStatus?.batteryLevel ?? 92) : (patchStatus?.batteryLevel ?? bleTelemetry?.bat ?? 92);
+  const battery = isBle ? (bleTelemetry?.bat ?? patchStatus?.batteryLevel ?? null) : null;
   const user = authService.getCurrentUser();
   const isAdmin = user.role === 'ADMIN';
   const isCoach = user.role === 'COACH';
@@ -149,7 +151,7 @@ export default function Navbar({ onToggleSidebar, patchStatus }) {
           <span className="divider-dot">•</span>
           <span className={`battery-badge ${isCharging ? 'charging' : ''}`} style={isCharging ? { borderColor: 'rgba(6, 182, 212, 0.6)', color: 'var(--accent-cyan)' } : {}}>
             {isCharging ? <Zap size={14} /> : <Battery size={14} />}
-            {battery}% {isCharging && '(Sạc)'}
+            {battery != null ? `${battery}%` : '—'} {isCharging && '(Sạc)'}
           </span>
         </div>
 

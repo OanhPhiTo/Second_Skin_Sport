@@ -47,13 +47,16 @@ public class AuthController {
     @Value("${application.security.jwt.refresh-token.expiration:604800000}")
     private long refreshTokenExpirationMs;
 
+    @Value("${application.security.jwt.remembered-refresh-token.expiration:2592000000}")
+    private long rememberedRefreshTokenExpirationMs;
+
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(
             @RequestBody RegisterRequest request,
             HttpServletResponse response
     ) {
         AuthResponse authResponse = service.register(request);
-        addRefreshCookie(response, authResponse.getRefreshToken());
+        addRefreshCookie(response, authResponse.getRefreshToken(), false);
         return ResponseEntity.ok(authResponse);
     }
 
@@ -63,7 +66,7 @@ public class AuthController {
             HttpServletResponse response
     ) {
         AuthResponse authResponse = service.authenticate(request);
-        addRefreshCookie(response, authResponse.getRefreshToken());
+        addRefreshCookie(response, authResponse.getRefreshToken(), request.isRememberMe());
         return ResponseEntity.ok(authResponse);
     }
 
@@ -76,6 +79,7 @@ public class AuthController {
     public ResponseEntity<AuthResponse> refreshToken(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @CookieValue(value = "${auth.refresh-cookie-name:sss_refresh}", required = false) String refreshCookie,
+            @CookieValue(value = "sss_remember", required = false) String rememberCookie,
             HttpServletResponse response
     ) {
         String refreshToken = refreshCookie;
@@ -84,7 +88,7 @@ public class AuthController {
         }
         if (refreshToken != null && !refreshToken.isBlank()) {
             AuthResponse authResponse = service.refreshToken(refreshToken);
-            addRefreshCookie(response, authResponse.getRefreshToken());
+            addRefreshCookie(response, authResponse.getRefreshToken(), "1".equals(rememberCookie));
             return ResponseEntity.ok(authResponse);
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -100,18 +104,25 @@ public class AuthController {
                 .maxAge(0)
                 .build();
         response.addHeader("Set-Cookie", expiredCookie.toString());
+        response.addHeader("Set-Cookie", ResponseCookie.from("sss_remember", "")
+                .httpOnly(true).secure(refreshCookieSecure).sameSite("Lax")
+                .path("/api/auth").maxAge(0).build().toString());
         return ResponseEntity.noContent().build();
     }
 
-    private void addRefreshCookie(HttpServletResponse response, String refreshToken) {
+    private void addRefreshCookie(HttpServletResponse response, String refreshToken, boolean rememberMe) {
+        long maxAge = rememberMe ? rememberedRefreshTokenExpirationMs : -1;
         ResponseCookie cookie = ResponseCookie.from(refreshCookieName, refreshToken)
                 .httpOnly(true)
                 .secure(refreshCookieSecure)
                 .sameSite("Lax")
                 .path("/api/auth")
-                .maxAge(Math.max(1, refreshTokenExpirationMs / 1000))
+                .maxAge(maxAge < 0 ? -1 : Math.max(1, maxAge / 1000))
                 .build();
         response.addHeader("Set-Cookie", cookie.toString());
+        response.addHeader("Set-Cookie", ResponseCookie.from("sss_remember", rememberMe ? "1" : "0")
+                .httpOnly(true).secure(refreshCookieSecure).sameSite("Lax")
+                .path("/api/auth").maxAge(maxAge < 0 ? -1 : Math.max(1, maxAge / 1000)).build().toString());
     }
 
     @PostMapping("/forgot-password")

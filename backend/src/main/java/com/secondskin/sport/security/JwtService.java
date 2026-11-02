@@ -27,6 +27,9 @@ public class JwtService {
     @Value("${application.security.jwt.refresh-token.expiration:604800000}")
     private long refreshExpiration = 604800000; // 7 days
 
+    @Value("${application.security.jwt.remembered-refresh-token.expiration:2592000000}")
+    private long rememberedRefreshExpiration = 2592000000L; // 30 days
+
     public JwtService() {}
 
     public JwtService(String secretKey) {
@@ -65,6 +68,10 @@ public class JwtService {
 
     public String generateRefreshToken(UserDetails userDetails) {
         return buildToken(new HashMap<>(), userDetails, refreshExpiration);
+    }
+
+    public String generateRefreshToken(UserDetails userDetails, boolean rememberMe) {
+        return buildToken(new HashMap<>(), userDetails, rememberMe ? rememberedRefreshExpiration : refreshExpiration);
     }
 
     private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long expiration) {

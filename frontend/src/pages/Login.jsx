@@ -18,7 +18,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,6 +32,9 @@ export default function Login() {
     setSuccessMessage('');
     setLoading(true);
     try {
+      if (typeof authService.setRememberMe === 'function') {
+        authService.setRememberMe(rememberMe);
+      }
       const data = await authService.login({ email, password });
       if (data?.role === 'ADMIN' || (typeof authService.isAdmin === 'function' && authService.isAdmin())) {
         navigate('/admin');
@@ -144,6 +147,7 @@ export default function Login() {
                     required 
                     placeholder="Nhập email của bạn"
                     autoComplete="username"
+                    spellCheck={false}
                   />
                 </div>
               </div>
@@ -159,6 +163,7 @@ export default function Login() {
                     required 
                     placeholder="Nhập mật khẩu"
                     autoComplete="current-password"
+                    spellCheck={false}
                   />
                   <button
                     type="button"

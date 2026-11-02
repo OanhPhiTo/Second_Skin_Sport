@@ -19,8 +19,9 @@ import './Sidebar.css';
 export default function Sidebar({ isOpen, onClose, patchStatus }) {
   const { bleStatus, bleDevice, bleTelemetry, isCharging } = useBle();
   const isBle = bleStatus === 'connected';
-  const isConnected = isBle || Boolean(patchStatus?.connected);
-  const battery = isBle ? (bleTelemetry?.bat ?? patchStatus?.batteryLevel ?? 92) : (patchStatus?.batteryLevel ?? bleTelemetry?.bat ?? 92);
+  // A registered backend device is not proof of a live browser BLE link.
+  const isConnected = isBle;
+  const battery = isBle ? (bleTelemetry?.bat ?? patchStatus?.batteryLevel ?? 92) : (patchStatus?.batteryLevel ?? 92);
   const deviceName = isBle ? (bleDevice?.deviceName || 'SecondSkin_ESP32') : (patchStatus?.deviceName || 'PATCH #001');
 
   const role = authService.getUserRole();

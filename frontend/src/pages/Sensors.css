@@ -29,6 +29,28 @@
   gap: 20px;
 }
 
+.device-empty-state {
+  grid-column: 1 / -1;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 28px;
+  color: #64748b;
+  border: 1px dashed rgba(148, 163, 184, 0.24);
+}
+
+.device-empty-state strong {
+  display: block;
+  color: #cbd5e1;
+  margin-bottom: 6px;
+}
+
+.device-empty-state p {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
 .device-card {
   display: flex;
   flex-direction: column;
