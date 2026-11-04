@@ -43,15 +43,14 @@ describe('Register Component', () => {
     fireEvent.change(screen.getByPlaceholderText('Nhập họ và tên'), { target: { value: 'Test User' } });
     fireEvent.change(screen.getByPlaceholderText('Nhập email của bạn'), { target: { value: 'test@example.com' } });
     fireEvent.change(screen.getByPlaceholderText('Tạo mật khẩu'), { target: { value: 'password123' } });
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Running' } });
+    fireEvent.change(screen.getByPlaceholderText('Nhập lại mật khẩu'), { target: { value: 'password123' } });
     
     fireEvent.click(screen.getByRole('button', { name: /đăng ký/i }));
     
     expect(authService.register).toHaveBeenCalledWith({
       name: 'Test User',
       email: 'test@example.com',
-      password: 'password123',
-      preferredSport: 'Running'
+      password: 'password123'
     });
     
     await waitFor(() => {

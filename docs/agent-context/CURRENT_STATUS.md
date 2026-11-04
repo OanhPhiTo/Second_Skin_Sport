@@ -41,6 +41,9 @@ Tài liệu này ghi nhận hiện trạng triển khai thực tế của hệ t
 - Settings now persists app preferences, updates the authenticated user's name/preferred sport through `PUT /api/auth/profile`, and sends real IMU calibration/sampling commands over BLE when an ESP32 connection exists; it no longer claims calibration when disconnected.
 - Email OTP delivery now uses Gmail SMTP with `spring-boot-starter-mail`, `MAIL_USERNAME`, and `MAIL_APP_PASSWORD`; OAuth2 mail remains only as a non-primary compatibility service.
 - Authentication hardening now stores refresh tokens in an HttpOnly SameSite cookie, keeps access tokens in frontend memory only, moves session/team/notification fallback caches to `sessionStorage`, and authenticates STOMP WebSocket connections via CONNECT headers instead of URL query tokens.
+- BLE online indicators now use the live browser GATT state as the only source of truth; stale backend device registration status can no longer keep Navbar, Sidebar, or sensor cards showing `TRỰC TUYẾN` after ESP32 disconnects.
+- Device screen no longer fabricates fallback devices or displays seeded battery/sync/firmware values as live telemetry; it renders only the BLE device currently recognized by the browser and shows an explicit empty state otherwise.
+- Login `Ghi nhớ` now uses a real preference: unchecked creates a session-only HttpOnly refresh cookie, while checked issues a 30-day refresh JWT/cookie; the checkbox styling no longer inherits full-width text-input styles.
 
 ## 2B. Milestone 5 — Đã hoàn tất
 

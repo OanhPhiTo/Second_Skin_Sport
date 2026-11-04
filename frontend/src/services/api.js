@@ -12,6 +12,7 @@ const API_BASE_URL = rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBas
 // readable by application JavaScript or persisted in Web Storage.
 let accessToken = null;
 let currentUser = null;
+let rememberMePreference = false;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -128,9 +129,15 @@ const clearLegacyAuthStorage = () => {
 };
 
 export const authService = {
+  setRememberMe: (rememberMe) => {
+    rememberMePreference = Boolean(rememberMe);
+  },
   login: async (credentials) => {
     try {
-      const response = await apiClient.post('/auth/login', credentials);
+      const response = await apiClient.post('/auth/login', {
+        ...credentials,
+        rememberMe: rememberMePreference,
+      });
       if (response.data.token) {
         accessToken = response.data.token;
         updateCurrentUser({ ...response.data, email: response.data.email || credentials.email });
@@ -770,29 +777,8 @@ export const deviceService = {
       const response = await apiClient.get('/devices');
       return response.data;
     } catch (err) {
-      return [
-        {
-          id: 1,
-          deviceName: 'Second Skin Patch #001',
-          deviceId: 'SSS-PATCH-001',
-          // A fallback record represents a registered device, not a live connection.
-          connected: false,
-          batteryLevel: getLiveBatteryLevel(),
-          lastSync: null,
-          firmwareVersion: 'v2.4.1',
-          connectionType: 'BLE 5.2',
-        },
-        {
-          id: 2,
-          deviceName: 'Second Skin Patch #002',
-          deviceId: 'SSS-PATCH-002',
-          connected: false,
-          batteryLevel: 45,
-          lastSync: '2 ngày trước',
-          firmwareVersion: 'v2.3.8',
-          connectionType: 'BLE 5.2',
-        },
-      ];
+      // Do not fabricate registered hardware when the device API is offline.
+      return [];
     }
   },
 

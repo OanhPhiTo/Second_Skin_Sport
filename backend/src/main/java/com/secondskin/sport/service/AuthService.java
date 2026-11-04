@@ -37,12 +37,15 @@ public class AuthService {
         if(repository.existsByEmail(request.getEmail())){
              throw new RuntimeException("Thông tin đăng ký không hợp lệ hoặc tài khoản đã tồn tại.");
         }
+        String preferredSport = request.getPreferredSport() == null || request.getPreferredSport().isBlank()
+                ? "Running"
+                : request.getPreferredSport().trim();
         var user = new User(
                 request.getName(),
                 request.getEmail(),
                 passwordEncoder.encode(request.getPassword()),
                 Role.USER,
-                request.getPreferredSport()
+                preferredSport
         );
         repository.save(user);
         var jwtToken = jwtService.generateToken(user);
@@ -78,7 +81,7 @@ public class AuthService {
         }
 
         var jwtToken = jwtService.generateToken(user);
-        var refreshToken = jwtService.generateRefreshToken(user);
+        var refreshToken = jwtService.generateRefreshToken(user, request.isRememberMe());
         return AuthResponse.builder()
                 .token(jwtToken)
                 .refreshToken(refreshToken)

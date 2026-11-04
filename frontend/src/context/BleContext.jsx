@@ -612,6 +612,10 @@ export function BleProvider({ children }) {
   };
 
   const toggleCharging = useCallback(async (state) => {
+    if (bleStatus !== 'connected' || !bleService.isConnected) {
+      setActionMessage('Chưa kết nối thiết bị BLE thực tế để thay đổi trạng thái sạc.');
+      return false;
+    }
     const targetState = state !== undefined ? Boolean(state) : !batteryTrackerRef.current.isCharging;
     batteryTrackerRef.current.isCharging = targetState;
     batteryTrackerRef.current.lastChargeTime = Date.now();
@@ -632,7 +636,8 @@ export function BleProvider({ children }) {
         : '🔋 Đã ngắt sạc. Thiết bị chuyển sang sử dụng pin Li-Po nội bộ.'
     );
     setTimeout(() => setActionMessage(''), 4500);
-  }, []);
+    return true;
+  }, [bleStatus]);
 
   const value = {
     bleStatus,

@@ -68,7 +68,13 @@ export default function Sensors() {
   const [backendUrl, setBackendUrl] = useState('http://localhost:8080/api/v1/sensor/batches');
 
   const actionMessage = globalActionMessage || localActionMessage;
-  const sensorStatus = bleStatus === 'connected' ? liveSensorStatus : backendSensorStatus;
+  // Backend device registration is not a live BLE connection. Once GATT is
+  // disconnected, force all realtime cards offline until a new BLE stream starts.
+  const sensorStatus = bleStatus === 'connected'
+    ? liveSensorStatus
+    : backendSensorStatus
+      ? { ...backendSensorStatus, connected: false }
+      : null;
 
   const loadData = async () => {
     try {
@@ -140,16 +146,14 @@ export default function Sensors() {
     }
   };
 
-  const handleConnectToggle = async (deviceId, currentConnected) => {
+  const handleConnectToggle = async (_deviceId, currentConnected) => {
     try {
       if (currentConnected) {
-        await deviceService.disconnect(deviceId);
-        setLocalActionMessage(`Thiết bị #${deviceId} đã ngắt kết nối.`);
+        await disconnectBle();
+        setLocalActionMessage('Thiết bị BLE đã ngắt kết nối.');
       } else {
-        const result = await deviceService.connect(deviceId);
-        setLocalActionMessage(result?.connected
-          ? `Thiết bị #${deviceId} đã kết nối.`
-          : 'Không thể xác nhận kết nối thiết bị. Hãy kiểm tra BLE hoặc backend.');
+        await handleBleConnect();
+        setLocalActionMessage('Đã kết nối thiết bị BLE thực tế.');
       }
       loadData();
       setTimeout(() => setLocalActionMessage(''), 3500);
@@ -176,6 +180,19 @@ export default function Sensors() {
     const s = seconds % 60;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
+
+  const liveDevices = bleStatus === 'connected'
+    ? devices.filter((device) => !bleDevice?.deviceId || device.deviceId === bleDevice.deviceId)
+    : [];
+  const displayDevices = liveDevices.length > 0
+    ? liveDevices
+    : bleStatus === 'connected' && bleDevice
+      ? [{
+          id: 'ble-live',
+          deviceId: bleDevice.deviceId,
+          deviceName: bleDevice.deviceName || 'Thiết bị BLE đang kết nối',
+        }]
+      : [];
 
   return (
     <div className="sensors-page">
@@ -523,15 +540,24 @@ export default function Sensors() {
       </div>
 
       <div className="devices-grid">
-        {devices.map((device) => {
-          const isBleActive = bleStatus === 'connected' && (device.deviceId === 'SSS-PATCH-001' || device.id === 1);
-          const isConnected = isBleActive || device.connected;
+        {displayDevices.length === 0 ? (
+          <div className="card device-empty-state">
+            <Cpu size={24} />
+            <div>
+              <strong>Chưa có thiết bị BLE thực tế</strong>
+              <p>Danh sách chỉ hiển thị thiết bị đang được trình duyệt nhận diện và truyền dữ liệu.</p>
+            </div>
+          </div>
+        ) : displayDevices.map((device) => {
+          const isBleActive = bleStatus === 'connected' && (
+            device.deviceId === bleDevice?.deviceId ||
+            (!bleDevice?.deviceId && (device.deviceId === 'SSS-PATCH-001' || device.id === 1))
+          );
+          const isConnected = isBleActive;
           const liveBattery = isBleActive
-            ? (bleTelemetry?.bat ?? liveSensorStatus?.batteryLevel ?? device.batteryLevel)
-            : (device.deviceId === 'SSS-PATCH-001' || device.id === 1
-                ? (liveSensorStatus?.batteryLevel ?? device.batteryLevel)
-                : device.batteryLevel);
-          const isDevCharging = (device.deviceId === 'SSS-PATCH-001' || device.id === 1) && (isCharging || liveSensorStatus?.isCharging);
+            ? (bleTelemetry?.bat ?? liveSensorStatus?.batteryLevel ?? null)
+            : null;
+          const isDevCharging = isBleActive && (isCharging || liveSensorStatus?.isCharging);
 
           return (
             <div
@@ -564,7 +590,7 @@ export default function Sensors() {
                         <Battery size={16} className="battery-icon" />
                       )}
                       <span className="battery-number">
-                        {liveBattery}% {isDevCharging && <span style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', marginLeft: '3px' }}>⚡ Đang sạc</span>}
+                        {liveBattery != null ? `${liveBattery}%` : 'Chưa có dữ liệu'} {isDevCharging && <span style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', marginLeft: '3px' }}>⚡ Đang sạc</span>}
                       </span>
                     </div>
                   </div>
@@ -572,13 +598,13 @@ export default function Sensors() {
                   <div className="device-stat">
                     <span className="dev-stat-label">Đồng bộ</span>
                     <span className="last-sync-text">
-                      {isBleActive ? 'Trực tiếp 10Hz' : device.lastSync ? '10 giây trước' : 'Chưa đồng bộ'}
+                      {isBleActive ? 'Trực tiếp 10Hz' : 'Chưa có dữ liệu thực'}
                     </span>
                   </div>
 
                   <div className="device-stat">
                     <span className="dev-stat-label">Firmware</span>
-                    <span className="firmware-tag">{device.firmwareVersion || 'v2.4.1'}</span>
+                    <span className="firmware-tag">Chưa xác định</span>
                   </div>
                 </div>
 
@@ -586,10 +612,12 @@ export default function Sensors() {
                   <div
                     className="battery-bar-fill"
                     style={{
-                      width: `${liveBattery}%`,
+                      width: `${liveBattery ?? 0}%`,
                       backgroundColor:
                         isDevCharging
                           ? 'var(--accent-cyan)'
+                          : liveBattery == null
+                          ? '#64748b'
                           : liveBattery > 50
                           ? 'var(--status-success)'
                           : liveBattery > 20
@@ -610,7 +638,7 @@ export default function Sensors() {
                   {isConnected ? 'Ngắt kết nối' : 'Kết nối'}
                 </button>
 
-                {(device.deviceId === 'SSS-PATCH-001' || device.id === 1) && (
+                {isBleActive && (
                   <button
                     className={`btn btn-sm ${isDevCharging ? 'btn-danger' : 'btn-outline-cyan'}`}
                     onClick={() => toggleCharging()}
@@ -621,6 +649,7 @@ export default function Sensors() {
                   </button>
                 )}
 
+                {typeof device.id === 'number' && (
                 <button
                   className="btn btn-outline-cyan btn-sm"
                   onClick={() => handleSyncData(device.id)}
@@ -629,6 +658,7 @@ export default function Sensors() {
                   <RefreshCw size={14} className={syncing ? 'spin-icon' : ''} />
                   {syncing ? 'Đang đồng bộ...' : 'Đồng bộ'}
                 </button>
+                )}
               </div>
             </div>
           );
