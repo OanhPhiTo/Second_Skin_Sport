@@ -26,8 +26,8 @@ Mục tiêu là cung cấp ngữ cảnh kiến trúc chuẩn xác, giảm thiể
    - Tuyệt đối không xóa bỏ, làm yếu (weaken), hoặc `skip` test chỉ để task vượt qua.
 
 5. **Quy tắc An toàn và Bảo mật**:
-   - **Tuyệt đối KHÔNG** hardcode mật khẩu, JWT Secret, API Key (xAI Grok), hoặc Connection String vào mã nguồn hoặc tài liệu.
-   - Luôn sử dụng biến môi trường (`XAI_API_KEY`, `XAI_MODEL`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`).
+   - **Tuyệt đối KHÔNG** hardcode mật khẩu, JWT Secret, API Key (Groq), hoặc Connection String vào mã nguồn hoặc tài liệu.
+   - Luôn sử dụng biến môi trường (`GROQ_API_KEY`, `GROQ_MODEL`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`).
 
 ---
 
@@ -62,14 +62,14 @@ Trước khi đọc mã nguồn, hãy tra cứu các tài liệu chuyên sâu đ
 * **Hiện trạng & Kế hoạch:** [`CURRENT_STATUS.md`](docs/agent-context/CURRENT_STATUS.md)
   * Tính năng đã hoàn thành, tính năng mock/fallback, các giới hạn đã biết và backlog kỹ thuật.
 * **Quyết định Kiến trúc (ADRs):** [`DECISIONS.md`](docs/agent-context/DECISIONS.md)
-  * Ghi chép kiến trúc Dual-Engine AI (xAI Grok + Local DSP), WebSocket STOMP, JWT Stateless, và LocalStorage Fallback.
+  * Ghi chép kiến trúc Dual-Engine AI (Groq + Local DSP), WebSocket STOMP, JWT Stateless, và LocalStorage Fallback.
 
 ### 3.2. Ngữ Cảnh Theo Module Nghiệp Vụ (`docs/agent-context/modules/`)
 * **Xác thực & Phân quyền:** [`auth.md`](docs/agent-context/modules/auth.md) — JWT Filter, SecurityFilterChain, Role (`ADMIN`, `COACH`, `USER`).
 * **Thu thập & Xử lý Tín hiệu IoT:** [`sensor-iot.md`](docs/agent-context/modules/sensor-iot.md) — ESP32 BLE/Batch API, Jump Detection, DSP Kinematics.
 * **Huấn Luyện Viên & Điều phối Đội hình:** [`coach-squad.md`](docs/agent-context/modules/coach-squad.md) — Quản lý roster, tính tải mỏi, đề xuất xoay tua chiến thuật.
 * **Quản trị Hệ thống:** [`admin.md`](docs/agent-context/modules/admin.md) — Cấp tài khoản Coach, khóa/mở khóa user, phân quyền.
-* **Trợ lí Phân tích AI:** [`ai-coach.md`](docs/agent-context/modules/ai-coach.md) — Tích hợp xAI Grok, phân tích động học, đề xuất bài tập.
+* **Trợ lí Phân tích AI:** [`ai-coach.md`](docs/agent-context/modules/ai-coach.md) — Tích hợp Groq, phân tích động học, đề xuất bài tập.
 * **Thống kê & Dashboard VĐV:** [`athlete-analytics.md`](docs/agent-context/modules/athlete-analytics.md) — Buổi tập cá nhân, biểu đồ chỉ số, Recharts.
 
 ---

@@ -38,7 +38,7 @@ Hệ thống hoạt động theo quy trình khép kín từ cảm biến phần 
      Có API Key   │                                   │ Mất mạng / Offline
                   ▼                                   ▼
 ┌───────────────────────────────────┐   ┌────────────────────────────────┐
-│ 4A. CLOUD LLM: xAI GROK           │   │ 4B. LOCAL BIOMECHANICS ENGINE  │
+│ 4A. CLOUD LLM: GROQ           │   │ 4B. LOCAL BIOMECHANICS ENGINE  │
 │     (Prompt chuyên gia thể thao)  │   │     (Thuật toán DSP nội bộ)    │
 │     Sinh JSON tiếng Việt tự nhiên │   │     100% Offline & Bảo mật     │
 └─────────────────┬─────────────────┘   └────────────────┬───────────────┘

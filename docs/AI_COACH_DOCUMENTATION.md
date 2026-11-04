@@ -24,8 +24,8 @@ Hệ thống Trợ lí AI của **Second Skin Sport** hoạt động theo **Ki�
             ▼                                                         ▼
 ┌───────────────────────────────┐         ┌───────────────────────────────────────┐
 │ ENGINE 2A: CLOUD LLM          │         │ ENGINE 2B: LOCAL BIOMECHANICS ENGINE  │
-│ 🌟 xAI Grok                   │         │ ⚡ Thuật toán Khoa học Thể thao Nội bộ │
-│    (`grok-4.7`)               │         │    100% Offline & Bảo mật             │
+│ 🌟 Groq Cloud LLM                   │         │ ⚡ Thuật toán Khoa học Thể thao Nội bộ │
+│    (`llama-3.3-70b-versatile`)               │         │    100% Offline & Bảo mật             │
 └───────────────┬───────────────┘         └───────────────────┬───────────────────┘
                 │                                             │
                 └──────────────────────┬──────────────────────┘
@@ -36,16 +36,16 @@ Hệ thống Trợ lí AI của **Second Skin Sport** hoạt động theo **Ki�
                   └──────────────────────────────────────────────┘
 ```
 
-### 1.1. Model Đám Mây (Cloud LLM): **xAI Grok**
-* **Model mặc định**: `grok-4.7` (có thể ghi đè bằng biến môi trường `XAI_MODEL`).
-* **Nhà cung cấp**: xAI.
+### 1.1. Model Đám Mây (Cloud LLM): **Groq**
+* **Model mặc định**: `llama-3.3-70b-versatile` (có thể ghi đè bằng biến môi trường `GROQ_MODEL`).
+* **Nhà cung cấp**: Groq.
 * **Endpoint API**: `https://api.x.ai/v1/responses`.
-* **Xác thực**: Bearer API key lấy từ biến môi trường `XAI_API_KEY`; không lưu khóa trong mã nguồn.
+* **Xác thực**: Bearer API key lấy từ biến môi trường `GROQ_API_KEY`; không lưu khóa trong mã nguồn.
 * **Đầu ra**: Yêu cầu JSON output để ánh xạ vào `AiInsightDTO` và giao diện.
 * **Cấu hình trong `application.properties`**:
   ```properties
-  ai.grok.api-key=${XAI_API_KEY:}
-  ai.grok.model=${XAI_MODEL:grok-4.7}
+  ai.groq.api-key=${GROQ_API_KEY:}
+  ai.groq.model=${GROQ_MODEL:llama-3.3-70b-versatile}
   ```
 
 ### 1.2. Model Xử Lý Tín Hiệu Nội Bộ: **Local Biomechanical DSP Engine**
@@ -128,7 +128,7 @@ Phân loại rủi ro theo 3 cấp độ màu sắc trực quan:
 
 | Thành phần | Công nghệ sử dụng | Vai trò |
 | :--- | :--- | :--- |
-| **Model LLM** | xAI Grok (`grok-4.7` mặc định) | Phân tích ngữ nghĩa & sinh lời khuyên tiếng Việt |
+| **Model LLM** | Groq (`llama-3.3-70b-versatile` mặc định) | Phân tích ngữ nghĩa & sinh lời khuyên tiếng Việt |
 | **Model DSP** | Biomechanical Feature Extractor (Java 21) | Xử lý tín hiệu số gia tốc & con quay 10Hz |
 | **Backend API** | Spring Boot 3.2.3 REST + STOMP WebSocket | Xử lý phân tích và truyền nhận thời gian thực |
 | **Frontend UI** | React 19 + Recharts + CSS Glassmorphism | Trực quan hóa 5 thanh đo và thẻ lời khuyên |

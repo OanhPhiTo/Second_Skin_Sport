@@ -17,21 +17,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AiCoachService {
 
-    @Value("${ai.grok.api-key:}")
-    private String grokApiKey;
+    @Value("${ai.groq.api-key:${ai.grok.api-key:}}")
+    private String groqApiKey;
 
-    @Value("${ai.grok.model:grok-4.7}")
-    private String grokModel;
+    @Value("${ai.groq.model:${ai.grok.model:llama-3.3-70b-versatile}}")
+    private String groqModel;
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final BiomechanicalFeatureExtractor featureExtractor;
     private final SportSessionRepository sessionRepository;
     private final SensorDataRepository sensorDataRepository;
+
+    // Cache kết quả AI theo sessionId để đảm bảo tính nhất quán tuyệt đối giữa các lần xem
+    private final Map<Long, AiInsightDTO> sessionInsightCache = new ConcurrentHashMap<>();
 
     @Autowired
     public AiCoachService(BiomechanicalFeatureExtractor featureExtractor,
@@ -49,16 +53,51 @@ public class AiCoachService {
     }
 
     /**
-     * Session retrieval & AI analysis moved from AiCoachController to Service layer (F09)
+     * Tính toán lượng Calo tiêu thụ chuẩn khoa học thể thao (MET).
+     * Đảm bảo tính toán xác định (deterministic) 100%, không bị dao động giữa các lần phân tích.
+     */
+    public int calculateCalories(SportSession session) {
+        if (session == null) return 0;
+        String sport = session.getSport() != null ? session.getSport() : "Running";
+        boolean isRunning = "running".equalsIgnoreCase(sport);
+        int duration = session.getDurationMinutes() > 0 ? session.getDurationMinutes() : 30;
+        double met = isRunning ? 9.8 : 8.2;
+        return (int) Math.round(met * 70.0 * (duration / 60.0));
+    }
+
+    /**
+     * Xóa cache phân tích của buổi tập khi có dữ liệu mới hoặc yêu cầu phân tích lại (Force Refresh)
+     */
+    public void invalidateCache(Long sessionId) {
+        if (sessionId != null) {
+            sessionInsightCache.remove(sessionId);
+        }
+    }
+
+    public void clearAllCache() {
+        sessionInsightCache.clear();
+    }
+
+    /**
+     * Session retrieval & AI analysis moved from AiCoachController to Service layer (F09).
+     * Áp dụng Smart Cache để trả về kết quả ngay lập tức (<1ms) nếu đã từng phân tích.
      */
     public AiInsightDTO analyzeSessionById(Long sessionId) {
+        if (sessionId != null && sessionInsightCache.containsKey(sessionId)) {
+            return sessionInsightCache.get(sessionId);
+        }
+
         if (sessionRepository == null || sensorDataRepository == null) {
             throw new IllegalStateException("Repositories not configured in AiCoachService");
         }
         SportSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Session not found: " + sessionId));
         List<SensorData> rawData = sensorDataRepository.findBySessionIdOrderByTimestampAsc(sessionId);
-        return analyzeSession(session, rawData);
+        AiInsightDTO insight = analyzeSession(session, rawData);
+        if (insight != null && sessionId != null) {
+            sessionInsightCache.put(sessionId, insight);
+        }
+        return insight;
     }
 
     /**
@@ -85,32 +124,44 @@ public class AiCoachService {
      * Phân tích chuyên sâu từ dữ liệu thô cảm biến (10Hz raw data points)
      */
     public AiInsightDTO analyzeSession(SportSession session, List<SensorData> rawData) {
+        if (session != null && session.getId() != null && sessionInsightCache.containsKey(session.getId())) {
+            return sessionInsightCache.get(session.getId());
+        }
+
         String sport = session.getSport() != null ? session.getSport() : "Running";
         BiomechanicalMetricsDTO metrics = featureExtractor.extractFeatures(rawData, sport);
+        int deterministicCalories = calculateCalories(session);
 
-        AiInsightDTO insight;
-        if (grokApiKey != null && !grokApiKey.trim().isEmpty()) {
+        AiInsightDTO insight = null;
+        if (groqApiKey != null && !groqApiKey.trim().isEmpty()) {
             try {
-                insight = callGrokApi(session, metrics);
-                if (insight != null) {
-                    insight.setBiomechanicalMetrics(metrics);
-                    return insight;
-                }
+                insight = callGroqApi(session, metrics);
             } catch (Exception e) {
-                System.err.println(">>> [AI] Grok API call failed, switching to local biomechanics engine: " + e.getMessage());
+                System.err.println(">>> [AI] Groq API call failed, switching to local biomechanics engine: " + e.getMessage());
             }
         }
 
-        insight = generateBiomechanicalInsights(session, metrics);
+        if (insight == null) {
+            insight = generateBiomechanicalInsights(session, metrics);
+        }
+
+        // Chốt chặn tính toán Calo và gắn đặc trưng cơ sinh học
+        insight.setEstimatedCalories(deterministicCalories);
         insight.setBiomechanicalMetrics(metrics);
+
+        if (session != null && session.getId() != null) {
+            sessionInsightCache.put(session.getId(), insight);
+        }
         return insight;
     }
 
     /**
-     * Gọi xAI Responses API với prompt chuyên gia khoa học thể thao
+     * Gọi Groq Chat Completions API với prompt chuyên gia khoa học thể thao.
+     * Cố định seed và temperature thấp (0.1) để cấu trúc câu chữ ổn định, không bị thay đổi thất thường.
      */
-    private AiInsightDTO callGrokApi(SportSession session, BiomechanicalMetricsDTO metrics) {
-        String url = "https://api.x.ai/v1/responses";
+    private AiInsightDTO callGroqApi(SportSession session, BiomechanicalMetricsDTO metrics) {
+        String url = "https://api.groq.com/openai/v1/chat/completions";
+        int deterministicCalories = calculateCalories(session);
 
         String prompt = String.format(
                 "Bạn là một Huấn Luyện Viên AI và chuyên gia khoa học thể thao cho hệ thống thiết bị đeo 'Second Skin Sport'.\n" +
@@ -123,17 +174,18 @@ public class AiCoachService {
                 "- Độ cân bằng hai chân: %d%% (Chân chịu lực chính: %s)\n" +
                 "- Nhịp bước (Cadence): %d bước/phút (Độ đều nhịp: %d%%)\n" +
                 "- Độ vững thân trên: %d/100 (Góc chúi người: %.1f độ)\n" +
-                "- Độ bùng nổ: %d/100 | Mức độ mỏi cơ: %d%%\n\n" +
+                "- Độ bùng nổ: %d/100 | Mức độ mỏi cơ: %d%%\n" +
+                "- Tiêu hao năng lượng đo đạc cơ học (MET): %d kcal\n\n" +
                 "YÊU CẦU: Trả về ĐÚNG MỘT JSON thuần túy (không bọc trong markdown, không có text phụ) có cấu trúc sau:\n" +
                 "{\n" +
                 "  \"activityType\": \"<Tên hoạt động, VD: Bóng rổ - Tấn công & Bật nhảy linh hoạt hoặc Chạy bộ - Rèn luyện sức bền>\",\n" +
                 "  \"performanceScore\": <Điểm tổng kết từ 1-100>,\n" +
                 "  \"currentPerformance\": \"<1-2 đoạn văn ngắn giải thích người dùng đang hoạt động ra sao: nhịp độ, thể lực, sự bùng nổ bằng giọng nói ấm áp, gần gũi>\",\n" +
-                "  \"areasForImprovement\": [\"<Điểm yếu kỹ thuật 1 cần sửa, VD: Tiếp đất hơi cứng>\", \"<Điểm yếu kỹ thuật 2, VD: Lệch trọng tâm chân phải>\"] ,\n" +
+                "  \"areasForImprovement\": [\"<Điểm yếu kỹ thuật 1 cần sửa, VD: Tiếp đất hơi cứng>\", \"<Điểm yếu kỹ thuật 2, VD: Lệch trọng tâm chân phải>\"],\n" +
                 "  \"actionableDrills\": [\"<Bài tập cụ thể 1 khắc phục điểm yếu>\", \"<Bài tập cụ thể 2>\", \"<Bài tập cụ thể 3>\"],\n" +
                 "  \"injuryRiskLevel\": \"<LOW hoặc MEDIUM hoặc HIGH>\",\n" +
                 "  \"injuryRiskExplanation\": \"<Cảnh báo nguy cơ chấn thương gối/cổ chân/gân gót dễ hiểu>\",\n" +
-                "  \"estimatedCalories\": <Số calo tiêu thụ ước tính>,\n" +
+                "  \"estimatedCalories\": %d,\n" +
                 "  \"postureFeedback\": [\"<Góp ý tư thế chuyên sâu 1>\", \"<Góp ý tư thế chuyên sâu 2>\"],\n" +
                 "  \"recoveryAdvice\": [\"<Lời khuyên phục hồi cơ bắp 1>\", \"<Lời khuyên phục hồi cơ bắp 2>\"],\n" +
                 "  \"aiSummary\": \"<Lời động viên tổng kết từ AI Coach>\"\n" +
@@ -153,39 +205,51 @@ public class AiCoachService {
                 metrics.getTrunkStabilityScore(),
                 metrics.getTrunkLeanAngleDegrees(),
                 metrics.getExplosivenessScore(),
-                metrics.getFatigueIndex()
+                metrics.getFatigueIndex(),
+                deterministicCalories,
+                deterministicCalories
         );
 
-        Map<String, Object> requestBody = Map.of(
-                "model", grokModel,
-                "input", prompt,
-                "temperature", 0.35,
-                "store", false,
-                "text", Map.of("format", Map.of("type", "json_object"))
-        );
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", groqModel);
+        requestBody.put("messages", List.of(
+                Map.of("role", "system", "content", "Bạn là một Huấn Luyện Viên AI và chuyên gia khoa học thể thao cho hệ thống Second Skin Sport. Đưa ra phân tích chuyên môn chuẩn xác, khách quan, bám sát các chỉ số cơ sinh học, phong cách nhất quán và luôn trả lời bằng định dạng JSON hợp lệ theo đúng schema được yêu cầu."),
+                Map.of("role", "user", "content", prompt)
+        ));
+        requestBody.put("temperature", 0.1); // Giảm thiểu randomness để đảm bảo tính nhất quán của câu văn
+        requestBody.put("response_format", Map.of("type", "json_object"));
+        if (session.getId() != null) {
+            requestBody.put("seed", session.getId().intValue()); // Khóa seed theo ID buổi tập để lấy mẫu đồng nhất
+        }
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(grokApiKey.trim());
+        headers.setBearerAuth(groqApiKey.trim());
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
         if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
             try {
-                JsonNode output = objectMapper.readTree(response.getBody()).path("output");
-                if (output.isArray()) {
-                    for (JsonNode item : output) {
-                        JsonNode content = item.path("content");
-                        if (!content.isArray()) continue;
-                        for (JsonNode part : content) {
-                            if ("output_text".equals(part.path("type").asText())) {
-                                return objectMapper.readValue(part.path("text").asText(), AiInsightDTO.class);
+                JsonNode rootNode = objectMapper.readTree(response.getBody());
+                JsonNode choices = rootNode.path("choices");
+                if (choices.isArray() && !choices.isEmpty()) {
+                    String content = choices.get(0).path("message").path("content").asText();
+                    if (content != null && !content.trim().isEmpty()) {
+                        String cleanJson = content.trim();
+                        if (cleanJson.startsWith("```")) {
+                            cleanJson = cleanJson.replaceFirst("```(json)?\\s*", "");
+                            int lastIdx = cleanJson.lastIndexOf("```");
+                            if (lastIdx != -1) {
+                                cleanJson = cleanJson.substring(0, lastIdx).trim();
                             }
                         }
+                        AiInsightDTO parsedInsight = objectMapper.readValue(cleanJson, AiInsightDTO.class);
+                        parsedInsight.setEstimatedCalories(deterministicCalories);
+                        return parsedInsight;
                     }
                 }
             } catch (Exception parseErr) {
-                System.err.println(">>> [AI] Error parsing Grok JSON response: " + parseErr.getMessage());
+                System.err.println(">>> [AI] Error parsing Groq JSON response: " + parseErr.getMessage());
             }
         }
         return null;
@@ -201,12 +265,10 @@ public class AiCoachService {
         int duration = session.getDurationMinutes() > 0 ? session.getDurationMinutes() : 30;
         int jumps = session.getTotalJumps();
         int directionChanges = session.getDirectionChanges();
-        double avgAccel = session.getAverageAcceleration();
         int intensity = session.getMovementIntensity() > 0 ? session.getMovementIntensity() : 75;
 
-        // 1. Tính toán Calo (MET: Running=9.8, Basketball=8.0)
-        double met = isRunning ? 9.8 : 8.2;
-        int calories = (int) Math.round(met * 70.0 * (duration / 60.0));
+        // 1. Tính toán Calo (MET: Running=9.8, Basketball=8.2) chuẩn khoa học
+        int calories = calculateCalories(session);
 
         // 2. Điểm phong độ
         int score = isRunning

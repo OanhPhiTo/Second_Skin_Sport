@@ -249,7 +249,7 @@ def build_ho_so_du_lieu_doc():
          "BiomechanicalFeatureExtractorTest (4/4 PASS), JumpDetectionServiceTest (4/4 PASS)."),
          
         ("4. DUAL-ENGINE AI COACH ROUTING (Cloud LLM & Local DSP)",
-         "• 4A. CLOUD LLM (xAI Grok, mặc định grok-4.7): Khi có XAI_API_KEY, gửi thông số động học tới Responses API và yêu cầu JSON tiếng Việt.\n"
+         "• 4A. CLOUD LLM (Groq, mặc định llama-3.3-70b-versatile): Khi có GROQ_API_KEY, gửi thông số động học tới Responses API và yêu cầu JSON tiếng Việt.\n"
          "• 4B. LOCAL BIOMECHANICS ENGINE (Offline): Khi mất mạng ngoài sân tập, thuật toán DSP nội bộ tự động sinh báo cáo, bài tập (Sets & Reps) và phân tầng rủi ro (LOW, MEDIUM, HIGH) 100% Offline.",
          "AiCoachService.java (L45-150)",
          "AiCoachServiceTest (3/3 PASS), kiểm thử chuyển mạch Offline mượt mà."),

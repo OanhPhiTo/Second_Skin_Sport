@@ -18,10 +18,16 @@ public class AiCoachController {
 
     /**
      * Get AI Biomechanical analysis & injury risk assessment for a specific session
-     * Retrieval logic cleanly delegated to AiCoachService (F09)
+     * Retrieval logic cleanly delegated to AiCoachService (F09).
+     * Supports ?refresh=true to force re-analysis and bypass cache.
      */
     @GetMapping("/session/{sessionId}")
-    public ResponseEntity<AiInsightDTO> analyzeSession(@PathVariable Long sessionId) {
+    public ResponseEntity<AiInsightDTO> analyzeSession(
+            @PathVariable Long sessionId,
+            @RequestParam(name = "refresh", defaultValue = "false") boolean refresh) {
+        if (refresh) {
+            aiCoachService.invalidateCache(sessionId);
+        }
         AiInsightDTO insight = aiCoachService.analyzeSessionById(sessionId);
         if (insight == null) {
             return ResponseEntity.notFound().build();

@@ -4,7 +4,7 @@
 Module chịu trách nhiệm:
 - Phân tích động lực học thể thao (Sports Biomechanics) từ chuỗi dữ liệu đo của cảm biến IMU MPU6050.
 - Vận hành kiến trúc AI song hành (Dual-Engine Architecture):
-  - **Cloud LLM (xAI Grok):** Sinh lời nhận xét thân thiện, tự nhiên bằng tiếng Việt theo phong cách HLV chuyên nghiệp, có cấu trúc JSON tương thích với giao diện.
+  - **Cloud LLM (Groq):** Sinh lời nhận xét thân thiện, tự nhiên bằng tiếng Việt theo phong cách HLV chuyên nghiệp, có cấu trúc JSON tương thích với giao diện.
   - **Local DSP Engine (Nội bộ Spring Boot):** Hoạt động $100\%$ offline, tự động thay thế khi mất mạng hoặc không có API Key.
 - Đo lường và trực quan hóa 5 chỉ số động học chuyên sâu:
   1. *Landing Softness (Độ êm tiếp đất)*: Đo lực dội ngược ($G$) khi bàn chân chạm sàn.
@@ -45,8 +45,8 @@ Module chịu trách nhiệm:
      - Độ lệch góc nghiêng pitch/roll $\rightarrow$ Độ vững thân trên ($0 - 100$).
      - Đỉnh gia tốc tức thời khi cất cánh $\rightarrow$ Điểm bùng nổ ($0 - 100$).
 3. **Phát Sinh Nhận Xét & Bài Tập Khắc Phục:**
-   - `AiCoachService` kiểm tra cấu hình `ai.grok.api-key`:
-     - **Nếu có API Key:** Gửi prompt đến xAI Responses API (`https://api.x.ai/v1/responses`) với model cấu hình được; yêu cầu JSON output rồi ánh xạ phản hồi vào `AiInsightDTO`.
+   - `AiCoachService` kiểm tra cấu hình `ai.groq.api-key`:
+     - **Nếu có API Key:** Gửi prompt đến Groq Chat Completions API (`https://api.groq.com/openai/v1/chat/completions`) với model cấu hình được; yêu cầu JSON output rồi ánh xạ phản hồi vào `AiInsightDTO`.
      - **Nếu không có API Key / Mất mạng / Lỗi API:** Tự động gọi bộ phân tích biomechanics nội bộ. Động cơ nội bộ dựa trên ngưỡng điểm khoa học để xác định các điểm yếu (ví dụ: tiếp đất cứng do $G > 2.8$) và tự động gán bài tập tương ứng (*Depth Drop*, *A-Skip*, *Single-leg Squats*...).
 4. **Hiển Thị Trên Giao Diện:**
    - `AiCoachInsightCard.jsx` render đầy đủ bảng điểm động học kèm lời nhận xét ấm áp, thân thiện.
@@ -56,12 +56,12 @@ Module chịu trách nhiệm:
 ## 4. API & Dependencies Liên Quan
 - `GET /api/ai/session/{sessionId}`
 - `POST /api/ai/quick-analysis`
-- External API: xAI Responses API `https://api.x.ai/v1/responses` (Bearer API key).
+- External API: Groq Chat Completions API `https://api.groq.com/openai/v1/chat/completions` (Bearer API key).
 
 ---
 
 ## 5. Quy Tắc & Lưu Ý Khi Chỉnh Sửa Module
-- **Tuyệt đối không lưu API Key trong mã nguồn:** Sử dụng biến môi trường `${XAI_API_KEY:}`; model cấu hình qua `${XAI_MODEL:grok-4.7}`.
-- **Bảo toàn cơ chế Fallback:** Không để lỗi gọi xAI làm crash API. Nếu Cloud LLM timeout hoặc trả lỗi HTTP, luôn trả về kết quả từ bộ phân tích biomechanics nội bộ.
+- **Tuyệt đối không lưu API Key trong mã nguồn:** Sử dụng biến môi trường `${GROQ_API_KEY:}`; model cấu hình qua `${GROQ_MODEL:llama-3.3-70b-versatile}`.
+- **Bảo toàn cơ chế Fallback:** Không để lỗi gọi Groq làm crash API. Nếu Cloud LLM timeout hoặc trả lỗi HTTP, luôn trả về kết quả từ bộ phân tích biomechanics nội bộ.
 - **Đầu ra JSON:** Khi gọi Cloud LLM, yêu cầu JSON output qua `text.format.type: "json_object"`.
 

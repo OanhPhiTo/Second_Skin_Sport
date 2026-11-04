@@ -44,6 +44,7 @@ export default function Activities() {
   const [loading, setLoading] = useState(true);
   const [aiInsights, setAiInsights] = useState(null);
   const [loadingAi, setLoadingAi] = useState(false);
+  const [cachedInsights, setCachedInsights] = useState({});
   const [sessionSensorPoints, setSessionSensorPoints] = useState([]);
 
   // Fetch real sensor trajectory when a session detail modal is opened
@@ -101,17 +102,37 @@ export default function Activities() {
     fetchSessions();
   }, [searchParams]);
 
-  // Fetch AI insights when AI Coach modal is opened
+  // Fetch AI insights when AI Coach modal is opened (với Smart Cache tránh phân tích lặp lại)
   useEffect(() => {
     if (aiCoachSession) {
+      if (cachedInsights[aiCoachSession.id]) {
+        setAiInsights(cachedInsights[aiCoachSession.id]);
+        setLoadingAi(false);
+        return;
+      }
       setAiInsights(null);
       setLoadingAi(true);
       aiService.analyzeSession(aiCoachSession.id)
-        .then((data) => setAiInsights(data))
+        .then((data) => {
+          setAiInsights(data);
+          setCachedInsights((prev) => ({ ...prev, [aiCoachSession.id]: data }));
+        })
         .catch((err) => console.error('Error fetching AI insights:', err))
         .finally(() => setLoadingAi(false));
     }
-  }, [aiCoachSession]);
+  }, [aiCoachSession, cachedInsights]);
+
+  const handleRefreshAiInsight = () => {
+    if (!aiCoachSession) return;
+    setLoadingAi(true);
+    aiService.analyzeSession(aiCoachSession.id, true)
+      .then((data) => {
+        setAiInsights(data);
+        setCachedInsights((prev) => ({ ...prev, [aiCoachSession.id]: data }));
+      })
+      .catch((err) => console.error('Error refreshing AI insights:', err))
+      .finally(() => setLoadingAi(false));
+  };
 
   // Handle Search, Filter, and Sort
   useEffect(() => {
@@ -487,7 +508,17 @@ export default function Activities() {
               ) : null}
             </div>
 
-            <div className="detail-modal-footer">
+            <div className="detail-modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button
+                className="detail-action-btn"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                onClick={handleRefreshAiInsight}
+                disabled={loadingAi}
+                title="Làm mới phân tích từ Cloud AI"
+              >
+                <RotateCcw size={15} className={loadingAi ? 'spin-icon' : ''} />
+                <span>{loadingAi ? 'Đang phân tích lại...' : 'Phân tích lại'}</span>
+              </button>
               <button
                 className="detail-close-btn"
                 onClick={() => setAiCoachSession(null)}

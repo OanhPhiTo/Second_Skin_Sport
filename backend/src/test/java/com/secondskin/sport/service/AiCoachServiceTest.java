@@ -7,8 +7,8 @@ import com.secondskin.sport.repository.SensorDataRepository;
 import com.secondskin.sport.repository.SportSessionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
+import java.lang.reflect.Proxy;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Optional;
@@ -20,12 +20,39 @@ public class AiCoachServiceTest {
     private AiCoachService aiCoachService;
     private SportSessionRepository sessionRepository;
     private SensorDataRepository sensorDataRepository;
+    private SportSession foundSession;
 
     @BeforeEach
     void setUp() {
         BiomechanicalFeatureExtractor extractor = new BiomechanicalFeatureExtractor();
-        sessionRepository = Mockito.mock(SportSessionRepository.class);
-        sensorDataRepository = Mockito.mock(SensorDataRepository.class);
+        foundSession = null;
+
+        sessionRepository = (SportSessionRepository) Proxy.newProxyInstance(
+                SportSessionRepository.class.getClassLoader(),
+                new Class<?>[]{SportSessionRepository.class},
+                (proxy, method, args) -> {
+                    if ("findById".equals(method.getName()) && args != null && args.length > 0) {
+                        Long id = (Long) args[0];
+                        if (Long.valueOf(10L).equals(id) && foundSession != null) {
+                            return Optional.of(foundSession);
+                        }
+                        return Optional.empty();
+                    }
+                    return null;
+                }
+        );
+
+        sensorDataRepository = (SensorDataRepository) Proxy.newProxyInstance(
+                SensorDataRepository.class.getClassLoader(),
+                new Class<?>[]{SensorDataRepository.class},
+                (proxy, method, args) -> {
+                    if ("findBySessionIdOrderByTimestampAsc".equals(method.getName())) {
+                        return Collections.emptyList();
+                    }
+                    return null;
+                }
+        );
+
         aiCoachService = new AiCoachService(extractor, sessionRepository, sensorDataRepository);
     }
 
@@ -59,6 +86,9 @@ public class AiCoachServiceTest {
         // Check recovery advice
         assertNotNull(result.getRecoveryAdvice());
         assertFalse(result.getRecoveryAdvice().isEmpty());
+
+        // Check deterministic calories
+        assertTrue(result.getEstimatedCalories() > 0);
     }
 
     @Test
@@ -121,26 +151,47 @@ public class AiCoachServiceTest {
     }
 
     @Test
-    void testAnalyzeSessionById_FoundInRepository() {
-        SportSession session = new SportSession(
+    void testAnalyzeSessionById_FoundInRepository_AndCached() {
+        foundSession = new SportSession(
                 10L, "DEV-01", "Basketball",
                 LocalDateTime.now().minusMinutes(40), LocalDateTime.now(),
                 40, 35, 90, 3.1, 16.0, 85, 88, "Completed"
         );
 
-        Mockito.when(sessionRepository.findById(10L)).thenReturn(Optional.of(session));
-        Mockito.when(sensorDataRepository.findBySessionIdOrderByTimestampAsc(10L)).thenReturn(Collections.emptyList());
+        AiInsightDTO firstResult = aiCoachService.analyzeSessionById(10L);
+        assertNotNull(firstResult);
+        assertTrue(firstResult.getPerformanceScore() > 0);
+        assertTrue(firstResult.getEstimatedCalories() > 0);
 
-        AiInsightDTO result = aiCoachService.analyzeSessionById(10L);
-        assertNotNull(result);
-        assertTrue(result.getPerformanceScore() > 0);
+        // Lần gọi thứ 2 phải lấy từ cache
+        AiInsightDTO secondResult = aiCoachService.analyzeSessionById(10L);
+        assertSame(firstResult, secondResult);
+        assertEquals(firstResult.getEstimatedCalories(), secondResult.getEstimatedCalories());
+
+        // Invalidate cache
+        aiCoachService.invalidateCache(10L);
+        AiInsightDTO thirdResult = aiCoachService.analyzeSessionById(10L);
+        assertNotNull(thirdResult);
+        assertEquals(firstResult.getEstimatedCalories(), thirdResult.getEstimatedCalories());
     }
 
     @Test
     void testAnalyzeSessionById_NotFound_ThrowsResourceNotFoundException() {
-        Mockito.when(sessionRepository.findById(999L)).thenReturn(Optional.empty());
-
         assertThrows(com.secondskin.sport.exception.ResourceNotFoundException.class,
                 () -> aiCoachService.analyzeSessionById(999L));
+    }
+
+    @Test
+    void testCalculateCalories_Deterministic() {
+        SportSession session = new SportSession();
+        session.setSport("Running");
+        session.setDurationMinutes(60);
+
+        int cal1 = aiCoachService.calculateCalories(session);
+        int cal2 = aiCoachService.calculateCalories(session);
+
+        assertEquals(cal1, cal2);
+        // Running 60 min: 9.8 * 70 * 1 = 686
+        assertEquals(686, cal1);
     }
 }

@@ -189,7 +189,7 @@ export const authService = {
       .filter((key) => key.startsWith('secondskin_sessions_') || key.startsWith('_mock_reset_otp_'))
       .forEach((key) => localStorage.removeItem(key));
     Object.keys(sessionStorage)
-      .filter((key) => key.startsWith('secondskin_sessions_') || key.startsWith('_mock_reset_otp_') || key === 'secondskin_admin_users' || key === 'secondskin_coach_squad' || key === 'sss_notifications')
+      .filter((key) => key.startsWith('secondskin_sessions_') || key.startsWith('_mock_reset_otp_') || key === 'sss_notifications')
       .forEach((key) => sessionStorage.removeItem(key));
   },
   isAuthenticated: () => {
@@ -1053,9 +1053,9 @@ export const adminService = {
 };
 
 export const aiService = {
-  analyzeSession: async (sessionId) => {
+  analyzeSession: async (sessionId, refresh = false) => {
     try {
-      const response = await apiClient.get(`/ai/session/${sessionId}`);
+      const response = await apiClient.get(`/ai/session/${sessionId}${refresh ? '?refresh=true' : ''}`);
       return response.data;
     } catch (err) {
       console.warn('Backend AI API offline, using smart fallback insights:', err);

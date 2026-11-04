@@ -48,7 +48,7 @@ export default function AiCoachInsightCard({ insights }) {
           <div>
             <div className="ai-coach-tagline">
               <span className="badge-ai-coach">AI COACH CƠ SINH HỌC</span>
-              <span className="ai-engine-tag">Cảm Biến DSP & Grok AI</span>
+              <span className="ai-engine-tag">Cảm Biến DSP & Groq AI</span>
             </div>
             <h3 className="ai-insight-title">{insights.activityType || 'Phân Tích Động Học Buổi Tập'}</h3>
           </div>

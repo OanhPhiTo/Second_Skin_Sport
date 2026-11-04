@@ -5,7 +5,7 @@
 **Second Skin Sport** là nền tảng công nghệ thể thao thông minh (Sports-Tech IoT Platform) kết hợp giữa:
 1. **Thiết bị đeo thông minh (Wearable Patch):** Phần cứng siêu nhỏ gọn gắn chip ESP32-C3 SuperMini và cảm biến quán tính 6 bậc tự do (6-DOF IMU MPU-6050), thu thập gia tốc và vận tốc góc với độ trễ thấp.
 2. **Hệ thống Backend phân tích chuyên sâu:** Xây dựng trên Spring Boot 3 (Java 21), xử lý chuỗi tín hiệu thời gian thực, phát hiện chuyển động nhảy (Jump Detection), bứt tốc, đổi hướng và đánh giá tải cơ học.
-3. **Trợ lý AI Động học Vận động:** Tích hợp xAI Grok kết hợp với Bộ máy tính toán số động học nội bộ (DSP Feature Extractor), cung cấp nhận xét khoa học thể thao và đề xuất bài tập khắc phục cho VĐV.
+3. **Trợ lý AI Động học Vận động:** Tích hợp Groq kết hợp với Bộ máy tính toán số động học nội bộ (DSP Feature Extractor), cung cấp nhận xét khoa học thể thao và đề xuất bài tập khắc phục cho VĐV.
 4. **Bàn điều khiển chiến thuật Đội hình (Coach Dashboard):** Cho phép Huấn luyện viên giám sát cùng lúc toàn bộ đội hình trên sân theo thời gian thực, tính toán chỉ số mỏi (Fatigue Index), va đập gối/lưng (High Impact Landings) và cảnh báo thay người/xoay tua chiến thuật tự động.
 5. **Dashboard VĐV & Quản trị viên:** Giúp VĐV theo dõi tiến trình rèn luyện cá nhân, và Admin quản lý cấp quyền tài khoản HLV/người dùng.
 
@@ -19,7 +19,7 @@
 - **Bảo mật:** Spring Security 6, JWT Stateless Authentication (jjwt 0.11.5), BCrypt Password Hashing, RBAC (Role-Based Access Control: `ADMIN`, `COACH`, `USER`).
 - **Cơ sở dữ liệu & ORM:** Spring Data JPA, Hibernate ORM, Microsoft SQL Server (Môi trường vận hành), H2 In-Memory Database (Demo / Test).
 - **Giao tiếp Realtime:** Spring WebSocket với STOMP Message Broker (`/ws/sensor-data`, Simple Broker `/topic`).
-- **Tích hợp Trí tuệ Nhân tạo (Cloud AI):** xAI Responses API (`https://api.x.ai/v1/responses`), model mặc định `grok-4.7`, JSON output.
+- **Tích hợp Trí tuệ Nhân tạo (Cloud AI):** Groq Chat Completions API (`https://api.groq.com/openai/v1/chat/completions`), model mặc định `llama-3.3-70b-versatile`, JSON output.
 - **Thư viện bổ trợ:** Project Lombok 1.18.42, Spring Boot Actuator, Jakarta Validation.
 - **Kiểm thử:** JUnit 5, Mockito, Spring Boot Starter Test.
 
@@ -66,7 +66,7 @@ Second_Skin_Sport/
 │       │   ├── security/              # JWT Filters, SecurityConfig, UserDetailsService
 │       │   └── service/               # Business Logic, DSP Algorithms, Jump Detection, AI
 │       ├── main/resources/
-│       │   └── application.properties # Cấu hình cổng, DataSource, JPA, Grok API Key
+│       │   └── application.properties # Cấu hình cổng, DataSource, JPA, Groq API Key
 │       └── test/                      # Bộ kiểm thử Unit & Integration Tests
 ├── frontend/                          # Module Frontend React + Vite
 │   ├── package.json                   # Dependencies & npm scripts
@@ -121,7 +121,7 @@ Second_Skin_Sport/
    - Tính năng "Đề xuất Thay người Chiến thuật" (Tactical Rotation) và thực thi hoán đổi vị trí trực tiếp (`/api/coach/teams/{teamId}/tactical-action`).
 
 4. **Module Trợ Lý Trí Tuệ Nhân Tạo (AI Coach Engine):**
-   - Động cơ phân tích song hành: xAI Grok (khi online) và Local Biomechanical DSP Engine (khi offline).
+   - Động cơ phân tích song hành: Groq (khi online) và Local Biomechanical DSP Engine (khi offline).
    - Đo lường 5 chỉ số động học: Độ êm tiếp đất (Landing Softness), Cân bằng 2 chân (Bilateral Symmetry), Nhịp vận động (Cadence), Độ vững thân trên (Trunk Stability), và Độ bùng nổ (Explosiveness).
    - Đề xuất các bài tập khắc phục cụ thể theo số hiệp/lần (Actionable Drills: Depth Drop, A-Skip, Single-leg Squats...).
 
