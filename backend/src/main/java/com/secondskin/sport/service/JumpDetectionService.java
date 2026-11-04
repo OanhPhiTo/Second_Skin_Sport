@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 2. TAKEOFF: Xung lực bật lên của bàn chân (Magnitude > 16.5 m/s²).
  * 3. AIRBORNE: Giai đoạn không trọng lượng / rơi tự do (Magnitude < 6.5 m/s² kéo dài >= 180ms).
  * 4. LANDING: Lực va chạm tiếp đất cực mạnh (Magnitude > 20.0 m/s²).
- * 5. REFRACTORY: Khóa chống dội / debounce trong 850ms để triệt tiêu các dao động phản hồi sau tiếp đất.
+ * 5. REFRACTORY: Chờ tín hiệu trở lại mức đứng yên ổn định trước khi tái kích hoạt.
  *
  * Tiêu chí phân biệt Chạy (Running) vs Nhảy (Jumping):
  * - Bước chạy có xung lực tiếp đất (14 - 24 m/s²) theo nhịp cadence (240 - 550ms/bước)
@@ -41,7 +41,10 @@ public class JumpDetectionService {
     public static final double TAKEOFF_THRESHOLD = 16.5; // m/s²
     public static final long MIN_JUMP_AIRTIME_MS = 180; // Minimum airtime for genuine vertical jump
     public static final long MAX_JUMP_AIRTIME_MS = 850; // Maximum plausible human hang time
-    public static final long JUMP_REFRACTORY_MS = 850;  // Debounce period to prevent double/triple count
+    public static final int GROUNDED_SAMPLES_TO_REARM = 2;
+    public static final long GROUNDED_STABILITY_MS = 80;
+    public static final double GROUNDED_MIN_MAGNITUDE = 8.5;
+    public static final double GROUNDED_MAX_MAGNITUDE = 12.5;
     public static final double RUN_STEP_MIN_IMPACT = 13.5; // m/s²
     public static final double RUN_STEP_MAX_IMPACT = 25.0; // m/s²
 
@@ -55,10 +58,11 @@ public class JumpDetectionService {
     public static class DeviceState {
         public KinematicState state = KinematicState.GROUND;
         public long airtimeStartEpochMs = 0;
-        public long lastJumpEpochMs = 0;
         public long lastStepEpochMs = 0;
         public int totalJumps = 0;
         public int totalSteps = 0;
+        public int groundedSamplesAfterLanding = 0;
+        public long groundedSinceEpochMs = 0;
         public String currentActivity = "IDLE";
         public double lastJumpHeightCm = 0.0;
         public double lastAirtimeSeconds = 0.0;
@@ -118,10 +122,22 @@ public class JumpDetectionService {
                                                          LocalDateTime timestamp) {
         LocalDateTime eventTime = timestamp != null ? timestamp : LocalDateTime.now();
 
-        // 1. Kiểm tra hết thời gian khóa chống dội (Refractory Period)
+        // 1. Chỉ tái kích hoạt sau khi tín hiệu ổn định ở mức đứng yên.
         if (dev.state == KinematicState.REFRACTORY) {
-            if (epochMs - dev.lastJumpEpochMs >= JUMP_REFRACTORY_MS) {
+            if (magnitude >= GROUNDED_MIN_MAGNITUDE && magnitude <= GROUNDED_MAX_MAGNITUDE) {
+                if (dev.groundedSamplesAfterLanding == 0) {
+                    dev.groundedSinceEpochMs = epochMs;
+                }
+                dev.groundedSamplesAfterLanding++;
+            } else {
+                dev.groundedSamplesAfterLanding = 0;
+                dev.groundedSinceEpochMs = 0;
+            }
+            if (dev.groundedSamplesAfterLanding >= GROUNDED_SAMPLES_TO_REARM
+                    && epochMs - dev.groundedSinceEpochMs >= GROUNDED_STABILITY_MS) {
                 dev.state = KinematicState.GROUND;
+                dev.groundedSamplesAfterLanding = 0;
+                dev.groundedSinceEpochMs = 0;
             }
         }
 
@@ -161,11 +177,12 @@ public class JumpDetectionService {
                     if (flightDurationMs >= MIN_JUMP_AIRTIME_MS && flightDurationMs <= MAX_JUMP_AIRTIME_MS) {
                         // XÁC NHẬN CÚ NHẢY HỢP LỆ!
                         dev.totalJumps++;
-                        dev.lastJumpEpochMs = epochMs;
                         dev.lastAirtimeSeconds = flightDurationMs / 1000.0;
                         // Độ cao cú nhảy: h = (1/8) * g * t^2
                         dev.lastJumpHeightCm = Math.round((0.125 * STANDARD_GRAVITY * dev.lastAirtimeSeconds * dev.lastAirtimeSeconds) * 1000.0) / 10.0;
                         dev.state = KinematicState.REFRACTORY;
+                        dev.groundedSamplesAfterLanding = 0;
+                        dev.groundedSinceEpochMs = 0;
                         dev.currentActivity = "JUMPING";
 
                         double impactG = Math.round((magnitude / STANDARD_GRAVITY) * 10.0) / 10.0;

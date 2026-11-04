@@ -15,7 +15,7 @@ Tài liệu này ghi nhận hiện trạng triển khai thực tế của hệ t
 | **Thu thập Batch IoT & Loại bỏ Mock 404 (F14)** | ✅ Hoàn thành | Đã có Unit Test & Integration Test | Endpoint `POST /api/v1/sensor/batches`; trả `ResourceNotFoundException` (404) chuẩn khi session/team không tồn tại, loại bỏ mock fallback. |
 | **Thuật toán Nhảy (Jump)** | ✅ Hoàn thành | Đã kiểm chứng thuật toán với Unit Test | Đo thời gian bay (airtime), tính chiều cao nhảy ($h$), đo lực tiếp đất ($G$), bắn sự kiện WebSocket. |
 | **Đặc trưng Động học DSP & Thống kê Thực (F15)** | ✅ Hoàn thành | Đã kiểm chứng qua `BiomechanicalFeatureExtractorTest` & `StatisticsServiceTest` | Đo độ êm tiếp đất, đối xứng 2 chân, độ vững thân trên, độ bùng nổ, tính `accelChange` và `fatigueIndex` động từ telemetry cảm biến thực tế. |
-| **Trợ lý AI Coach (Gemini)** | ✅ Hoàn thành | Đã có Unit Test & Mock Fallback | Tích hợp Google Gemini 1.5 Flash qua REST; tự động chuyển sang Local DSP Engine khi không có API key; báo 404 chuẩn khi session không tồn tại. |
+| **Trợ lý AI Coach (Grok)** | ✅ Hoàn thành | Unit Test/Fallback; API cloud chưa live-verified | Tích hợp xAI Responses API qua REST; tự động chuyển sang Local DSP Engine khi không có API key hoặc API lỗi; báo 404 chuẩn khi session không tồn tại. |
 | **Firmware ESP32-C3 SuperMini** | ✅ Hoàn thành | Đã nạp và kiểm tra Serial / BLE | Hỗ trợ đọc cảm biến MPU6050 qua I2C, tự động bật chế độ giả lập nếu cảm biến chưa gắn. |
 | **Web Bluetooth Direct Stream** | ✅ Hoàn thành | Đã kiểm tra trên trình duyệt Chrome | Kết nối BLE trực tiếp từ Web tới ESP32-C3 để xem biểu đồ dao động 6 trục thời gian thực. |
 | **Giao diện VĐV & Thống kê** | ✅ Hoàn thành | Đã kiểm tra UI build & Recharts | Dashboard VĐV, hiển thị số buổi tập, biểu đồ phân tích hoạt động, lịch sử luyện tập. |
@@ -58,8 +58,8 @@ Tài liệu này ghi nhận hiện trạng triển khai thực tế của hệ t
    - *Mô tả:* File `application.properties` hiện trỏ tới SQL Server tại `localhost:1433`. Nếu máy phát triển chưa cài đặt hoặc chưa khởi động SQL Server container, ứng dụng Spring Boot sẽ báo lỗi kết nối.
    - *Khuyến nghị:* Với môi trường kiểm thử hoặc demo nhanh không có SQL Server, chuyển sang cấu hình H2 In-Memory Database (đã có sẵn trong file properties ở dạng comment).
 
-3. **Phụ Thuộc Biến Môi Trường Google Gemini:**
-   - *Mô tả:* Tính năng phân tích AI nâng cao sử dụng API Key Google Gemini (`AI_GEMINI_API_KEY`). Nếu người dùng chưa cấu hình biến môi trường này, hệ thống sẽ sử dụng Local Biomechanical DSP Heuristics để trả về kết quả. Đây là tính năng dự phòng có chủ đích, không phải lỗi hệ thống.
+3. **Phụ Thuộc Biến Môi Trường xAI Grok:**
+   - *Mô tả:* Tính năng phân tích AI nâng cao sử dụng API Key xAI (`XAI_API_KEY`) và model tùy chọn (`XAI_MODEL`, mặc định `grok-4.7`). Nếu chưa cấu hình API key, hệ thống sử dụng Local Biomechanical DSP Heuristics để trả kết quả.
 
 ---
 

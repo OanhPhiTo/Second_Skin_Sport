@@ -35,14 +35,14 @@ Module chịu trách nhiệm:
 ## 3. Luồng Xử Lý Chính (Core Flow)
 
 1. **Thu mẫu & Truyền tin từ Phần cứng:**
-   - ESP32-C3 đọc IMU MPU-6050 tần số 10Hz qua giao tiếp I2C.
+   - ESP32-C3 đọc IMU MPU-6050 trong vòng lặp khoảng 100Hz; FSM trên firmware xử lý từng mẫu và BLE gửi telemetry 20Hz.
    - Dữ liệu được phát qua BLE Characteristic hoặc gom nhóm gửi qua Wi-Fi lên endpoint `POST /api/v1/sensor/batches`.
 2. **Xử lý Động học & Phát Hiện Nhảy:**
    - `SensorBatchService` nhận mảng `SensorReadingDTO`.
    - Với mỗi mẫu, `JumpDetectionService` đánh giá ngưỡng gia tốc:
-     - Pha Takeoff: Gia tốc tổng hợp $a_{mag} > 1.8G$.
-     - Pha Flight: $a_{mag} < 0.35G$ (trạng thái không trọng lượng), bắt đầu bấm giờ airtime.
-     - Pha Landing: $a_{mag} > 2.2G$, kết thúc cú nhảy, tính chiều cao $h = \frac{1}{8} g \cdot t_{flight}^2$ và lực va đập đỉnh.
+     - Pha Takeoff: gia tốc tổng hợp $a_{mag} > 16.5\,m/s^2$.
+     - Pha Flight: $a_{mag} < 6.5\,m/s^2$; airtime hợp lệ từ 180–850ms.
+     - Pha Landing: $a_{mag} > 20\,m/s^2$; sau landing, tái kích hoạt khi có ít nhất 2 mẫu đứng yên liên tục trong tối thiểu 80ms. Cách này lọc dội tiếp đất mà vẫn nhận nhảy liên tiếp.
    - Khi phát hiện cú nhảy, bắn sự kiện ngay lập tức tới WebSocket `/topic/jumps`.
 3. **Phát Sóng Telemetry:**
    - Mẫu đo mới nhất được phát tới `/topic/sensor-telemetry` và `/topic/devices/{deviceId}/telemetry`.

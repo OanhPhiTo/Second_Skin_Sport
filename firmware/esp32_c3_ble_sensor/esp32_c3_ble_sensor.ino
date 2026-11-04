@@ -86,11 +86,15 @@ float lastJumpHeightCm = 0.0;
 enum KinematicState { KINE_GROUND, KINE_TAKEOFF, KINE_AIRBORNE, KINE_REFRACTORY };
 KinematicState kineState = KINE_GROUND;
 unsigned long airtimeStart = 0;
-unsigned long lastJumpTime = 0;
 unsigned long lastStepTime = 0;
 const unsigned long MIN_JUMP_AIRTIME_MS = 180;  // Real vertical jump flight time >= 180ms
 const unsigned long MAX_JUMP_AIRTIME_MS = 800;  // Upper bound for human jump
-const unsigned long JUMP_REFRACTORY_MS  = 900;  // Debounce lockout to prevent multiple triggers
+const int GROUNDED_SAMPLES_TO_REARM = 2;
+const unsigned long GROUNDED_STABILITY_MS = 80;
+const float GROUNDED_MIN_MAGNITUDE = 8.5f;
+const float GROUNDED_MAX_MAGNITUDE = 12.5f;
+int groundedSamplesAfterLanding = 0;
+unsigned long groundedSince = 0;
 const float JUMP_FREEFALL_THRESH        = 6.5f; // Free fall: acceleration magnitude < 6.5 m/s²
 const float JUMP_LANDING_IMPACT_THRESH  = 21.0f;// Hard landing impact: magnitude > 21.0 m/s²
 const float RUN_STEP_MIN_THRESH         = 13.5f;// Running footstrike impact threshold
@@ -110,7 +114,7 @@ String wifiPass = "";
 String backendUrl = "http://192.168.1.100:8080/api/v1/sensor/batches";
 
 unsigned long lastSensorPublish = 0;
-const unsigned long SENSOR_INTERVAL = 100; // 100ms -> 10Hz sampling rate
+const unsigned long SENSOR_INTERVAL = 50; // BLE telemetry at 20Hz; detection runs on each ~10ms loop
 
 // ==========================================
 // 🔔 BLE SERVER CALLBACKS
@@ -308,15 +312,26 @@ void detectActivity() {
     unsigned long now = millis();
     float magnitude = sqrt(ax * ax + ay * ay + az * az);
 
-    // 1. Refractory Lockout Recovery (Debounce)
+    // 1. Re-arm only after stable ground readings, preventing rebound duplicates
+    // while allowing rapid jumps as soon as the athlete lands and settles.
     if (kineState == KINE_REFRACTORY) {
-        if (now - lastJumpTime >= JUMP_REFRACTORY_MS) {
+        if (magnitude >= GROUNDED_MIN_MAGNITUDE && magnitude <= GROUNDED_MAX_MAGNITUDE) {
+            if (groundedSamplesAfterLanding == 0) groundedSince = now;
+            groundedSamplesAfterLanding++;
+        } else {
+            groundedSamplesAfterLanding = 0;
+            groundedSince = 0;
+        }
+        if (groundedSamplesAfterLanding >= GROUNDED_SAMPLES_TO_REARM
+                && now - groundedSince >= GROUNDED_STABILITY_MS) {
             kineState = KINE_GROUND;
+            groundedSamplesAfterLanding = 0;
+            groundedSince = 0;
         }
     }
 
     // 2. Jumping Detection State Machine
-    // Sequence: GROUND -> TAKEOFF -> AIRBORNE (free-fall < 6.5 m/s² >= 180ms) -> LANDING (impact > 21 m/s²) -> REFRACTORY (900ms)
+    // Sequence: GROUND -> TAKEOFF -> AIRBORNE (free-fall < 6.5 m/s² >= 180ms) -> LANDING -> stable ground re-arm
     switch (kineState) {
         case KINE_GROUND:
             if (magnitude < JUMP_FREEFALL_THRESH) {
@@ -347,12 +362,13 @@ void detectActivity() {
                 if (flightDurationMs >= MIN_JUMP_AIRTIME_MS && flightDurationMs <= MAX_JUMP_AIRTIME_MS) {
                     // VALID VERTICAL JUMP CONFIRMED!
                     jumpCount++;
-                    lastJumpTime = now;
                     lastAirtime = flightDurationMs / 1000.0f;
                     // Jump height h = 1/8 * g * t_air^2
                     lastJumpHeightCm = (0.125f * 9.80665f * lastAirtime * lastAirtime) * 100.0f;
                     activityState = "jumping";
                     kineState = KINE_REFRACTORY;
+                    groundedSamplesAfterLanding = 0;
+                    groundedSince = 0;
                     Serial.printf(">>> [FIRMWARE JUMP] Jump #%d | Airtime: %d ms | Height: %.1f cm | Impact: %.1f m/s²\n",
                                   jumpCount, (int)flightDurationMs, lastJumpHeightCm, magnitude);
                 } else {

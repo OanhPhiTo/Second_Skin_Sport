@@ -24,8 +24,8 @@ Hệ thống Trợ lí AI của **Second Skin Sport** hoạt động theo **Ki�
             ▼                                                         ▼
 ┌───────────────────────────────┐         ┌───────────────────────────────────────┐
 │ ENGINE 2A: CLOUD LLM          │         │ ENGINE 2B: LOCAL BIOMECHANICS ENGINE  │
-│ 🌟 Google Gemini 1.5 Flash    │         │ ⚡ Thuật toán Khoa học Thể thao Nội bộ │
-│    (`gemini-1.5-flash`)       │         │    100% Offline & Bảo mật             │
+│ 🌟 xAI Grok                   │         │ ⚡ Thuật toán Khoa học Thể thao Nội bộ │
+│    (`grok-4.7`)               │         │    100% Offline & Bảo mật             │
 └───────────────┬───────────────┘         └───────────────────┬───────────────────┘
                 │                                             │
                 └──────────────────────┬──────────────────────┘
@@ -36,20 +36,17 @@ Hệ thống Trợ lí AI của **Second Skin Sport** hoạt động theo **Ki�
                   └──────────────────────────────────────────────┘
 ```
 
-### 1.1. Model Đám Mây (Cloud LLM): **Google Gemini 1.5 Flash**
-* **Tên Model kỹ thuật**: `gemini-1.5-flash`
-* **Nhà cung cấp**: Google DeepMind / Google Cloud AI
-* **Endpoint API**: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`
-* **Lý do lựa chọn**:
-  * **Tốc độ phản hồi cực nhanh**: Thời gian xử lý $< 1$ giây, phù hợp cho việc phân tích tức thì ngay khi kết thúc buổi tập.
-  * **Chế độ Structured JSON Output**: Hỗ trợ chuẩn `responseMimeType: "application/json"`, đảm bảo dữ liệu trả về luôn tương thích 100% với Frontend mà không bị lỗi cú pháp.
-  * **Khả năng diễn đạt tiếng Việt tự nhiên**: Chuyển đổi các thông số vật lý khô khan ($m/s^2, G, ^\circ/s$) thành lời nhận xét gần gũi, ấm áp, có tính động viên cao như một huấn luyện viên riêng.
-* **Cấu hình tùy biến**:
-  * Có thể đổi sang các model khác như `gemini-1.5-pro` hoặc `gemini-2.0-flash` thông qua file cấu hình `application.properties`:
-    ```properties
-    ai.gemini.api-key=${AI_GEMINI_API_KEY:}
-    ai.gemini.model=gemini-1.5-flash
-    ```
+### 1.1. Model Đám Mây (Cloud LLM): **xAI Grok**
+* **Model mặc định**: `grok-4.7` (có thể ghi đè bằng biến môi trường `XAI_MODEL`).
+* **Nhà cung cấp**: xAI.
+* **Endpoint API**: `https://api.x.ai/v1/responses`.
+* **Xác thực**: Bearer API key lấy từ biến môi trường `XAI_API_KEY`; không lưu khóa trong mã nguồn.
+* **Đầu ra**: Yêu cầu JSON output để ánh xạ vào `AiInsightDTO` và giao diện.
+* **Cấu hình trong `application.properties`**:
+  ```properties
+  ai.grok.api-key=${XAI_API_KEY:}
+  ai.grok.model=${XAI_MODEL:grok-4.7}
+  ```
 
 ### 1.2. Model Xử Lý Tín Hiệu Nội Bộ: **Local Biomechanical DSP Engine**
 * **Cơ chế**: Module `BiomechanicalFeatureExtractor.java` và thuật toán khoa học vận động tích hợp trực tiếp trong Backend Spring Boot.
@@ -131,7 +128,7 @@ Phân loại rủi ro theo 3 cấp độ màu sắc trực quan:
 
 | Thành phần | Công nghệ sử dụng | Vai trò |
 | :--- | :--- | :--- |
-| **Model LLM** | Google Gemini 1.5 Flash (`gemini-1.5-flash`) | Phân tích ngữ nghĩa & sinh lời khuyên tiếng Việt |
+| **Model LLM** | xAI Grok (`grok-4.7` mặc định) | Phân tích ngữ nghĩa & sinh lời khuyên tiếng Việt |
 | **Model DSP** | Biomechanical Feature Extractor (Java 21) | Xử lý tín hiệu số gia tốc & con quay 10Hz |
 | **Backend API** | Spring Boot 3.2.3 REST + STOMP WebSocket | Xử lý phân tích và truyền nhận thời gian thực |
 | **Frontend UI** | React 19 + Recharts + CSS Glassmorphism | Trực quan hóa 5 thanh đo và thẻ lời khuyên |

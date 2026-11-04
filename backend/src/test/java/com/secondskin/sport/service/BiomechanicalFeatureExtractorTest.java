@@ -42,7 +42,7 @@ public class BiomechanicalFeatureExtractorTest {
             double az = 9.81 + 4.5 * Math.sin(i * 0.8);
             double roll = 2.0 * Math.sin(i * 0.5);
             SensorData data = new SensorData(
-                    1L, "DEV-01", now.plusSeconds(i),
+                    1L, "DEV-01", now.plusNanos(i * 100_000_000L),
                     ax, ay, az, 10.0, 5.0, 2.0, 7.5, roll, 0.0, 75
             );
             rawData.add(data);
@@ -50,7 +50,8 @@ public class BiomechanicalFeatureExtractorTest {
 
         BiomechanicalMetricsDTO metrics = extractor.extractFeatures(rawData, "Running");
         assertNotNull(metrics);
-        assertTrue(metrics.getCadenceRpm() >= 150 && metrics.getCadenceRpm() <= 185);
+        assertTrue(metrics.getCadenceRpm() >= 0 && metrics.getCadenceRpm() < 140,
+                "Cadence must come from detected acceleration peaks, not a typical-value fallback");
         assertTrue(metrics.getBilateralSymmetryPct() >= 75);
         assertTrue(metrics.getLandingSoftnessScore() > 60);
         assertTrue(metrics.getPeakLandingImpactG() > 1.0);

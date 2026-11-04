@@ -19,7 +19,7 @@ Hệ thống Second Skin Sport được xây dựng theo kiến trúc phân tán
                                               │           │
                                               │      (REST JSON)
                                               │           ▼
-                                              ├─► [ Google Gemini 1.5 Flash Cloud LLM ]
+                                              ├─► [ xAI Grok Cloud LLM ]
                                               │
                                               ▼
                                     [ Cơ Sở Dữ Liệu ]
@@ -95,7 +95,7 @@ Backend tuân thủ nghiêm ngặt mô hình phân tầng tiêu chuẩn trong h�
   3. *Cadence (Nhịp vận động)* từ tần số dao động bước.
   4. *Trunk Stability (Độ vững thân trên)* từ dao động góc nghiêng pitch/roll.
   5. *Explosiveness (Độ bùng nổ)* từ đạo hàm gia tốc bứt tốc.
-- **`AiCoachService.java`**: Phối hợp giữa Cloud LLM Google Gemini và Local DSP Engine để sinh lời khuyên, nhận diện lỗi kỹ thuật và danh sách bài tập điều chỉnh.
+- **`AiCoachService.java`**: Phối hợp giữa Cloud LLM xAI Grok và Local DSP Engine để sinh lời khuyên, nhận diện lỗi kỹ thuật và danh sách bài tập điều chỉnh.
 - **`TacticalRotationService.java`**: Theo dõi cường độ di chuyển và tích lũy va đập của từng cầu thủ, tính toán chỉ số mỏi `fatigueIndex` ($0 - 100\%$), nhận diện nguy cơ chấn thương và tự động đề xuất cặp thay người tối ưu (Cầu thủ kiệt sức $\leftrightarrow$ Dự bị sung sức).
 - **`CoachService.java`**: Quản lý nghiệp vụ đội bóng, danh sách VĐV, và phân bổ số áo/thiết bị.
 - **`AdminService.java`**: Quản lý cấp tài khoản Coach, khóa/mở khóa tài khoản người dùng, đổi role.
@@ -197,7 +197,7 @@ AiCoachService.analyzeSession()
        │        └─► Tính: Landing Softness, Symmetry, Cadence, Stability, Explosiveness
        │
        ├─► Kiểm tra API Key:
-       │        ├─► CÓ Key: Gọi Google Gemini 1.5 Flash (Structured JSON Prompt)
+       │        ├─► CÓ Key: Gọi xAI Grok Responses API (JSON output)
        │        └─► KHÔNG Key / Offline: Gọi Local DSP Biomechanics Heuristic Rules
        │
        ▼

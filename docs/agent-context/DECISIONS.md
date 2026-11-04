@@ -13,7 +13,7 @@ Tài liệu này ghi lại các quyết định thiết kế kiến trúc quan t
 - **Quyết định:**
   - Thiết kế kiến trúc AI song hành:
     1. **Engine 1 (Local Biomechanical DSP Engine):** Tích hợp thuật toán xử lý tín hiệu số ngay trong Spring Boot (`BiomechanicalFeatureExtractor.java`). Động cơ này tính toán $100\%$ offline các chỉ số: Độ êm tiếp đất, Độ cân bằng 2 chân, Nhịp bước, và Độ vững thân trên.
-    2. **Engine 2A (Cloud LLM - Google Gemini 1.5 Flash):** Khi có kết nối internet và API Key, hệ thống gửi các đặc trưng động học đã tính toán kèm thông số buổi tập tới Gemini với chế độ Structured JSON Output (`responseMimeType: "application/json"`) để sinh báo cáo huấn luyện viên cá nhân hóa.
+    2. **Engine 2A (Cloud LLM - xAI Grok):** Khi có kết nối internet và API Key, hệ thống gửi các đặc trưng động học đã tính toán kèm thông số buổi tập tới xAI Responses API, yêu cầu JSON output để sinh báo cáo huấn luyện viên cá nhân hóa.
     3. **Engine 2B (Local Heuristic Engine):** Nếu không có internet hoặc thiếu API Key, hệ thống tự động kích hoạt bộ quy tắc luật thể thao nội bộ để sinh lời khuyên và bài tập khắc phục mà không làm gián đoạn trải nghiệm người dùng.
 - **Hệ quả:** Hệ thống đạt độ sẵn sàng cao ($100\%$ uptime), phản hồi $< 1$ giây, an toàn dữ liệu và tối ưu chi phí API.
 

@@ -26,7 +26,7 @@ export default function AiCoachInsightCard({ insights }) {
     peakLandingImpactG: 2.4,
     bilateralSymmetryPct: 94,
     dominantSide: 'BALANCED',
-    cadenceRpm: 168,
+    cadenceRpm: null,
     rhythmConsistencyPct: 91,
     trunkStabilityScore: 86,
     trunkLeanAngleDegrees: 8.2,
@@ -48,7 +48,7 @@ export default function AiCoachInsightCard({ insights }) {
           <div>
             <div className="ai-coach-tagline">
               <span className="badge-ai-coach">AI COACH CƠ SINH HỌC</span>
-              <span className="ai-engine-tag">Cảm Biến DSP & Google Gemini AI</span>
+              <span className="ai-engine-tag">Cảm Biến DSP & Grok AI</span>
             </div>
             <h3 className="ai-insight-title">{insights.activityType || 'Phân Tích Động Học Buổi Tập'}</h3>
           </div>
@@ -124,12 +124,12 @@ export default function AiCoachInsightCard({ insights }) {
                   <span className="metric-label">
                     <TrendingUp size={14} className="highlight-orange" /> Nhịp Vận Động
                   </span>
-                  <span className="metric-val">{metrics.cadenceRpm} bước/phút</span>
+                  <span className="metric-val">{metrics.cadenceRpm == null ? '—' : `${metrics.cadenceRpm} bước/phút`}</span>
                 </div>
                 <div className="metric-progress-bg">
                   <div
                     className="metric-progress-fill orange-fill"
-                    style={{ width: `${Math.min(100, Math.round((metrics.cadenceRpm / 185) * 100))}%` }}
+                    style={{ width: `${Math.min(100, Math.round(((metrics.cadenceRpm || 0) / 185) * 100))}%` }}
                   />
                 </div>
                 <span className="metric-sub-note">Độ đều nhịp: {metrics.rhythmConsistencyPct}%</span>

@@ -3,7 +3,7 @@
 ## Architecture
 Second Skin Sport is an IoT sports analytics platform comprising:
 - **Firmware / Hardware Simulator**: ESP32-C3 BLE sensor & MPU6050 emitting kinematic acceleration ($m/s^2$ / $G$) and angular velocity ($^\circ/s$) to backend batch ingestion endpoint `POST /api/v1/sensor/batches`.
-- **Spring Boot Backend (Java 21, Spring Boot 3.2)**: 3-tier architecture (Controller -> Service -> Repository), Spring Security with stateless JWT, STOMP WebSocket over SockJS for live telemetry, Biomechanical DSP heuristics + Google Gemini Dual-Engine AI, and H2/SQL Server persistence.
+- **Spring Boot Backend (Java 21, Spring Boot 3.2)**: 3-tier architecture (Controller -> Service -> Repository), Spring Security with stateless JWT, STOMP WebSocket over SockJS for live telemetry, Biomechanical DSP heuristics + xAI Grok Dual-Engine AI, and H2/SQL Server persistence.
 - **React Frontend (React 19, Vite, Tailwind CSS, Lucide icons, Recharts)**: Real-time telemetry dashboards for Athletes, Squad Tactical management for Coaches, and User Administration for Admins.
 
 ### Architectural Invariants (AGENTS.md)

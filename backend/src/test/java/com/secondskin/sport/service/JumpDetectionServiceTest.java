@@ -121,6 +121,35 @@ class JumpDetectionServiceTest {
     }
 
     @Test
+    @DisplayName("Consecutive jumps: stable landing re-arms detector without a fixed cooldown")
+    void testConsecutiveJumpsRearmAfterStableLanding() {
+        LocalDateTime now = LocalDateTime.now();
+        List<SensorReadingDTO> readings = List.of(
+                reading(now, 9.8),
+                reading(now.plusNanos(100_000_000L), 18.0),
+                reading(now.plusNanos(150_000_000L), 3.0),
+                reading(now.plusNanos(250_000_000L), 3.0),
+                reading(now.plusNanos(350_000_000L), 28.0), // Jump 1 landing
+                reading(now.plusNanos(400_000_000L), 9.8),
+                reading(now.plusNanos(500_000_000L), 9.8), // Stable ground: re-arm
+                reading(now.plusNanos(550_000_000L), 18.0), // Jump 2 takeoff
+                reading(now.plusNanos(600_000_000L), 3.0),
+                reading(now.plusNanos(700_000_000L), 3.0),
+                reading(now.plusNanos(800_000_000L), 28.0) // Jump 2 landing, 450ms after jump 1
+        );
+
+        List<JumpEventDTO> jumps = jumpDetectionService.processBatch(DEVICE_ID, readings);
+
+        assertEquals(2, jumps.size(), "Both jumps should be detected after stable ground re-arm");
+        assertEquals(2, jumpDetectionService.getDeviceState(DEVICE_ID).totalJumps);
+    }
+
+    private SensorReadingDTO reading(LocalDateTime timestamp, double zMagnitude) {
+        return new SensorReadingDTO(timestamp, 0.0, 0.0, zMagnitude,
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 50);
+    }
+
+    @Test
     @DisplayName("Edge Cases: Empty reading list, stationary idle sensor, dropped sensor")
     void testEdgeCases() {
         // Empty batch

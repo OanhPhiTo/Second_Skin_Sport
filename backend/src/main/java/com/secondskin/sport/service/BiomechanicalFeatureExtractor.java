@@ -5,6 +5,7 @@ import com.secondskin.sport.entity.SensorData;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.time.LocalDateTime;
 
 @Component
 public class BiomechanicalFeatureExtractor {
@@ -29,23 +30,20 @@ public class BiomechanicalFeatureExtractor {
         double rightImpulse = 0.0;
         double sumPitch = 0.0;
         double sumRoll = 0.0;
-        int peakCount = 0;
+        double[] magnitudes = new double[n];
 
-        for (SensorData pt : rawData) {
+        for (int i = 0; i < n; i++) {
+            SensorData pt = rawData.get(i);
             double ax = pt.getAccelerometerX();
             double ay = pt.getAccelerometerY();
             double az = pt.getAccelerometerZ();
             double mag = Math.sqrt(ax * ax + ay * ay + az * az);
+            magnitudes[i] = mag;
 
             if (mag > maxMagnitude) {
                 maxMagnitude = mag;
             }
             sumMagnitude += mag;
-
-            // Đếm đỉnh xung lực (peak threshold > 13.5 m/s²)
-            if (mag > 13.5) {
-                peakCount++;
-            }
 
             // Phân tích đối xứng lực dựa trên góc nghiêng Roll và gia tốc ngang Ay
             if (pt.getRoll() < 0 || ay < -0.2) {
@@ -110,19 +108,10 @@ public class BiomechanicalFeatureExtractor {
             durationMinutes = Math.max(0.1, n / 600.0);
         }
 
-        int calculatedCadence = (int) Math.round(peakCount / Math.max(0.08, durationMinutes));
-        int cadence;
-        if (isRunning) {
-            // Tần số bước chạy tiêu chuẩn (150 - 195 spm)
-            cadence = (calculatedCadence >= 140 && calculatedCadence <= 210)
-                    ? calculatedCadence
-                    : Math.max(150, Math.min(185, 162 + (peakCount % 15)));
-        } else {
-            // Nhịp vận động bóng rổ
-            cadence = (calculatedCadence >= 90 && calculatedCadence <= 170)
-                    ? calculatedCadence
-                    : Math.max(115, Math.min(155, 125 + (peakCount % 15)));
-        }
+        int detectedSteps = countAccelerationPeaks(rawData, magnitudes);
+        int cadence = durationMinutes > 0
+                ? (int) Math.round(detectedSteps / durationMinutes)
+                : 0;
 
         // 5. Độ bùng nổ (Explosiveness) & Thời gian bay thực tế
         int explosiveness = (int) Math.min(98, Math.max(55, Math.round((maxMagnitude / STANDARD_GRAVITY) * 23.5)));
@@ -146,6 +135,38 @@ public class BiomechanicalFeatureExtractor {
                 airtime,
                 fatigueIndex
         );
+    }
+
+    private int countAccelerationPeaks(List<SensorData> rawData, double[] magnitudes) {
+        final double minimumPeakMagnitude = 13.5;
+        final long minimumStepIntervalMs = 250;
+        int peaks = 0;
+        LocalDateTime lastPeakTime = null;
+        int lastPeakIndex = -minimumSamplesBetweenSteps();
+
+        for (int i = 1; i < magnitudes.length - 1; i++) {
+            if (magnitudes[i] < minimumPeakMagnitude
+                    || magnitudes[i] <= magnitudes[i - 1]
+                    || magnitudes[i] < magnitudes[i + 1]) {
+                continue;
+            }
+
+            LocalDateTime timestamp = rawData.get(i).getTimestamp();
+            boolean tooCloseBySamples = i - lastPeakIndex < minimumSamplesBetweenSteps();
+            boolean tooCloseByTime = lastPeakTime != null && timestamp != null
+                    && Math.abs(java.time.Duration.between(lastPeakTime, timestamp).toMillis()) < minimumStepIntervalMs;
+            if (tooCloseBySamples || tooCloseByTime) {
+                continue;
+            }
+            peaks++;
+            lastPeakTime = timestamp;
+            lastPeakIndex = i;
+        }
+        return peaks;
+    }
+
+    private int minimumSamplesBetweenSteps() {
+        return 3; // 300ms at the documented 10Hz sensor rate
     }
 
     private int calculateFatigueIndex(List<SensorData> rawData) {

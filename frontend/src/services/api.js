@@ -1094,7 +1094,7 @@ export const aiService = {
           peakLandingImpactG: 2.4,
           bilateralSymmetryPct: 94,
           dominantSide: 'BALANCED',
-          cadenceRpm: 168,
+          cadenceRpm: null,
           rhythmConsistencyPct: 91,
           trunkStabilityScore: 86,
           trunkLeanAngleDegrees: 8.2,

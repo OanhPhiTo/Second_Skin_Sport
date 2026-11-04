@@ -11,7 +11,7 @@ Dự án **Second Skin Sport** là giải pháp trang phục thể thao thông m
 
 Tài liệu này đóng vai trò là bản tài liệu kỹ thuật - nghiệp vụ chính thức (**Technical & Business Architecture Whitepaper**), tổng hợp **CHỈ NHỮNG KỸ THUẬT ĐÃ ĐƯỢC LẬP TRÌNH VÀ KIỂM CHỨNG CHẮC CHẮN** trong codebase của cả 3 tầng:
 1. **Firmware / Thiết bị biên (ESP32-C3 RISC-V + MPU-6050)**: Xử lý tín hiệu số (DSP), máy trạng thái động học (FSM), hiệu chuẩn pin LiPo và BLE GATT Server.
-2. **Backend (Spring Boot 3.2.3, Java 21, SQL Server/H2)**: Máy trạng thái FSM phân tích chuyển động, bóc tách đặc trưng cơ sinh học (Biomechanical DSP Engine), AI Coach song hành (Dual-Engine: Gemini 1.5 Flash + Local Engine), STOMP WebSocket và bảo mật JWT/RBAC.
+2. **Backend (Spring Boot 3.2.3, Java 21, SQL Server/H2)**: Máy trạng thái FSM phân tích chuyển động, bóc tách đặc trưng cơ sinh học (Biomechanical DSP Engine), AI Coach song hành (xAI Grok + Local Engine), STOMP WebSocket và bảo mật JWT/RBAC.
 3. **Frontend (React 19, Vite, Recharts, Web Bluetooth API)**: Kết nối BLE không dây trực tiếp từ trình duyệt, bộ tích lũy Zero-Touch trên RAM chống phồng DB, WebSocket quản lý vòng đời không rò rỉ bộ nhớ, và giao diện 2 cột công thái học.
 
 ---
@@ -119,9 +119,9 @@ Tài liệu này đóng vai trò là bản tài liệu kỹ thuật - nghiệp v
 * **Vị trí code:** `backend/src/main/java/com/secondskin/sport/service/AiCoachService.java`
 * **Bằng chứng kiểm chứng:** Đạt 100% trong `AiCoachServiceTest.java`.
 * **Cơ chế hoạt động:**
-  - **Engine Đám mây (Cloud LLM): Google Gemini 1.5 Flash:**
-    - Sử dụng mô hình `gemini-1.5-flash` qua REST API trực tiếp (`RestTemplate`).
-    - Ép kiểu định dạng đầu ra chuẩn bằng thuộc tính `"responseMimeType": "application/json"`.
+  - **Engine Đám mây (Cloud LLM): xAI Grok:**
+    - Sử dụng xAI Responses API (`https://api.x.ai/v1/responses`) qua `RestTemplate`, mặc định model `grok-4.7`.
+    - Xác thực bằng Bearer API key từ biến môi trường `XAI_API_KEY`; yêu cầu JSON output.
     - System Prompt được tối ưu để đóng vai trò Chuyên gia Y học Thể thao, diễn giải các thông số khô khan thành lời nhận xét ấm áp, gần gũi, chỉ ra điểm yếu và đề xuất bài tập khắc phục cụ thể theo cấu trúc `Sets & Reps` (Hiệp & Lần).
   - **Engine Nội bộ (Local Biomechanics Engine):**
     - Hoạt động **100% Offline** không cần mạng internet.

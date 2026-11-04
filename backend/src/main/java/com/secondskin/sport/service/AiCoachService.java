@@ -21,11 +21,11 @@ import java.util.*;
 @Service
 public class AiCoachService {
 
-    @Value("${ai.gemini.api-key:}")
-    private String geminiApiKey;
+    @Value("${ai.grok.api-key:}")
+    private String grokApiKey;
 
-    @Value("${ai.gemini.model:gemini-1.5-flash}")
-    private String geminiModel;
+    @Value("${ai.grok.model:grok-4.7}")
+    private String grokModel;
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -89,15 +89,15 @@ public class AiCoachService {
         BiomechanicalMetricsDTO metrics = featureExtractor.extractFeatures(rawData, sport);
 
         AiInsightDTO insight;
-        if (geminiApiKey != null && !geminiApiKey.trim().isEmpty()) {
+        if (grokApiKey != null && !grokApiKey.trim().isEmpty()) {
             try {
-                insight = callGeminiApi(session, metrics);
+                insight = callGrokApi(session, metrics);
                 if (insight != null) {
                     insight.setBiomechanicalMetrics(metrics);
                     return insight;
                 }
             } catch (Exception e) {
-                System.err.println(">>> [AI] Gemini API call failed, switching to local biomechanics engine: " + e.getMessage());
+                System.err.println(">>> [AI] Grok API call failed, switching to local biomechanics engine: " + e.getMessage());
             }
         }
 
@@ -107,13 +107,10 @@ public class AiCoachService {
     }
 
     /**
-     * Gọi Google Gemini API với System Prompt chuyên gia khoa học thể thao
+     * Gọi xAI Responses API với prompt chuyên gia khoa học thể thao
      */
-    private AiInsightDTO callGeminiApi(SportSession session, BiomechanicalMetricsDTO metrics) {
-        String url = String.format(
-                "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
-                geminiModel, geminiApiKey.trim()
-        );
+    private AiInsightDTO callGrokApi(SportSession session, BiomechanicalMetricsDTO metrics) {
+        String url = "https://api.x.ai/v1/responses";
 
         String prompt = String.format(
                 "Bạn là một Huấn Luyện Viên AI và chuyên gia khoa học thể thao cho hệ thống thiết bị đeo 'Second Skin Sport'.\n" +
@@ -159,33 +156,36 @@ public class AiCoachService {
                 metrics.getFatigueIndex()
         );
 
-        Map<String, Object> textPart = Map.of("text", prompt);
-        Map<String, Object> contentObj = Map.of("parts", List.of(textPart));
-        Map<String, Object> generationConfig = Map.of(
-                "temperature", 0.35,
-                "responseMimeType", "application/json"
-        );
-
         Map<String, Object> requestBody = Map.of(
-                "contents", List.of(contentObj),
-                "generationConfig", generationConfig
+                "model", grokModel,
+                "input", prompt,
+                "temperature", 0.35,
+                "store", false,
+                "text", Map.of("format", Map.of("type", "json_object"))
         );
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(grokApiKey.trim());
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
         if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
             try {
-                JsonNode root = objectMapper.readTree(response.getBody());
-                JsonNode candidates = root.path("candidates");
-                if (candidates.isArray() && !candidates.isEmpty()) {
-                    String rawJson = candidates.get(0).path("content").path("parts").get(0).path("text").asText();
-                    return objectMapper.readValue(rawJson, AiInsightDTO.class);
+                JsonNode output = objectMapper.readTree(response.getBody()).path("output");
+                if (output.isArray()) {
+                    for (JsonNode item : output) {
+                        JsonNode content = item.path("content");
+                        if (!content.isArray()) continue;
+                        for (JsonNode part : content) {
+                            if ("output_text".equals(part.path("type").asText())) {
+                                return objectMapper.readValue(part.path("text").asText(), AiInsightDTO.class);
+                            }
+                        }
+                    }
                 }
             } catch (Exception parseErr) {
-                System.err.println(">>> [AI] Error parsing Gemini JSON response: " + parseErr.getMessage());
+                System.err.println(">>> [AI] Error parsing Grok JSON response: " + parseErr.getMessage());
             }
         }
         return null;
