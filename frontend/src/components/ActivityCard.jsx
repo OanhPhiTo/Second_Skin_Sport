@@ -1,8 +1,10 @@
 import React from 'react';
 import { ArrowUpRight, Compass, Gauge, Zap, ShieldCheck, Scale, Award } from 'lucide-react';
+import { useUnit } from '../context/UnitContext';
 import './ActivityCard.css';
 
 export default function ActivityCard({ analysis }) {
+  const { formatHeight } = useUnit();
   const jumps = analysis?.jumps ?? 0;
   const avgJump = analysis?.averageJumpHeightCm != null ? Number(analysis.averageJumpHeightCm).toFixed(1) : '0.0';
   const directionChanges = analysis?.directionChanges ?? 0;
@@ -81,7 +83,7 @@ export default function ActivityCard({ analysis }) {
             <div className="progress-fill neon" style={{ width: `${explosiveness}%` }}></div>
           </div>
           <div className="progress-meta">
-            <span>Bật cao TB: {avgJump} cm ({jumps} cú nhảy)</span>
+            <span>Bật cao TB: {formatHeight(analysis?.averageJumpHeightCm ?? 0, 1)} ({jumps} cú nhảy)</span>
             <span>{explosiveness >= 80 ? 'Bứt phá mạnh' : 'Phát lực chuẩn'}</span>
           </div>
         </div>
@@ -159,13 +161,13 @@ export default function ActivityCard({ analysis }) {
           <div className="activity-icon-badge jump">
             <ArrowUpRight size={18} />
           </div>
-          <span className="activity-badge-tag">CHỈ SỐ LINH HOẠT</span>
+          <span className="activity-badge-tag">PHIÊN GẦN NHẤT</span>
         </div>
         <div className="activity-main-content">
           <h3 className="activity-title">Pha Cắt & Đổi Hướng</h3>
           <div className="activity-single-value">
             <span className="huge-number">{directionChanges}</span>
-            <span className="value-tag">Lần đổi hướng</span>
+            <span className="value-tag">Lần đổi hướng / phiên này</span>
           </div>
         </div>
         <div className="activity-progress-wrap">

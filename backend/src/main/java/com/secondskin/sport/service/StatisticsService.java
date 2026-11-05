@@ -15,6 +15,7 @@ import com.secondskin.sport.security.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -292,6 +293,26 @@ public class StatisticsService {
             return Collections.emptyList();
         }
 
+        if (timeRange != null && !timeRange.trim().isEmpty() && !timeRange.equalsIgnoreCase("all")) {
+            LocalDate today = LocalDate.now();
+            String range = timeRange.trim().toLowerCase();
+            LocalDate startDate = null;
+            if (range.contains("today") || range.contains("hôm nay")) {
+                startDate = today;
+            } else if (range.contains("7") || range.contains("week") || range.contains("tuần")) {
+                startDate = today.minusDays(7);
+            } else if (range.contains("30") || range.contains("month") || range.contains("tháng")) {
+                startDate = today.minusDays(30);
+            }
+
+            if (startDate != null) {
+                final LocalDate cutoff = startDate;
+                list = list.stream()
+                        .filter(ps -> ps.getDate() != null && !ps.getDate().isBefore(cutoff))
+                        .collect(java.util.stream.Collectors.toList());
+            }
+        }
+
         // Ensure totalDistance is populated for all records
         for (PerformanceStatistic ps : list) {
             if (ps.getTotalDistance() <= 0.0 && ps.getAverageSpeed() > 0) {
@@ -341,3 +362,4 @@ public class StatisticsService {
         return dto.toEntity();
     }
 }
+

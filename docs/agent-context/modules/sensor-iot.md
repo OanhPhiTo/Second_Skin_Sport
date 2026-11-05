@@ -37,12 +37,17 @@ Module chịu trách nhiệm:
 1. **Thu mẫu & Truyền tin từ Phần cứng:**
    - ESP32-C3 đọc IMU MPU-6050 trong vòng lặp khoảng 100Hz; FSM trên firmware xử lý từng mẫu và BLE gửi telemetry 20Hz.
    - Dữ liệu được phát qua BLE Characteristic hoặc gom nhóm gửi qua Wi-Fi lên endpoint `POST /api/v1/sensor/batches`.
-2. **Xử lý Động học & Phát Hiện Nhảy:**
+2. **Xử lý Động học & Phân Biệt Bật Nhảy (Jumping) vs Chạy Bộ (Running) vs Đi Bộ (Walking):**
    - `SensorBatchService` nhận mảng `SensorReadingDTO`.
-   - Với mỗi mẫu, `JumpDetectionService` đánh giá ngưỡng gia tốc:
-     - Pha Takeoff: gia tốc tổng hợp $a_{mag} > 16.5\,m/s^2$.
-     - Pha Flight: $a_{mag} < 6.5\,m/s^2$; airtime hợp lệ từ 180–850ms.
-     - Pha Landing: $a_{mag} > 20\,m/s^2$; sau landing, tái kích hoạt khi có ít nhất 2 mẫu đứng yên liên tục trong tối thiểu 80ms. Cách này lọc dội tiếp đất mà vẫn nhận nhảy liên tiếp.
+   - Với mỗi mẫu, `JumpDetectionService` đánh giá ngưỡng đa trục (Multi-axis Kinematic FSM):
+     - **Pha Takeoff:** Gia tốc tổng hợp $a_{mag} > 13.5\,m/s^2$ (ngưỡng nhạy bén, nhận diện cả cú nhảy nhẹ nhàng hoặc chân trước chân sau).
+     - **Pha Flight (Airborne):** $a_{mag} < 7.2\,m/s^2$; airtime hợp lệ từ 150–850ms.
+       - *Chống kích hoạt nhầm khi đá chân / dơ chân:* Lọc bỏ chuyển động quay góc cực mạnh $|\omega| > 320^\circ/s$; tự động hủy trạng thái Airborne nếu chân có điểm tựa mặt đất ($8.5 \le a_{mag} \le 13.5\,m/s^2$) duy trì $\ge 3$ mẫu liên tiếp.
+     - **Pha Landing:** $a_{mag} \ge 15.0\,m/s^2$ (nhận diện tiếp đất nhạy bén, bắt trọn cả tiếp đất giảm chấn/chân trước chân sau).
+     - **Pha Refractory (Chống dội & Khóa bước chân):** Hấp thụ va chạm chân thứ hai và chấn động thứ cấp trong 550ms, ngăn chặn tính trùng vào bước đi/chạy.
+     - **Phân loại Đi bộ (Walking):** Xung lực va chạm nhẹ $10.6 \le a_{mag} < 14.0\,m/s^2$, nhịp bước thong thả 420–950ms (65–140 spm).
+     - **Phân loại Chạy bộ (Running):** Xung lực dứt khoát $14.0 \le a_{mag} \le 25.0\,m/s^2$, nhịp bước nhanh 200–480ms (125–270 spm).
+     - **Trạng thái Nghỉ (Idle):** Tự động chuyển về IDLE nếu không có bước chân hoặc cú nhảy sau 2.5 giây.
    - Khi phát hiện cú nhảy, bắn sự kiện ngay lập tức tới WebSocket `/topic/jumps`.
 3. **Phát Sóng Telemetry:**
    - Mẫu đo mới nhất được phát tới `/topic/sensor-telemetry` và `/topic/devices/{deviceId}/telemetry`.

@@ -4,18 +4,18 @@
   =============================================================================
   Target MCU: ESP32-C3 SuperMini (RISC-V 160MHz)
   Sensors:
-    - MPU6050 (6-DOF IMU: Accel + Gyro) via I2C
-    - GNSS Module (NEO-6M / ATGM336H / NEO-M8N) via UART
-  Communication:
-    - Bluetooth Low Energy (BLE 5.0) -> Web Bluetooth API (Direct streaming)
-    - Wi-Fi (Credentials received via BLE & saved to NVS Flash memory)
-    - HTTP POST to Spring Boot Backend (`/api/sensor-data`) when Wi-Fi is active
-  =============================================================================
-*/
+      - MPU6050 (6-DOF IMU: Accel + Gyro) via I2C
+  - GNSS Module (NEO-6M / ATGM336H / NEO-M8N) via UART
+            Communication:
+              - Bluetooth Low Energy (BLE 5.0) -> Web Bluetooth API (Direct streaming)
+              - Wi-Fi (Credentials received via BLE & saved to NVS Flash memory)
+              - HTTP POST to Spring Boot Backend (`/api/sensor-data`) when Wi-Fi is active
+            =============================================================================
+          */
 
-#include <Arduino.h>
-#include <Wire.h>
-#include <WiFi.h>
+          #include <Arduino.h>
+          #include <Wire.h>
+          #include <WiFi.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
 #include <BLEDevice.h>
@@ -79,6 +79,8 @@ unsigned long lastChargeTick = 0;
 String activityState = "idle";
 int jumpCount = 0;
 int stepCount = 0;
+int walkStepCount = 0;
+int runStepCount = 0;
 float lastAirtime = 0.0;
 float lastJumpHeightCm = 0.0;
 
@@ -86,19 +88,28 @@ float lastJumpHeightCm = 0.0;
 enum KinematicState { KINE_GROUND, KINE_TAKEOFF, KINE_AIRBORNE, KINE_REFRACTORY };
 KinematicState kineState = KINE_GROUND;
 unsigned long airtimeStart = 0;
+unsigned long takeoffTime = 0;
 unsigned long lastStepTime = 0;
-const unsigned long MIN_JUMP_AIRTIME_MS = 180;  // Real vertical jump flight time >= 180ms
-const unsigned long MAX_JUMP_AIRTIME_MS = 800;  // Upper bound for human jump
+unsigned long lastJumpTime = 0;
+int consecutiveRunSteps = 0;
+int consecutiveWalkSteps = 0;
+int supportedSamplesInAir = 0;
+const unsigned long MIN_JUMP_AIRTIME_MS = 135;  // Accepts natural hops & sports jumps (flight >= 135ms), rejects running strides (40-90ms)
+const unsigned long MAX_JUMP_AIRTIME_MS = 850;  // Upper bound for human jump
+const float MAX_AIRBORNE_GYRO           = 450.0f; // Max gyro rate in flight; rejects violent kicks
 const int GROUNDED_SAMPLES_TO_REARM = 2;
 const unsigned long GROUNDED_STABILITY_MS = 80;
 const float GROUNDED_MIN_MAGNITUDE = 8.5f;
 const float GROUNDED_MAX_MAGNITUDE = 12.5f;
 int groundedSamplesAfterLanding = 0;
 unsigned long groundedSince = 0;
-const float JUMP_FREEFALL_THRESH        = 6.5f; // Free fall: acceleration magnitude < 6.5 m/s²
-const float JUMP_LANDING_IMPACT_THRESH  = 21.0f;// Hard landing impact: magnitude > 21.0 m/s²
-const float RUN_STEP_MIN_THRESH         = 13.5f;// Running footstrike impact threshold
-const float RUN_STEP_MAX_THRESH         = 24.0f;
+const float JUMP_FREEFALL_THRESH        = 8.0f; // Free fall: acceleration magnitude < 7.2 m/s²
+const float JUMP_LANDING_IMPACT_THRESH  = 13.0f;// Touchdown landing impact threshold (cushioned / split-stance jump)
+const float TAKEOFF_THRESH              = 12.5f;// Takeoff propulsion threshold
+const float RUN_STEP_MIN_THRESH         = 14.0f;// Running footstrike impact threshold
+const float RUN_STEP_MAX_THRESH         = 25.0f;
+const float WALK_STEP_MIN_THRESH        = 10.6f;// Walking footstrike impact threshold
+const float WALK_STEP_MAX_THRESH        = 14.0f;
 
 int activeStreak = 0;
 int idleStreak = 0;
@@ -208,6 +219,24 @@ class CommandCallbacks : public BLECharacteristicCallbacks {
             }
 
             // Command to switch charging mode: {"cmd":"set_charging","charging":true/false}
+            // Command to reset session counters: {"cmd":"reset_session"}
+            if (value.indexOf("reset_session") != -1) {
+                jumpCount = 0;
+                stepCount = 0;
+                walkStepCount = 0;
+                runStepCount = 0;
+                lastAirtime = 0.0f;
+                lastJumpHeightCm = 0.0f;
+                consecutiveRunSteps = 0;
+                consecutiveWalkSteps = 0;
+                kineState = KINE_GROUND;
+                activityState = "idle";
+                Serial.println(">>> [SESSION] 🔄 Da nhan lenh BLE: Reset bo dem Jump & Step ve 0 cho phien tap moi!");
+                String resp = "{\"status\":\"session_reset\",\"jc\":0,\"steps\":0}";
+                pCharacteristic->setValue(resp.c_str());
+                pCharacteristic->notify();
+            }
+
             if (value.indexOf("set_charging") != -1) {
                 if (value.indexOf("\"charging\":true") != -1 || value.indexOf("\"charging\":1") != -1) {
                     isCharging = true;
@@ -311,10 +340,11 @@ void readSensors() {
 void detectActivity() {
     unsigned long now = millis();
     float magnitude = sqrt(ax * ax + ay * ay + az * az);
+    float gyroMagnitude = sqrt(gx * gx + gy * gy + gz * gz);
 
-    // 1. Re-arm only after stable ground readings, preventing rebound duplicates
-    // while allowing rapid jumps as soon as the athlete lands and settles.
+    // 1. Re-arm only after stable ground readings or safety timeout
     if (kineState == KINE_REFRACTORY) {
+        bool stabilityTimeout = (now - lastJumpTime >= 550);
         if (magnitude >= GROUNDED_MIN_MAGNITUDE && magnitude <= GROUNDED_MAX_MAGNITUDE) {
             if (groundedSamplesAfterLanding == 0) groundedSince = now;
             groundedSamplesAfterLanding++;
@@ -322,8 +352,8 @@ void detectActivity() {
             groundedSamplesAfterLanding = 0;
             groundedSince = 0;
         }
-        if (groundedSamplesAfterLanding >= GROUNDED_SAMPLES_TO_REARM
-                && now - groundedSince >= GROUNDED_STABILITY_MS) {
+        if (stabilityTimeout || (groundedSamplesAfterLanding >= GROUNDED_SAMPLES_TO_REARM
+                && now - groundedSince >= GROUNDED_STABILITY_MS)) {
             kineState = KINE_GROUND;
             groundedSamplesAfterLanding = 0;
             groundedSince = 0;
@@ -331,16 +361,13 @@ void detectActivity() {
     }
 
     // 2. Jumping Detection State Machine
-    // Sequence: GROUND -> TAKEOFF -> AIRBORNE (free-fall < 6.5 m/s² >= 180ms) -> LANDING -> stable ground re-arm
+    // Sequence: GROUND -> TAKEOFF -> AIRBORNE (free-fall < 7.2 m/s² >= 150ms) -> LANDING (>= 15.0 m/s²) -> stable ground re-arm
     switch (kineState) {
         case KINE_GROUND:
-            if (magnitude < JUMP_FREEFALL_THRESH) {
-                // Free-fall detected (body has left ground)
-                kineState = KINE_AIRBORNE;
-                airtimeStart = now;
-            } else if (magnitude > 16.5f) {
-                // Potential upward takeoff thrust
+            if (magnitude >= TAKEOFF_THRESH) {
+                // Mandatory takeoff thrust (>= 13.8 m/s²) to lift body off ground (rejects high knee / thigh lifts)
                 kineState = KINE_TAKEOFF;
+                takeoffTime = now;
             }
             break;
 
@@ -348,57 +375,102 @@ void detectActivity() {
             if (magnitude < JUMP_FREEFALL_THRESH) {
                 kineState = KINE_AIRBORNE;
                 airtimeStart = now;
-            } else if (magnitude <= 11.5f && magnitude >= 8.5f) {
+                supportedSamplesInAir = 0;
+            } else if (now - takeoffTime > 350) {
                 kineState = KINE_GROUND;
             }
             break;
 
         case KINE_AIRBORNE:
-            if (magnitude < JUMP_FREEFALL_THRESH) {
-                // Still airborne in free fall
+            if (gyroMagnitude > MAX_AIRBORNE_GYRO) {
+                kineState = KINE_GROUND;
+                supportedSamplesInAir = 0;
+            } else if (magnitude < JUMP_FREEFALL_THRESH) {
+                supportedSamplesInAir = 0;
             } else if (magnitude >= JUMP_LANDING_IMPACT_THRESH) {
-                // Touchdown with hard landing impact!
                 unsigned long flightDurationMs = now - airtimeStart;
                 if (flightDurationMs >= MIN_JUMP_AIRTIME_MS && flightDurationMs <= MAX_JUMP_AIRTIME_MS) {
-                    // VALID VERTICAL JUMP CONFIRMED!
                     jumpCount++;
+                    lastJumpTime = now;
                     lastAirtime = flightDurationMs / 1000.0f;
-                    // Jump height h = 1/8 * g * t_air^2
                     lastJumpHeightCm = (0.125f * 9.80665f * lastAirtime * lastAirtime) * 100.0f;
                     activityState = "jumping";
                     kineState = KINE_REFRACTORY;
                     groundedSamplesAfterLanding = 0;
                     groundedSince = 0;
+                    consecutiveRunSteps = 0;
+                    consecutiveWalkSteps = 0;
+                    lastStepTime = now;
                     Serial.printf(">>> [FIRMWARE JUMP] Jump #%d | Airtime: %d ms | Height: %.1f cm | Impact: %.1f m/s²\n",
                                   jumpCount, (int)flightDurationMs, lastJumpHeightCm, magnitude);
                 } else {
-                    // Flight time too short (< 180ms) -> running footstep or micro hop, NOT a jump!
                     kineState = KINE_GROUND;
                 }
+            } else if (magnitude >= 8.5f && magnitude < 12.8f) {
+                supportedSamplesInAir++;
+                if (supportedSamplesInAir >= 3) {
+                    kineState = KINE_GROUND;
+                    supportedSamplesInAir = 0;
+                }
             } else if (now - airtimeStart > MAX_JUMP_AIRTIME_MS) {
-                // Exceeded maximum plausible jump hang time
                 kineState = KINE_GROUND;
             }
             break;
 
         case KINE_REFRACTORY:
-            // Lockout period in progress
             break;
     }
 
-    // 3. Running vs General Movement Classification
-    // Running characteristic: repetitive foot strikes (13.5 - 24 m/s²) with cadence ~260ms - 550ms without sustained free-fall
-    if (kineState != KINE_AIRBORNE && kineState != KINE_REFRACTORY) {
+    // 3. Walking vs Running Classification
+    if (kineState != KINE_AIRBORNE && kineState != KINE_REFRACTORY && (now - lastJumpTime > 500)) {
+        unsigned long stepInterval = now - lastStepTime;
+
+        // Running: Strong impact (14.0 - 25.0 m/s²), rapid cadence (200 - 480ms)
         if (magnitude >= RUN_STEP_MIN_THRESH && magnitude <= RUN_STEP_MAX_THRESH) {
-            unsigned long stepInterval = now - lastStepTime;
-            if (stepInterval >= 240 && stepInterval <= 550) {
-                // Cadence matching running (110 - 250 steps/min)
-                stepCount++;
+            if (stepInterval >= 200 && stepInterval <= 480) {
+                consecutiveRunSteps++;
+                consecutiveWalkSteps = 0;
+                if (consecutiveRunSteps >= 2) {
+                    runStepCount++;
+                    stepCount++;
+                    activityState = "running";
+                    activeStreak = ACTIVE_TRIGGER_COUNT;
+                    idleStreak = 0;
+                }
                 lastStepTime = now;
-                activityState = "running";
-                activeStreak = ACTIVE_TRIGGER_COUNT;
-                idleStreak = 0;
-            } else if (stepInterval > 550) {
+            } else if (stepInterval > 480 && stepInterval <= 850) {
+                consecutiveWalkSteps++;
+                consecutiveRunSteps = 0;
+                if (consecutiveWalkSteps >= 2) {
+                    walkStepCount++;
+                    stepCount++;
+                    activityState = "walking";
+                    activeStreak = ACTIVE_TRIGGER_COUNT;
+                    idleStreak = 0;
+                }
+                lastStepTime = now;
+            } else if (stepInterval > 850) {
+                consecutiveRunSteps = 1;
+                consecutiveWalkSteps = 0;
+                lastStepTime = now;
+            }
+        }
+        // Walking: Gentle impact (10.6 - 14.0 m/s²), leisurely cadence (420 - 950ms)
+        else if (magnitude >= WALK_STEP_MIN_THRESH && magnitude < WALK_STEP_MAX_THRESH) {
+            if (stepInterval >= 420 && stepInterval <= 950) {
+                consecutiveWalkSteps++;
+                consecutiveRunSteps = 0;
+                if (consecutiveWalkSteps >= 2) {
+                    walkStepCount++;
+                    stepCount++;
+                    activityState = "walking";
+                    activeStreak = ACTIVE_TRIGGER_COUNT;
+                    idleStreak = 0;
+                }
+                lastStepTime = now;
+            } else if (stepInterval > 950) {
+                consecutiveWalkSteps = 1;
+                consecutiveRunSteps = 0;
                 lastStepTime = now;
             }
         }
@@ -406,15 +478,16 @@ void detectActivity() {
 
     // 4. Session Active/Idle State Logic
     if (activityState != "jumping" && activityState != "running") {
-        if (magnitude > ACTIVE_THRESHOLD) {
+        float dynamicAccel = abs(magnitude - 9.80665f);
+        if (dynamicAccel > 1.3f || gyroMagnitude > 40.0f || magnitude > ACTIVE_THRESHOLD) {
             activeStreak++;
             idleStreak = 0;
-            if (activeStreak >= ACTIVE_TRIGGER_COUNT) {
+            if (activeStreak >= 3) {
                 activityState = "active";
             }
-        } else if (magnitude < IDLE_THRESHOLD) {
+        } else if (magnitude < IDLE_THRESHOLD && gyroMagnitude < 25.0f) {
             idleStreak++;
-            activeStreak = 0;
+            if (activeStreak > 0) activeStreak--;
             if (idleStreak >= IDLE_TRIGGER_COUNT) {
                 activityState = "idle";
             } else if (idleStreak >= COOLDOWN_TRIGGER_COUNT && (activityState == "active" || activityState == "running")) {
@@ -616,10 +689,10 @@ void loop() {
 
         if (bleClientConnected) {
             // Đóng gói JSON ngắn gọn tối ưu BLE MTU kèm flag state "s", số cú nhảy "jc", độ cao "jh", số bước "steps"
-            char jsonBuffer[280];
+            char jsonBuffer[320];
             snprintf(jsonBuffer, sizeof(jsonBuffer),
-                "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f,\"gx\":%.1f,\"gy\":%.1f,\"gz\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"lat\":%.4f,\"lng\":%.4f,\"spd\":%.1f,\"bat\":%d,\"chg\":%d,\"s\":\"%s\",\"jc\":%d,\"jh\":%.1f,\"steps\":%d}",
-                ax, ay, az, gx, gy, gz, pitch, roll, yaw, gpsLat, gpsLng, gpsSpeed, batteryLevel, isCharging ? 1 : 0, activityState.c_str(), jumpCount, lastJumpHeightCm, stepCount
+                "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f,\"gx\":%.1f,\"gy\":%.1f,\"gz\":%.1f,\"pitch\":%.1f,\"roll\":%.1f,\"yaw\":%.1f,\"lat\":%.4f,\"lng\":%.4f,\"spd\":%.1f,\"bat\":%d,\"chg\":%d,\"s\":\"%s\",\"jc\":%d,\"jh\":%.1f,\"steps\":%d,\"wsteps\":%d,\"rsteps\":%d}",
+                ax, ay, az, gx, gy, gz, pitch, roll, yaw, gpsLat, gpsLng, gpsSpeed, batteryLevel, isCharging ? 1 : 0, activityState.c_str(), jumpCount, lastJumpHeightCm, stepCount, walkStepCount, runStepCount
             );
 
             pSensorCharacteristic->setValue((uint8_t*)jsonBuffer, strlen(jsonBuffer));

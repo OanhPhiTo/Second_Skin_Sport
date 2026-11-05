@@ -12,10 +12,12 @@ import {
 import { authService } from '../services/api';
 import bleService from '../services/bleService';
 import { useBle } from '../context/BleContext';
+import { useUnit } from '../context/UnitContext';
 import './Settings.css';
 
 export default function Settings() {
   const { bleStatus } = useBle();
+  const { unitsSetting, updateUnits } = useUnit();
   const currentUser = authService.getCurrentUser();
   const readSetting = (key, fallback) => {
     try { return JSON.parse(localStorage.getItem(`secondskin_setting_${key}`)) ?? fallback; } catch { return fallback; }
@@ -23,7 +25,7 @@ export default function Settings() {
   const [name, setName] = useState(() => currentUser.name || 'Vận động viên');
   const [email, setEmail] = useState(() => currentUser.email || '');
   const [preferredSport, setPreferredSport] = useState(() => readSetting('preferredSport', 'Basketball'));
-  const [units, setUnits] = useState(() => readSetting('units', 'Hệ mét (m/s², km/h, cm)'));
+  const [units, setUnits] = useState(() => unitsSetting || readSetting('units', 'Hệ mét (m/s², km/h, cm)'));
   const [samplingRate, setSamplingRate] = useState(() => readSetting('samplingRate', '100 Hz'));
   const [autoSync, setAutoSync] = useState(() => readSetting('autoSync', true));
   const [pushAlerts, setPushAlerts] = useState(() => readSetting('pushAlerts', true));
@@ -35,6 +37,9 @@ export default function Settings() {
     e.preventDefault();
     const settings = { name, email, preferredSport, units, samplingRate, autoSync, pushAlerts, fatigueWarning };
     Object.entries(settings).forEach(([key, value]) => localStorage.setItem(`secondskin_setting_${key}`, JSON.stringify(value)));
+    if (typeof updateUnits === 'function') {
+      updateUnits(units);
+    }
     try {
       await authService.updateProfile({ name, preferredSport });
       setSavedMessage('Đã lưu hồ sơ vào tài khoản và cập nhật cấu hình ứng dụng.');

@@ -93,3 +93,22 @@
   font-weight: 700;
   margin-left: auto;
 }
+
+.chart-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 320px;
+  color: #94a3b8;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.chart-empty-state p {
+  font-size: 0.9rem;
+  margin: 0;
+  color: var(--text-muted);
+}

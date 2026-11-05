@@ -446,6 +446,28 @@ const getStoredSessions = () => {
 const saveStoredSession = (newSession) => {
   const key = getUserSessionsStorageKey();
   const current = getStoredSessions();
+  // Deduplication check: if identical session exists (same id or same sport and startTime within 15s)
+  const isDuplicate = current.some((s) => {
+    if (s.id && newSession.id && Number(s.id) === Number(newSession.id)) return true;
+    if (s.sport && newSession.sport && s.sport.toLowerCase() === newSession.sport.toLowerCase() && s.startTime && newSession.startTime) {
+      const diffMs = Math.abs(new Date(s.startTime).getTime() - new Date(newSession.startTime).getTime());
+      return diffMs < 15000;
+    }
+    return false;
+  });
+  if (isDuplicate) {
+    return current;
+  }
+  const updated = [newSession, ...current.filter((s) => s.id !== newSession.id)];
+  try {
+    sessionStorage.setItem(key, JSON.stringify(updated));
+    localStorage.setItem(key, JSON.stringify(updated));
+  } catch (e) {}
+  return updated;
+};
+const _old = (newSession) => {
+  const key = getUserSessionsStorageKey();
+  const current = getStoredSessions();
   const updated = [newSession, ...current.filter((s) => s.id !== newSession.id)];
   try {
     sessionStorage.setItem(key, JSON.stringify(updated));
@@ -551,6 +573,18 @@ const fallbackSensorStatus = {
   },
 };
 
+const deduplicateSessions = (list) => {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  return list.filter((s) => {
+    const timeKey = s.startTime ? new Date(s.startTime).toISOString().slice(0, 16) : `id_${s.id}`;
+    const sig = `${(s.sport || 'Sport').toLowerCase()}_${timeKey}_${s.durationMinutes || 0}_${s.totalJumps || 0}`;
+    if (seen.has(sig)) return false;
+    seen.add(sig);
+    return true;
+  });
+};
+
 const fallbackChartSeries = [
   { time: '10m', acceleration: 2.4, speed: 14.2, intensity: 70 },
   { time: '15m', acceleration: 3.1, speed: 18.5, intensity: 85 },
@@ -569,12 +603,12 @@ export const sessionService = {
         try {
           localStorage.setItem(getUserSessionsStorageKey(), JSON.stringify(response.data));
         } catch (e) {}
-        return response.data;
+        return deduplicateSessions(response.data);
       }
-      return getStoredSessions();
+      return deduplicateSessions(getStoredSessions());
     } catch (err) {
       console.warn('Backend API offline, using persistent local sessions data');
-      const stored = getStoredSessions();
+      const stored = deduplicateSessions(getStoredSessions());
       if (sport && sport !== 'All') {
         return stored.filter((s) => s.sport?.toLowerCase() === sport.toLowerCase());
       }
@@ -587,7 +621,7 @@ export const sessionService = {
       const response = await apiClient.get(`/sessions/${id}`);
       return response.data;
     } catch (err) {
-      const stored = getStoredSessions();
+      const stored = deduplicateSessions(getStoredSessions());
       const found = stored.find((s) => s.id === Number(id));
       return found || stored[0];
     }
@@ -653,6 +687,22 @@ export const sessionService = {
       return fallbackChartSeries;
     }
   },
+
+  delete: async (id) => {
+    try {
+      await apiClient.delete(`/sessions/${id}`);
+    } catch (err) {
+      console.warn('API delete session offline or failed, deleting locally:', err);
+    }
+    const key = getUserSessionsStorageKey();
+    const current = getStoredSessions();
+    const updated = current.filter((s) => Number(s.id) !== Number(id));
+    try {
+      sessionStorage.setItem(key, JSON.stringify(updated));
+      localStorage.setItem(key, JSON.stringify(updated));
+    } catch (e) {}
+    return updated;
+  },
 };
 
 export const statisticsService = {
@@ -717,7 +767,7 @@ export const statisticsService = {
     try {
       const response = await apiClient.get('/statistics', { params: { sport, timeRange } });
       if (Array.isArray(response.data)) {
-        return response.data;
+        return deduplicateSessions(response.data);
       }
     } catch (err) {
       console.warn('Backend /statistics offline, deriving stats from local sessions');

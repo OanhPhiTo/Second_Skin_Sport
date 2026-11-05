@@ -263,6 +263,24 @@ class BleService {
     return true;
   }
 
+  /**
+   * Reset session counters (jumpCount, stepCount) on ESP32 hardware
+   */
+  async sendResetSessionCommand() {
+    if (!this.isConnected || !this.commandChar) {
+      return false;
+    }
+
+    const payload = JSON.stringify({ cmd: 'reset_session' });
+    try {
+      await this.commandChar.writeValue(new TextEncoder().encode(payload));
+      return true;
+    } catch (e) {
+      console.warn('Could not send reset_session to BLE hardware:', e);
+      return false;
+    }
+  }
+
   async sendSensorConfig({ samplingRate, calibrate = false }) {
     if (!this.isConnected || !this.commandChar) {
       throw new Error('Chưa kết nối Bluetooth với thiết bị ESP32.');

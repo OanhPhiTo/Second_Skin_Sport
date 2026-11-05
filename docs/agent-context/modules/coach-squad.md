@@ -21,10 +21,10 @@ Module chịu trách nhiệm:
 - [`AthleteStatus.java`](file:///d:/EXE101/Second_Skin_Sport/backend/src/main/java/com/secondskin/sport/entity/AthleteStatus.java): Enum trạng thái (`ON_FIELD`, `BENCH`, `RESTING`, `INJURED`).
 
 ### Frontend (React)
-- [`CoachDashboard.jsx`](file:///d:/EXE101/Second_Skin_Sport/frontend/src/pages/CoachDashboard.jsx): Bàn điều khiển chiến thuật thời gian thực, hiển thị thẻ cầu thủ theo sơ đồ sân và thanh cảnh báo thay người.
-- [`CoachRoster.jsx`](file:///d:/EXE101/Second_Skin_Sport/frontend/src/pages/CoachRoster.jsx): Trang quản lý danh sách đội, thêm VĐV mới, gán số áo và gán mã thiết bị cảm biến.
+- [`CoachDashboard.jsx`](file:///d:/EXE101/Second_Skin_Sport/frontend/src/pages/CoachDashboard.jsx): Trung tâm giám sát thời gian thực đội hình & thiết bị đeo, hiển thị thẻ động học cầu thủ, luồng telemetry 10Hz và cảnh báo tải mỏi thể lực để HLV chủ động điều phối chiến thuật.
+- [`CoachRoster.jsx`](file:///d:/EXE101/Second_Skin_Sport/frontend/src/pages/CoachRoster.jsx): Quản lý danh sách đội hình và thiết bị đo chuẩn Dark Futuristic, hiển thị trạng thái thiết bị thời gian thực (10Hz Stream/Standby, Pin %, Sóng BLE), pill trạng thái Cyberpunk và thanh đo tải mỏi.
 - [`useCoachTacticalWebSocket.js`](file:///d:/EXE101/Second_Skin_Sport/frontend/src/hooks/useCoachTacticalWebSocket.js): Hook lắng nghe luồng chiến thuật `/topic/coach/teams/{teamId}/tactical`.
-- [`CoachLayout.jsx`](file:///d:/EXE101/Second_Skin_Sport/frontend/src/layouts/CoachLayout.jsx): Layout định vị thanh điều hướng cho vai trò HLV.
+- [`CoachLayout.jsx`](file:///d:/EXE101/Second_Skin_Sport/frontend/src/layouts/CoachLayout.jsx): Layout định vị thanh điều hướng cho vai trò HLV đồng bộ phong cách Cyan/Neon.
 
 ---
 

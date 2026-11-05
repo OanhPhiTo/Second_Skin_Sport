@@ -56,13 +56,13 @@ class AuthServiceTest {
                 new Class<?>[]{UserRepository.class},
                 (proxy, method, args) -> {
                     String methodName = method.getName();
-                    if ("existsByEmail".equals(methodName)) {
+                    if ("existsByEmail".equals(methodName) || "existsByEmailIgnoreCase".equals(methodName)) {
                         String email = (String) args[0];
-                        return userDatabase.containsKey(email.toLowerCase());
+                        return email != null && userDatabase.containsKey(email.toLowerCase());
                     }
-                    if ("findByEmail".equals(methodName)) {
+                    if ("findByEmail".equals(methodName) || "findByEmailIgnoreCase".equals(methodName)) {
                         String email = (String) args[0];
-                        return Optional.ofNullable(userDatabase.get(email.toLowerCase()));
+                        return Optional.ofNullable(email != null ? userDatabase.get(email.toLowerCase()) : null);
                     }
                     if ("save".equals(methodName)) {
                         User u = (User) args[0];
@@ -157,8 +157,19 @@ class AuthServiceTest {
         userDatabase.put("test@example.com", existing);
 
         RegisterRequest request = new RegisterRequest("Test User", "test@example.com", "password123", "Running");
-        Exception ex = assertThrows(RuntimeException.class, () -> authService.register(request));
-        assertEquals("Thông tin đăng ký không hợp lệ hoặc tài khoản đã tồn tại.", ex.getMessage());
+        Exception ex = assertThrows(IllegalArgumentException.class, () -> authService.register(request));
+        assertEquals("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.", ex.getMessage());
+    }
+
+    @Test
+    void testRegister_WeakPassword_ThrowsIllegalArgumentException() {
+        RegisterRequest shortPass = new RegisterRequest("Test User", "valid@example.com", "pass1", "Running");
+        Exception ex1 = assertThrows(IllegalArgumentException.class, () -> authService.register(shortPass));
+        assertEquals("Mật khẩu phải có ít nhất 8 ký tự và chứa cả chữ và số.", ex1.getMessage());
+
+        RegisterRequest noDigitPass = new RegisterRequest("Test User", "valid@example.com", "passwordonly", "Running");
+        Exception ex2 = assertThrows(IllegalArgumentException.class, () -> authService.register(noDigitPass));
+        assertEquals("Mật khẩu phải có ít nhất 8 ký tự và chứa cả chữ và số.", ex2.getMessage());
     }
 
     @Test

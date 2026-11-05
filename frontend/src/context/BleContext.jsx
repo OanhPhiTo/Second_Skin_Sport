@@ -63,17 +63,27 @@ export function BleProvider({ children }) {
   });
 
   // Persistent in-memory Auto Session State (Kinematic FSM & Zero-Touch Tracking)
+  const isSavingSessionRef = useRef(false);
   const autoSessionRef = useRef({
     status: 'idle', // 'idle' | 'recording' | 'cooldown'
     startTime: null,
     lastActiveTime: null,
     kineState: 'GROUND', // 'GROUND' | 'TAKEOFF' | 'AIRBORNE' | 'REFRACTORY'
     airtimeStartTime: 0,
+    takeoffTime: 0,
     lastJumpTime: 0,
     lastStepTime: 0,
     lastTurnTime: 0,
+    consecutiveRunSteps: 0,
+    consecutiveWalkSteps: 0,
+    supportedSamplesInAir: 0,
+    hardwareBaselineJumps: 0,
+    hardwareBaselineSteps: 0,
+    takeoffPitch: 0,
     jumpCount: 0,
     stepCount: 0,
+    walkStepCount: 0,
+    runStepCount: 0,
     directionChangeCount: 0,
     sampleCount: 0,
     accelSum: 0,
@@ -89,8 +99,13 @@ export function BleProvider({ children }) {
   const [autoSessionDisplay, setAutoSessionDisplay] = useState({
     status: 'idle',
     elapsedSeconds: 0,
+    hardwareBaselineJumps: 0,
+    hardwareBaselineSteps: 0,
+    takeoffPitch: 0,
     jumpCount: 0,
     stepCount: 0,
+    walkStepCount: 0,
+    runStepCount: 0,
     cadence: 0,
     jumpHeight: 0,
     directionChangeCount: 0,
@@ -112,9 +127,64 @@ export function BleProvider({ children }) {
   const [wifiFeedback, setWifiFeedback] = useState(null);
 
   // Finalize auto session helper
+    const startTrackingSession = useCallback(({ sport = 'Basketball', targetDurationMinutes = 45 } = {}) => {
+    if (bleStatus !== 'connected') {
+      throw new Error('Chưa kết nối thiết bị cảm biến Second Skin Pod.');
+    }
+    const session = autoSessionRef.current;
+    session.status = 'recording';
+    session.startTime = new Date();
+    session.lastActiveTime = Date.now();
+    session.targetSport = sport;
+    session.targetDurationMinutes = targetDurationMinutes;
+    session.sampleCount = 0;
+    session.accelSum = 0;
+    session.maxAccel = 0;
+    session.hardwareBaselineJumps = bleTelemetry?.jc || 0;
+    session.hardwareBaselineSteps = bleTelemetry?.steps || 0;
+    try {
+      bleService.sendResetSessionCommand();
+    } catch (e) {}
+    session.stepCount = 0;
+          session.walkStepCount = 0;
+          session.runStepCount = 0;
+    session.directionChangeCount = 0;
+    session.trajectoryPoints = [];
+
+    setAutoSessionDisplay({
+      status: 'recording',
+      elapsedSeconds: 0,
+      targetDurationMinutes,
+      sport,
+      hardwareBaselineJumps: 0,
+    hardwareBaselineSteps: 0,
+    takeoffPitch: 0,
+    jumpCount: 0,
+    stepCount: 0,
+    walkStepCount: 0,
+    runStepCount: 0,
+      cadence: 0,
+      jumpHeight: 0,
+      directionChangeCount: 0,
+      avgAccel: 0,
+      landingSoftness: 85,
+      peakImpactG: 2.1,
+      explosiveness: 80,
+      airtime: 0,
+      bilateralBalance: 94,
+      trunkStability: 88,
+      classifiedActivity: 'active',
+      isSaving: false,
+    });
+    setActionMessage(`⏱ Đang theo dõi buổi tập ${sport} (${targetDurationMinutes} phút)... Hãy bắt đầu vận động!`);
+    return true;
+  }, [bleStatus]);
+
   const finalizeAutoSession = useCallback(async (manual = false) => {
     const session = autoSessionRef.current;
-    if (session.status === 'idle') return;
+    if (session.status === 'idle' || session.status === 'saving' || isSavingSessionRef.current) return;
+    isSavingSessionRef.current = true;
+    session.status = 'saving';
 
     setAutoSessionDisplay((prev) => ({ ...prev, isSaving: true }));
     try {
@@ -125,10 +195,12 @@ export function BleProvider({ children }) {
         ? Math.round((session.accelSum / session.sampleCount) * 100) / 100
         : 2.85;
 
-      // Distinguish sport: Basketball requires true vertical jumps (>= 8) or many direction turns with jumps
-      const detectedSport = (session.jumpCount >= 8 || (session.jumpCount >= 4 && session.directionChangeCount >= 25))
+      // Distinguish sport: Basketball vs Walking vs Running
+      const detectedSport = session.targetSport || (session.jumpCount >= 8 || (session.jumpCount >= 4 && session.directionChangeCount >= 25))
         ? 'Basketball'
-        : 'Running';
+        : (session.classifiedActivity === 'walking' || (session.stepCount > 0 && session.cadence > 0 && session.cadence < 125))
+          ? 'Walking'
+          : 'Running';
 
       const payload = {
         deviceId: bleService.device?.name || 'SecondSkin_ESP32',
@@ -155,8 +227,13 @@ export function BleProvider({ children }) {
       setAutoSessionDisplay({
         status: 'idle',
         elapsedSeconds: 0,
-        jumpCount: 0,
-        stepCount: 0,
+        hardwareBaselineJumps: 0,
+    hardwareBaselineSteps: 0,
+    takeoffPitch: 0,
+    jumpCount: 0,
+    stepCount: 0,
+    walkStepCount: 0,
+    runStepCount: 0,
         cadence: 0,
         jumpHeight: 0,
         directionChangeCount: 0,
@@ -166,6 +243,10 @@ export function BleProvider({ children }) {
         isSaving: false,
       });
 
+      try {
+        bleService.sendResetSessionCommand();
+      } catch (e) {}
+
       // Reset in-memory session ref
       autoSessionRef.current = {
         status: 'idle',
@@ -173,11 +254,20 @@ export function BleProvider({ children }) {
         lastActiveTime: null,
         kineState: 'GROUND',
         airtimeStartTime: 0,
+        takeoffTime: 0,
         lastJumpTime: 0,
         lastStepTime: 0,
         lastTurnTime: 0,
-        jumpCount: 0,
-        stepCount: 0,
+        consecutiveRunSteps: 0,
+        consecutiveWalkSteps: 0,
+        supportedSamplesInAir: 0,
+        hardwareBaselineJumps: 0,
+    hardwareBaselineSteps: 0,
+    takeoffPitch: 0,
+    jumpCount: 0,
+    stepCount: 0,
+    walkStepCount: 0,
+    runStepCount: 0,
         directionChangeCount: 0,
         sampleCount: 0,
         accelSum: 0,
@@ -194,6 +284,11 @@ export function BleProvider({ children }) {
     } catch (err) {
       console.error('Error saving auto session:', err);
       setAutoSessionDisplay((prev) => ({ ...prev, isSaving: false }));
+    } finally {
+      isSavingSessionRef.current = false;
+      if (session.status === 'saving') {
+        session.status = 'idle';
+      }
     }
   }, []);
 
@@ -308,47 +403,61 @@ export function BleProvider({ children }) {
         },
       });
 
-      // Intelligent Auto-Session Processing (Kinematic FSM)
-      const dataState = data.s || (rawMagnitude > 12.0 ? 'active' : rawMagnitude < 10.5 ? 'idle' : 'cooldown');
+      const gyroMagnitude = Math.hypot(gx, gy, gz);
+
+      // Intelligent Auto-Session Processing (Multi-axis Kinematic FSM)
+      const dynAccel = Math.abs(rawMagnitude - 9.80665);
+      const isFirmwareActive = Boolean(data.s && ['active', 'running', 'walking', 'jumping'].includes(data.s));
+      const isMotionActive = isFirmwareActive || dynAccel > 1.2 || gyroMagnitude > 40.0;
+      const dataState = isMotionActive ? 'active' : (dynAccel < 0.6 && gyroMagnitude < 20.0 ? 'idle' : 'cooldown');
       const now = Date.now();
       const session = autoSessionRef.current;
 
       // 1. Refractory Lockout Recovery
       if (session.kineState === 'REFRACTORY') {
-        if (now - session.lastJumpTime >= 850) {
+        if (now - session.lastJumpTime >= 550) {
           session.kineState = 'GROUND';
         }
       }
 
-      // 2. Kinematic State Machine for Jump Detection
-      // Sequence: GROUND -> TAKEOFF -> AIRBORNE (free fall < 6.5 m/s² >= 180ms) -> LANDING (impact > 20.0 m/s²) -> REFRACTORY (850ms)
+      // 2. Kinematic State Machine for Jump Detection (Multi-axis Kinematic FSM)
+      // Sequence: GROUND -> TAKEOFF -> AIRBORNE (free fall < 7.2 m/s² >= 150ms) -> LANDING (impact >= 15.0 m/s²) -> REFRACTORY (550ms)
       switch (session.kineState) {
         case 'GROUND':
-          if (rawMagnitude < 6.5) {
-            session.kineState = 'AIRBORNE';
-            session.airtimeStartTime = now;
-          } else if (rawMagnitude > 16.5) {
+          // Natural takeoff thrust (>= 12.5 m/s²) to enter jump sequence (rejects walking / steady gravity)
+          if (rawMagnitude >= 12.5) {
             session.kineState = 'TAKEOFF';
+            session.takeoffTime = now;
+            session.takeoffPitch = data.pitch ?? 0;
           }
           break;
 
         case 'TAKEOFF':
-          if (rawMagnitude < 6.5) {
-            session.kineState = 'AIRBORNE';
-            session.airtimeStartTime = now;
-          } else if (rawMagnitude <= 11.5 && rawMagnitude >= 8.5) {
+          if (rawMagnitude < 8.0) {
+            // Orientation stability check: in thigh lift, sensor tilts heavily (> 45°), whereas in sports jump/layup trunk remains within range
+            const pitchDelta = Math.abs((data.pitch ?? 0) - (session.takeoffPitch || 0));
+            if (gyroMagnitude <= 450.0 && pitchDelta < 45.0) {
+              session.kineState = 'AIRBORNE';
+              session.airtimeStartTime = now;
+              session.supportedSamplesInAir = 0;
+            } else {
+              session.kineState = 'GROUND';
+            }
+          } else if (now - session.takeoffTime > 350) {
             session.kineState = 'GROUND';
           }
           break;
 
         case 'AIRBORNE':
-          if (rawMagnitude < 6.5) {
-            // Still in free fall hang time
-          } else if (rawMagnitude >= 20.0) {
-            // Touchdown impact!
+          if (gyroMagnitude > 450.0) {
+            session.kineState = 'GROUND';
+            session.supportedSamplesInAir = 0;
+          } else if (rawMagnitude < 8.0) {
+            session.supportedSamplesInAir = 0;
+          } else if (rawMagnitude >= 13.0) {
+            // Touchdown landing impact! (Valid jump confirmed)
             const flightDurationMs = now - session.airtimeStartTime;
-            if (flightDurationMs >= 180 && flightDurationMs <= 850) {
-              // VALID VERTICAL JUMP CONFIRMED!
+            if (flightDurationMs >= 135 && flightDurationMs <= 850) {
               session.jumpCount += 1;
               session.lastJumpTime = now;
               const airtimeSec = flightDurationMs / 1000.0;
@@ -358,9 +467,17 @@ export function BleProvider({ children }) {
               session.lastImpactG = Math.round((rawMagnitude / 9.80665) * 10) / 10;
               session.kineState = 'REFRACTORY';
               session.classifiedActivity = 'jumping';
+              session.consecutiveRunSteps = 0;
+              session.consecutiveWalkSteps = 0;
+              session.lastStepTime = now;
             } else {
-              // Too short (< 180ms) -> running footstep or hop, NOT a jump!
               session.kineState = 'GROUND';
+            }
+          } else if (rawMagnitude >= 8.5 && rawMagnitude < 12.8) {
+            session.supportedSamplesInAir = (session.supportedSamplesInAir || 0) + 1;
+            if (session.supportedSamplesInAir >= 3) {
+              session.kineState = 'GROUND';
+              session.supportedSamplesInAir = 0;
             }
           } else if (now - session.airtimeStartTime > 850) {
             session.kineState = 'GROUND';
@@ -368,37 +485,99 @@ export function BleProvider({ children }) {
           break;
 
         case 'REFRACTORY':
-          // Rebounds and secondary steps ignored during refractory period
           break;
       }
 
-      // 3. Running Footstrike & Cadence Tracking (cadence 110 - 270 spm)
-      // When not in free-fall or jump refractory, running steps are counted and strictly prevented from being counted as jumps!
-      if (session.kineState !== 'AIRBORNE' && session.kineState !== 'REFRACTORY') {
-        if (rawMagnitude >= 13.5 && rawMagnitude <= 25.0) {
-          const stepInterval = now - session.lastStepTime;
-          if (stepInterval >= 220 && stepInterval <= 550) {
-            session.stepCount += 1;
+      // 3. Phân biệt Đi bộ (Walking) vs Chạy bộ (Running):
+      // Không kích hoạt bước chân khi đang bay, trong thời gian chống dội hoặc trong vòng 350ms sau cú nhảy
+      if (session.kineState !== 'AIRBORNE' && session.kineState !== 'REFRACTORY' && (now - session.lastJumpTime > 500)) {
+        const stepInterval = now - session.lastStepTime;
+
+        // Kịch bản A: Chạy bộ (Running) - Xung lực mạnh (14.0 - 25.0 m/s²), nhịp nhanh (200 - 480ms)
+        if (rawMagnitude >= 14.0 && rawMagnitude <= 25.0) {
+          if (stepInterval >= 200 && stepInterval <= 480) {
+            session.consecutiveRunSteps = (session.consecutiveRunSteps || 0) + 1;
+            session.consecutiveWalkSteps = 0;
+            if (session.consecutiveRunSteps >= 2) {
+              session.runStepCount = (session.runStepCount || 0) + 1;
+              session.stepCount = (session.walkStepCount || 0) + session.runStepCount;
+              session.cadence = Math.round(60000 / stepInterval);
+              session.classifiedActivity = 'running';
+            }
             session.lastStepTime = now;
-            session.cadence = Math.round(60000 / stepInterval);
-            session.classifiedActivity = 'running';
-          } else if (stepInterval > 550) {
+          } else if (stepInterval > 480 && stepInterval <= 850) {
+            session.consecutiveWalkSteps = (session.consecutiveWalkSteps || 0) + 1;
+            session.consecutiveRunSteps = 0;
+            if (session.consecutiveWalkSteps >= 2) {
+              session.walkStepCount = (session.walkStepCount || 0) + 1;
+              session.stepCount = session.walkStepCount + (session.runStepCount || 0);
+              session.cadence = Math.round(60000 / stepInterval);
+              session.classifiedActivity = 'walking';
+            }
+            session.lastStepTime = now;
+          } else if (stepInterval > 950) {
+            session.consecutiveWalkSteps = 1;
+            session.consecutiveRunSteps = 0;
             session.lastStepTime = now;
           }
         }
       }
 
-      // If firmware transmitted jump count directly ("jc" / "jh"), sync if higher
-      if (data.jc !== undefined && data.jc > session.jumpCount) {
-        session.jumpCount = data.jc;
+      // Tự động chuyển về trạng thái IDLE nếu không chuyển động sau 2.5s
+      if (now - session.lastStepTime > 2500 && now - session.lastJumpTime > 2500) {
+        if (session.classifiedActivity !== 'idle') {
+          session.classifiedActivity = 'idle';
+        }
+        session.consecutiveRunSteps = 0;
+        session.consecutiveWalkSteps = 0;
+      }
+
+      // If firmware transmitted steps or jump count directly, sync relative to session baseline
+      const rawHardwareJumps = data.jc ?? 0;
+      const rawHardwareSteps = data.steps ?? 0;
+      const rawHardwareWalkSteps = data.wsteps ?? (data.ws ?? 0);
+      const rawHardwareRunSteps = data.rsteps ?? (data.rs ?? 0);
+
+      if (rawHardwareJumps < (session.hardwareBaselineJumps || 0)) {
+        session.hardwareBaselineJumps = 0;
+      }
+      if (rawHardwareSteps < (session.hardwareBaselineSteps || 0)) {
+        session.hardwareBaselineSteps = 0;
+      }
+      if (rawHardwareWalkSteps < (session.hardwareBaselineWalkSteps || 0)) {
+        session.hardwareBaselineWalkSteps = 0;
+      }
+      if (rawHardwareRunSteps < (session.hardwareBaselineRunSteps || 0)) {
+        session.hardwareBaselineRunSteps = 0;
+      }
+
+      const relativeHwJumps = Math.max(0, rawHardwareJumps - (session.hardwareBaselineJumps || 0));
+      const relativeHwSteps = Math.max(0, rawHardwareSteps - (session.hardwareBaselineSteps || 0));
+      const relativeHwWalkSteps = Math.max(0, rawHardwareWalkSteps - (session.hardwareBaselineWalkSteps || 0));
+      const relativeHwRunSteps = Math.max(0, rawHardwareRunSteps - (session.hardwareBaselineRunSteps || 0));
+
+      if (relativeHwJumps > session.jumpCount) {
+        session.jumpCount = relativeHwJumps;
         if (data.jh !== undefined && data.jh > 0) {
           session.lastJumpHeightCm = data.jh;
         }
       }
+      if (relativeHwWalkSteps > (session.walkStepCount || 0)) {
+        session.walkStepCount = relativeHwWalkSteps;
+      }
+      if (relativeHwRunSteps > (session.runStepCount || 0)) {
+        session.runStepCount = relativeHwRunSteps;
+      }
+      const calculatedTotalSteps = Math.max(
+        relativeHwSteps,
+        (session.walkStepCount || 0) + (session.runStepCount || 0)
+      );
+      if (calculatedTotalSteps > session.stepCount) {
+        session.stepCount = calculatedTotalSteps;
+      }
 
       // Agility direction turn (> 120°/s)
-      const gyroMagnitude = Math.hypot(gx, gy, gz);
-      if (gyroMagnitude > 120.0 && now - session.lastTurnTime > 500) {
+      if (gyroMagnitude > 75.0 && now - session.lastTurnTime > 350) {
         session.directionChangeCount += 1;
         session.lastTurnTime = now;
       }
@@ -412,8 +591,22 @@ export function BleProvider({ children }) {
           session.sampleCount = 0;
           session.accelSum = 0;
           session.maxAccel = 0;
-          session.jumpCount = 0;
           session.directionChangeCount = 0;
+          session.hardwareBaselineJumps = data.jc || 0;
+          session.hardwareBaselineSteps = data.steps || 0;
+          session.jumpCount = 0;
+          session.stepCount = 0;
+          session.walkStepCount = 0;
+          session.runStepCount = 0;
+          session.trajectoryPoints = [];
+          try {
+            bleService.sendResetSessionCommand();
+          } catch (e) {}
+          setAutoSessionDisplay((prev) => ({
+            ...prev,
+            status: 'recording',
+            classifiedActivity: 'active',
+          }));
           session.trajectoryPoints = [];
           setActionMessage('🏃 Đã phát hiện vận động! Hệ thống đang tự động ghi nhận phiên tập...');
         } else if (session.status === 'cooldown') {
@@ -466,7 +659,22 @@ export function BleProvider({ children }) {
         setBleDevice(null);
         setBleTelemetry(null);
         setSensorStatus((prev) => ({ ...prev, connected: false }));
-        setActionMessage('Đã ngắt kết nối Bluetooth.');
+        const activeSession = autoSessionRef.current;
+        if (activeSession && (activeSession.status === 'recording' || activeSession.status === 'cooldown')) {
+          const hasData = activeSession.sampleCount >= 15 ||
+            (activeSession.startTime && (Date.now() - activeSession.startTime.getTime()) >= 15000);
+          if (hasData) {
+            setActionMessage('⚠️ Thiết bị đã tắt / ngắt kết nối. Đang tự động lưu phiên tập...');
+            finalizeAutoSession(false);
+          } else {
+            activeSession.status = 'idle';
+            setAutoSessionDisplay((prev) => ({ ...prev, status: 'idle', elapsedSeconds: 0, isSaving: false }));
+            setActionMessage('Đã ngắt kết nối Bluetooth.');
+            setTimeout(() => setActionMessage(''), 3000);
+          }
+        } else {
+          setActionMessage('Đã ngắt kết nối Bluetooth.');
+        }
         setTimeout(() => setActionMessage(''), 3000);
       } else if (status === 'error') {
         setBleError(details.error || 'Lỗi kết nối Bluetooth');
@@ -496,7 +704,9 @@ export function BleProvider({ children }) {
         const avg = session.sampleCount > 0 ? (session.accelSum / session.sampleCount) : 2.5;
         const detectedSport = (session.jumpCount >= 8 || (session.jumpCount >= 4 && session.directionChangeCount >= 25))
           ? 'Basketball'
-          : 'Running';
+          : (session.classifiedActivity === 'walking' || (session.stepCount > 0 && session.cadence > 0 && session.cadence < 125))
+            ? 'Walking'
+            : 'Running';
 
         const peakG = session.lastImpactG > 0
           ? session.lastImpactG
@@ -512,6 +722,8 @@ export function BleProvider({ children }) {
           elapsedSeconds: elapsed,
           jumpCount: session.jumpCount,
           stepCount: session.stepCount,
+          walkStepCount: session.walkStepCount || 0,
+          runStepCount: session.runStepCount || 0,
           cadence: session.cadence,
           jumpHeight: session.lastJumpHeightCm,
           directionChangeCount: session.directionChangeCount,
@@ -527,7 +739,7 @@ export function BleProvider({ children }) {
         }));
 
         // Auto finalize if user has rested for >= 180 seconds (3 mins) with sufficient data (> 50 samples)
-        if (session.lastActiveTime && now - session.lastActiveTime >= 180000 && session.sampleCount >= 50) {
+        if (!isSavingSessionRef.current && session.status !== 'saving' && session.lastActiveTime && now - session.lastActiveTime >= 180000 && session.sampleCount >= 50) {
           finalizeAutoSession(false);
         }
       }
@@ -656,6 +868,7 @@ export function BleProvider({ children }) {
     connectBle,
     disconnectBle,
     finalizeAutoSession,
+    startTrackingSession,
     sendWifiConfig,
   };
 

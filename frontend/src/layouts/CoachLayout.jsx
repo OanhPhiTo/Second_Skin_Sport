@@ -31,13 +31,13 @@ export default function CoachLayout() {
         <div className="coach-brand-header">
           <img src={logoImg} alt="Second Skin Sport" className="coach-logo-img" />
           <div className="coach-subtag">
-            <Trophy size={14} className="coach-trophy-icon" />
+            <Sparkles size={14} className="coach-trophy-icon" />
             <span>BAN HUẤN LUYỆN PRO</span>
           </div>
         </div>
 
         <nav className="coach-menu-nav">
-          <div className="coach-menu-label">ĐIỀU HÀNH TÁC CHIẾN</div>
+          <div className="coach-menu-label">GIÁM SÁT & ĐIỀU HÀNH</div>
           <NavLink
             to="/coach"
             end
@@ -45,8 +45,8 @@ export default function CoachLayout() {
               `coach-menu-item ${isActive ? 'active' : ''}`
             }
           >
-            <ShieldAlert size={18} />
-            <span>Chỉ Huy & Xoay Tua</span>
+            <Activity size={18} />
+            <span>Giám Sát Thời Gian Thực</span>
             <span className="coach-live-dot" />
           </NavLink>
 

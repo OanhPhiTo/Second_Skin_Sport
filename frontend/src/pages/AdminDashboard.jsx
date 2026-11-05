@@ -5,11 +5,8 @@ import {
   UserCheck,
   UserX,
   ShieldCheck,
-  Database,
-  Server,
   ArrowRight,
   RefreshCw,
-  Activity,
   Flame,
 } from 'lucide-react';
 import { adminService } from '../services/api';
@@ -114,26 +111,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* System Status Row */}
-      <div className="admin-system-health">
-        <div className="health-item">
-          <Database size={16} className="health-icon active" />
-          <span className="health-name">Cơ sở dữ liệu SQL:</span>
-          <span className="health-status-badge online">Hoạt động (Đồng bộ)</span>
-        </div>
-        <div className="health-divider" />
-        <div className="health-item">
-          <Server size={16} className="health-icon active" />
-          <span className="health-name">Backend API (Spring Boot):</span>
-          <span className="health-status-badge online">Port 8080 (Online)</span>
-        </div>
-        <div className="health-divider" />
-        <div className="health-item">
-          <Activity size={16} className="health-icon active" />
-          <span className="health-name">Chế độ hệ thống:</span>
-          <span className="health-status-badge mode">Chế độ nội bộ chính thức</span>
-        </div>
-      </div>
 
       {/* Quick Recent Users Section */}
       <div className="recent-users-box">

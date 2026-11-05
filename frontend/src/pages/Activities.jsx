@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Search,
@@ -18,6 +18,7 @@ import {
   Flame,
   Loader2,
   ShieldAlert,
+  Trash2,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -30,9 +31,11 @@ import {
 } from 'recharts';
 import { sessionService, aiService } from '../services/api';
 import AiCoachInsightCard from '../components/AiCoachInsightCard';
+import { useUnit } from '../context/UnitContext';
 import './Activities.css';
 
 export default function Activities() {
+  const { unitLabels, convertAccel, formatAccel, formatSpeed } = useUnit();
   const [searchParams] = useSearchParams();
   const [sessions, setSessions] = useState([]);
   const [filteredSessions, setFilteredSessions] = useState([]);
@@ -62,9 +65,10 @@ export default function Activities() {
               const dynamicAccel = +(Math.max(0, mag - 9.81)).toFixed(2);
               const timeLabel = p.time || `${Math.max(1, Math.round(((idx + 1) / pts.length) * duration))}m`;
 
+              const rawAccel = p.acceleration ? Number(p.acceleration) : (dynamicAccel > 0 ? dynamicAccel : Number(selectedSession.averageAcceleration || 2.5));
               return {
                 minute: timeLabel,
-                accel: p.acceleration ? Number(p.acceleration) : (dynamicAccel > 0 ? dynamicAccel : Number(selectedSession.averageAcceleration || 2.5)),
+                accel: convertAccel(rawAccel),
                 intensity: p.intensity ?? p.movementIntensity ?? selectedSession.movementIntensity ?? 75,
               };
             });
@@ -134,15 +138,54 @@ export default function Activities() {
       .finally(() => setLoadingAi(false));
   };
 
+  const handleDeleteSession = async (e, sessionId) => {
+    e.stopPropagation();
+    if (!window.confirm('Bạn có chắc chắn muốn xóa buổi tập này khỏi hệ thống?')) {
+      return;
+    }
+    try {
+      await sessionService.delete(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      setFilteredSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      if (selectedSession && selectedSession.id === sessionId) {
+        setSelectedSession(null);
+      }
+    } catch (err) {
+      console.error('Lỗi xóa buổi tập:', err);
+    }
+  };
+
+  // Dynamic list of sports discovered from real activity data
+  const availableSports = useMemo(() => {
+    const list = ['Basketball', 'Running', 'Football'];
+    sessions.forEach((s) => {
+      if (s.sport && typeof s.sport === 'string' && !list.includes(s.sport.trim())) {
+        list.push(s.sport.trim());
+      }
+    });
+    return list;
+  }, [sessions]);
+
+  // Case-insensitive & bilingual sport matcher (Bóng rổ <-> Basketball, Chạy bộ <-> Running)
+  const isSportMatch = (sessionSport, filterSport) => {
+    if (!filterSport || filterSport === 'All') return true;
+    if (!sessionSport) return false;
+    const s = sessionSport.toLowerCase().trim();
+    const f = filterSport.toLowerCase().trim();
+    if (s === f) return true;
+    if (f === 'basketball' && (s.includes('bóng rổ') || s.includes('basketball'))) return true;
+    if (f === 'running' && (s.includes('chạy') || s.includes('running'))) return true;
+    if (f === 'football' && (s.includes('bóng đá') || s.includes('football') || s.includes('soccer'))) return true;
+    return s.includes(f) || f.includes(s);
+  };
+
   // Handle Search, Filter, and Sort
   useEffect(() => {
     let result = [...sessions];
 
-    // Filter by sport
+    // Filter by sport with bilingual smart matching
     if (selectedSport !== 'All') {
-      result = result.filter(
-        (s) => s.sport?.toLowerCase() === selectedSport.toLowerCase()
-      );
+      result = result.filter((s) => isSportMatch(s.sport, selectedSport));
     }
 
     // Filter by search
@@ -181,10 +224,10 @@ export default function Activities() {
     ? sessionSensorPoints
     : selectedSession
     ? [
-        { minute: '5m', accel: +(Number(selectedSession.averageAcceleration || 2.4) * 0.85).toFixed(2), intensity: Math.max(50, Math.round(Number(selectedSession.movementIntensity || 75) * 0.85)) },
-        { minute: '15m', accel: +(Number(selectedSession.averageAcceleration || 2.4) * 1.15).toFixed(2), intensity: Math.min(100, Math.round(Number(selectedSession.movementIntensity || 75) * 1.1)) },
-        { minute: '25m', accel: +(Number(selectedSession.averageAcceleration || 2.4) * 1.25).toFixed(2), intensity: Math.min(100, Math.round(Number(selectedSession.movementIntensity || 75) * 1.15)) },
-        { minute: `${selectedSession.durationMinutes || 35}m`, accel: +(Number(selectedSession.averageAcceleration || 2.4) * 0.9).toFixed(2), intensity: Math.max(50, Math.round(Number(selectedSession.movementIntensity || 75) * 0.9)) },
+        { minute: '5m', accel: convertAccel(+(Number(selectedSession.averageAcceleration || 2.4) * 0.85).toFixed(2)), intensity: Math.max(50, Math.round(Number(selectedSession.movementIntensity || 75) * 0.85)) },
+        { minute: '15m', accel: convertAccel(+(Number(selectedSession.averageAcceleration || 2.4) * 1.15).toFixed(2)), intensity: Math.min(100, Math.round(Number(selectedSession.movementIntensity || 75) * 1.1)) },
+        { minute: '25m', accel: convertAccel(+(Number(selectedSession.averageAcceleration || 2.4) * 1.25).toFixed(2)), intensity: Math.min(100, Math.round(Number(selectedSession.movementIntensity || 75) * 1.15)) },
+        { minute: `${selectedSession.durationMinutes || 35}m`, accel: convertAccel(+(Number(selectedSession.averageAcceleration || 2.4) * 0.9).toFixed(2)), intensity: Math.max(50, Math.round(Number(selectedSession.movementIntensity || 75) * 0.9)) },
       ]
     : [];
 
@@ -224,8 +267,14 @@ export default function Activities() {
               aria-label="Lọc theo môn thể thao"
             >
               <option value="All">Tất cả môn thể thao</option>
-              <option value="Running">Chạy bộ (Running)</option>
               <option value="Basketball">Bóng rổ (Basketball)</option>
+              <option value="Running">Chạy bộ (Running)</option>
+              <option value="Football">Bóng đá (Football)</option>
+              {availableSports
+                .filter((sp) => !['basketball', 'running', 'football'].includes(sp.toLowerCase()))
+                .map((sp) => (
+                  <option key={sp} value={sp}>{sp}</option>
+                ))}
             </select>
           </div>
 
@@ -321,6 +370,14 @@ export default function Activities() {
                           <Sparkles size={13} />
                           AI Coach
                         </button>
+                        <button
+                          className="btn btn-outline-cyan btn-sm"
+                          onClick={(e) => handleDeleteSession(e, session.id)}
+                          title="Xóa buổi tập"
+                          style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#ef4444', padding: '6px 8px' }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -385,13 +442,13 @@ export default function Activities() {
               <div className="detail-stat-item">
                 <span className="stat-label">GIA TỐC TRUNG BÌNH</span>
                 <span className="stat-val">
-                  {selectedSession.averageAcceleration ? Number(selectedSession.averageAcceleration).toFixed(2) : '3.21'} m/s²
+                  {formatAccel(selectedSession.averageAcceleration ? Number(selectedSession.averageAcceleration) : 3.21, 2)}
                 </span>
               </div>
               <div className="detail-stat-item">
                 <span className="stat-label">TỐC ĐỘ TRUNG BÌNH</span>
                 <span className="stat-val">
-                  {selectedSession.averageSpeed ? Number(selectedSession.averageSpeed).toFixed(1) : '18.4'} km/h
+                  {formatSpeed(selectedSession.averageSpeed ? Number(selectedSession.averageSpeed) : 18.4, 1)}
                 </span>
               </div>
               <div className="detail-stat-item">
@@ -444,7 +501,7 @@ export default function Activities() {
                     <Area
                       type="monotone"
                       dataKey="accel"
-                      name="Gia tốc (m/s²)"
+                      name={`Gia tốc (${unitLabels.accel})`}
                       stroke="#00f2fe"
                       strokeWidth={2.5}
                       fill="url(#detailCyan)"

@@ -39,20 +39,20 @@ public class AuthController {
     private final AuthService service;
 
     @Value("${auth.refresh-cookie-name:sss_refresh}")
-    private String refreshCookieName;
+    private String refreshCookieName = "sss_refresh";
 
     @Value("${auth.refresh-cookie-secure:false}")
-    private boolean refreshCookieSecure;
+    private boolean refreshCookieSecure = false;
 
     @Value("${application.security.jwt.refresh-token.expiration:604800000}")
-    private long refreshTokenExpirationMs;
+    private long refreshTokenExpirationMs = 604800000L;
 
     @Value("${application.security.jwt.remembered-refresh-token.expiration:2592000000}")
-    private long rememberedRefreshTokenExpirationMs;
+    private long rememberedRefreshTokenExpirationMs = 2592000000L;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(
-            @RequestBody RegisterRequest request,
+            @Valid @RequestBody RegisterRequest request,
             HttpServletResponse response
     ) {
         AuthResponse authResponse = service.register(request);

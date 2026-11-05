@@ -225,6 +225,11 @@ export default function Login() {
             {/* Footer */}
             <div className="auth-footer">
               Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
+              <div style={{ marginTop: '14px' }}>
+                <Link to="/home" style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textDecoration: 'none' }}>
+                  ← Quay lại trang chủ giới thiệu sản phẩm
+                </Link>
+              </div>
             </div>
 
           </div>

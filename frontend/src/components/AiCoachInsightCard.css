@@ -1,4 +1,5 @@
 .ai-coach-insight-card {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -526,5 +527,11 @@
   }
   .ai-score-box {
     align-items: flex-start;
+  }
+}
+
+@container (max-width: 760px) {
+  .ai-insight-body-grid {
+    grid-template-columns: 1fr;
   }
 }

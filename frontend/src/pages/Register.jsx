@@ -18,6 +18,41 @@ export default function Register() {
     e.preventDefault();
     setError('');
 
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedName) {
+      setError('Vui lòng nhập họ và tên.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmedEmail) {
+      setError('Vui lòng nhập địa chỉ email.');
+      return;
+    }
+    if (!emailRegex.test(trimmedEmail)) {
+      setError('Email không đúng định dạng. Ví dụ: user@example.com');
+      return;
+    }
+
+    if (!password) {
+      setError('Vui lòng tạo mật khẩu.');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Mật khẩu phải có ít nhất 8 ký tự.');
+      return;
+    }
+
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasDigit = /\d/.test(password);
+    if (!hasLetter || !hasDigit) {
+      setError('Mật khẩu phải chứa ít nhất một chữ cái và một chữ số.');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Mật khẩu xác nhận không khớp.');
       return;
@@ -25,12 +60,23 @@ export default function Register() {
 
     setLoading(true);
     try {
-      // preferredSport remains a profile field on the API. Registration now
-      // uses the backend default because it is not part of this form anymore.
-      await authService.register({ name, email, password });
+      await authService.register({ name: trimmedName, email: trimmedEmail, password });
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.');
+      const serverMsg = err.response?.data?.message || err.response?.data?.error;
+      const status = err.response?.status;
+
+      if (status === 400 || status === 409) {
+        if (serverMsg) {
+          setError(serverMsg);
+        } else {
+          setError('Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.');
+        }
+      } else if (!err.response) {
+        setError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng.');
+      } else {
+        setError(serverMsg || 'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.');
+      }
     } finally {
       setLoading(false);
     }
@@ -63,7 +109,10 @@ export default function Register() {
                 id="register-name"
                 type="text" 
                 value={name} 
-                onChange={(e) => setName(e.target.value)} 
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (error) setError('');
+                }} 
                 required 
                 placeholder="Nhập họ và tên"
                 autoComplete="name"
@@ -79,7 +128,10 @@ export default function Register() {
                 id="register-email"
                 type="email" 
                 value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError('');
+                }} 
                 required 
                 placeholder="Nhập email của bạn"
                 autoComplete="username"
@@ -95,12 +147,16 @@ export default function Register() {
                 id="register-password"
                 type="password" 
                 value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError('');
+                }} 
                 required 
-                placeholder="Tạo mật khẩu"
+                placeholder="Tạo mật khẩu (tối thiểu 8 ký tự, có chữ và số)"
                 autoComplete="new-password"
               />
             </div>
+            <span className="auth-field-hint">Mật khẩu phải có ít nhất 8 ký tự, bao gồm cả chữ và số</span>
           </div>
 
           <div className="form-group">
@@ -111,7 +167,10 @@ export default function Register() {
                 id="register-confirm-password"
                 type="password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (error) setError('');
+                }}
                 required
                 placeholder="Nhập lại mật khẩu"
                 autoComplete="new-password"
@@ -132,6 +191,11 @@ export default function Register() {
         
         <div className="auth-footer">
           Đã có tài khoản? <Link to="/login">Đăng nhập ngay</Link>
+          <div style={{ marginTop: '14px' }}>
+            <Link to="/home" style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textDecoration: 'none' }}>
+              ← Quay lại trang chủ giới thiệu sản phẩm
+            </Link>
+          </div>
         </div>
       </div>
     </div>

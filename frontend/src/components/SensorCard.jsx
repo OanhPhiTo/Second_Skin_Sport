@@ -1,8 +1,10 @@
 import React from 'react';
 import { Cpu, RotateCcw, Activity, Zap, ShieldCheck } from 'lucide-react';
+import { useUnit } from '../context/UnitContext';
 import './SensorCard.css';
 
 export default function SensorCard({ sensorStatus }) {
+  const { unitLabels, convertAccel } = useUnit();
   const isConnected = sensorStatus?.connected ?? false;
   const current = sensorStatus?.currentData || {
     accelerometerX: 0.0,
@@ -54,20 +56,20 @@ export default function SensorCard({ sensorStatus }) {
         <div className="sensor-subcard">
           <div className="subcard-header">
             <span className="subcard-name">CẢM BIẾN GIA TỐC</span>
-            <span className="subcard-unit">m/s²</span>
+            <span className="subcard-unit">{unitLabels.accel}</span>
           </div>
           <div className="axis-readings">
             <div className="axis-item">
               <span className="axis-tag x">X</span>
-              <span className="axis-num">{(current.accelerometerX ?? 0).toFixed(2)}</span>
+              <span className="axis-num">{convertAccel(current.accelerometerX ?? 0).toFixed(2)}</span>
             </div>
             <div className="axis-item">
               <span className="axis-tag y">Y</span>
-              <span className="axis-num">{(current.accelerometerY ?? 0).toFixed(2)}</span>
+              <span className="axis-num">{convertAccel(current.accelerometerY ?? 0).toFixed(2)}</span>
             </div>
             <div className="axis-item">
               <span className="axis-tag z">Z</span>
-              <span className="axis-num">{(current.accelerometerZ ?? 9.81).toFixed(2)}</span>
+              <span className="axis-num">{convertAccel(current.accelerometerZ ?? 9.81).toFixed(2)}</span>
             </div>
           </div>
           <div className="subcard-footer">
@@ -134,7 +136,7 @@ export default function SensorCard({ sensorStatus }) {
           <div className="axis-readings">
             <div className="axis-item">
               <span className="axis-tag dynamic"><Zap size={10} /> Tải động</span>
-              <span className="axis-num highlight-neon">{dynamicAccel} <small>m/s²</small></span>
+              <span className="axis-num highlight-neon">{convertAccel(dynamicAccel).toFixed(2)} <small>{unitLabels.accel}</small></span>
             </div>
             <div className="axis-item">
               <span className="axis-tag intensity"><Activity size={10} /> Cường độ</span>

@@ -29,13 +29,16 @@ import {
   Sparkles,
   ShieldCheck,
   Scale,
+  Footprints,
 } from 'lucide-react';
 import SensorCard from '../components/SensorCard';
 import { deviceService, sensorDataService, sessionService } from '../services/api';
 import { useBle } from '../context/BleContext';
+import { useUnit } from '../context/UnitContext';
 import './Sensors.css';
 
 export default function Sensors() {
+  const { formatHeight, formatAccel } = useUnit();
   const {
     bleStatus,
     bleDevice,
@@ -49,6 +52,7 @@ export default function Sensors() {
     wifiFeedback,
     connectBle,
     disconnectBle,
+    startTrackingSession,
     finalizeAutoSession,
     sendWifiConfig,
     isCharging,
@@ -290,14 +294,6 @@ export default function Sensors() {
                   <span className="meta-label">Số gói tin nhận</span>
                   <span className="meta-value">{livePacketCount.toLocaleString()} gói</span>
                 </div>
-                <div className="meta-box">
-                  <span className="meta-label">Vận tốc GPS</span>
-                  <span className="meta-value">{bleTelemetry?.spd ?? 0} km/h</span>
-                </div>
-                <div className="meta-box">
-                  <span className="meta-label">Dung lượng Pin</span>
-                  <span className="meta-value green">{bleTelemetry?.bat ?? 90}%</span>
-                </div>
               </div>
 
               <div className="ble-actions-bar">
@@ -372,13 +368,19 @@ export default function Sensors() {
                 <span className="auto-stat-label"><Zap size={14} /> Cú bật nhảy</span>
                 <span className="auto-stat-val highlight-cyan">
                   {autoSessionDisplay.jumpCount} lần
-                  {autoSessionDisplay.jumpHeight > 0 && <small> ({autoSessionDisplay.jumpHeight}cm)</small>}
+                  {autoSessionDisplay.jumpHeight > 0 && <small> ({formatHeight(autoSessionDisplay.jumpHeight)})</small>}
                 </span>
               </div>
               <div className="auto-stat-item">
                 <span className="auto-stat-label"><Activity size={14} /> Bước chạy / Cadence</span>
                 <span className="auto-stat-val green">
-                  {autoSessionDisplay.stepCount ?? 0} <small>bước ({autoSessionDisplay.cadence ?? 0} spm)</small>
+                  {autoSessionDisplay.runStepCount ?? 0} <small>bước ({autoSessionDisplay.cadence ?? 0} spm)</small>
+                </span>
+              </div>
+              <div className="auto-stat-item">
+                <span className="auto-stat-label"><Footprints size={14} className="highlight-cyan" /> Bước đi bộ</span>
+                <span className="auto-stat-val highlight-cyan">
+                  {autoSessionDisplay.walkStepCount ?? 0} <small>bước</small>
                 </span>
               </div>
               <div className="auto-stat-item">
@@ -387,11 +389,19 @@ export default function Sensors() {
               </div>
               <div className="auto-stat-item">
                 <span className="auto-stat-label"><Gauge size={14} /> Gia tốc TB</span>
-                <span className="auto-stat-val">{autoSessionDisplay.avgAccel} m/s²</span>
+                <span className="auto-stat-val">{formatAccel(autoSessionDisplay.avgAccel)}</span>
               </div>
               <div className="auto-stat-item">
-                <span className="auto-stat-label"><Award size={14} /> Nhận diện môn</span>
-                <span className="auto-stat-val badge-sport-label">{autoSessionDisplay.sport}</span>
+                <span className="auto-stat-label"><Award size={14} /> Nhận diện vận động</span>
+                <span className="auto-stat-val badge-sport-label">
+                  {autoSessionDisplay.status === 'idle'
+                    ? '💤 Chờ vận động (Idle)'
+                    : autoSessionDisplay.classifiedActivity === 'walking' || autoSessionDisplay.sport === 'Walking'
+                    ? '🚶 Đi bộ (Walking)'
+                    : autoSessionDisplay.classifiedActivity === 'jumping' || autoSessionDisplay.sport === 'Basketball'
+                      ? '🏀 Bật nhảy (Jumping)'
+                      : '🏃 Chạy bộ (Running)'}
+                </span>
               </div>
             </div>
 
@@ -400,7 +410,15 @@ export default function Sensors() {
                 💡 ESP32 tự động gửi cờ hoạt động. Sau 3 phút nghỉ liên tục, dữ liệu 1 buổi tập sẽ tự động tổng hợp gửi về Backend.
               </span>
 
-              {(autoSessionDisplay.status === 'recording' || autoSessionDisplay.status === 'cooldown') && (
+              {autoSessionDisplay.status === 'idle' ? (
+                <button
+                  className="btn btn-outline-cyan btn-sm"
+                  onClick={() => startTrackingSession({ sport: 'Running', targetDurationMinutes: 45 })}
+                >
+                  <Play size={15} />
+                  Bắt Đầu Buổi Tập Ngay
+                </button>
+              ) : (
                 <button
                   className="btn btn-outline-cyan btn-sm"
                   onClick={() => finalizeAutoSession(true)}
@@ -663,65 +681,6 @@ export default function Sensors() {
             </div>
           );
         })}
-      </div>
-
-      {/* IOT ARCHITECTURE SECTION */}
-      <div className="card iot-architecture-card">
-        <div className="card-header">
-          <div>
-            <h3 className="card-title">Kiến Trúc Đường Truyền Dữ Liệu IoT Zero-Touch</h3>
-            <p className="card-subtitle">
-              Tối ưu trải nghiệm thể thao: Tự động phát hiện hoạt động từ phần cứng, loại bỏ hoàn toàn thao tác nút bấm khi tập luyện.
-            </p>
-          </div>
-          <span className="badge badge-sport">TỰ ĐỘNG HÓA ZERO-TOUCH</span>
-        </div>
-
-        <div className="iot-pipeline-flow">
-          <div className="flow-step">
-            <div className="step-badge">1</div>
-            <div className="step-content">
-              <h4>Miếng Dán Second Skin</h4>
-              <p>Mang trên cơ thể & bắt đầu chơi thể thao</p>
-            </div>
-          </div>
-          <div className="flow-arrow">→</div>
-
-          <div className="flow-step">
-            <div className="step-badge">2</div>
-            <div className="step-content">
-              <h4>Phát Hiện Trên Thiết Bị</h4>
-              <p>ESP32 tính magnitude & gắn cờ <code>active/idle</code></p>
-            </div>
-          </div>
-          <div className="flow-arrow">→</div>
-
-          <div className="flow-step highlight-step">
-            <div className="step-badge">3</div>
-            <div className="step-content">
-              <h4>Web Bluetooth (BLE)</h4>
-              <p>Truyền 10Hz, đệm RAM, 0-delay chart</p>
-            </div>
-          </div>
-          <div className="flow-arrow">→</div>
-
-          <div className="flow-step">
-            <div className="step-badge">4</div>
-            <div className="step-content">
-              <h4>Tự Động Lưu Buổi Tập</h4>
-              <p>1 request tổng hợp khi nghỉ tập (không phồng DB)</p>
-            </div>
-          </div>
-          <div className="flow-arrow">→</div>
-
-          <div className="flow-step highlight-step">
-            <div className="step-badge">5</div>
-            <div className="step-content">
-              <h4>Phân Tích AI Huấn Luyện Viên</h4>
-              <p>Phân tích động học & phòng ngừa chấn thương</p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

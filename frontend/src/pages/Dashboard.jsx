@@ -9,14 +9,18 @@ import {
   Compass,
   Award,
   AlertCircle,
+  AlertTriangle,
+  Bluetooth,
+  BluetoothConnected,
+  CheckCircle2,
   RefreshCw,
   X,
   Play,
+  Activity,
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import PerformanceChart from '../components/PerformanceChart';
 import ActivityCard from '../components/ActivityCard';
-import SensorCard from '../components/SensorCard';
 import SessionTable from '../components/SessionTable';
 import {
   sessionService,
@@ -24,18 +28,20 @@ import {
   deviceService,
 } from '../services/api';
 import { useBle } from '../context/BleContext';
+import { useUnit } from '../context/UnitContext';
 import './Dashboard.css';
 
 export default function Dashboard() {
-  const { bleStatus, sensorStatus: liveBleSensorStatus } = useBle();
+  const { bleStatus, bleDevice, connectBle, sensorStatus: liveBleSensorStatus, autoSession, finalizeAutoSession, startTrackingSession } = useBle();
+  const { unitLabels, convertAccel } = useUnit();
+  const isDeviceConnected = bleStatus === 'connected';
+  const [connectingBle, setConnectingBle] = useState(false);
   const [overview, setOverview] = useState(null);
   const [activityAnalysis, setActivityAnalysis] = useState(null);
   const [sensorStatus, setSensorStatus] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const effectiveSensorStatus = bleStatus === 'connected' ? liveBleSensorStatus : sensorStatus;
 
   // New Session Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -70,57 +76,62 @@ export default function Dashboard() {
     loadDashboardData();
   }, []);
 
-  const handleCreateSession = async (e) => {
+  const formatTimer = (seconds = 0) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    const onSessionDone = () => {
+      loadDashboardData();
+    };
+    window.addEventListener('sss_session_completed', onSessionDone);
+    return () => window.removeEventListener('sss_session_completed', onSessionDone);
+  }, []);
+
+
+  const handleCreateSession = (e) => {
     e.preventDefault();
+    if (!isDeviceConnected) {
+      alert('Vui lòng kết nối thiết bị cảm biến Second Skin Pod qua Bluetooth trước khi bắt đầu.');
+      return;
+    }
     setCreatingSession(true);
     try {
-      const isBasketball = newSport === 'Basketball';
-      const curData = sensorStatus?.currentData;
-      const initialAccel = curData
-        ? Math.max(1.8, +(Math.hypot(curData.accelerometerX || 0, curData.accelerometerY || 0, curData.accelerometerZ || 9.81) - 9.81).toFixed(2))
-        : (isBasketball ? 2.95 : 2.40);
-      const initialIntensity = curData?.movementIntensity ? Math.max(60, curData.movementIntensity) : (isBasketball ? 82 : 78);
-      const initialScore = isBasketball ? 88 : 84;
-
-      const created = await sessionService.create({
-        sport: newSport,
-        durationMinutes: Number(newDuration),
-        startTime: new Date().toISOString(),
-        totalJumps: isBasketball ? Math.max(12, Math.round(Number(newDuration) * 0.9)) : 0,
-        directionChanges: isBasketball ? Math.max(25, Math.round(Number(newDuration) * 2.8)) : Math.max(10, Math.round(Number(newDuration) * 0.5)),
-        averageAcceleration: initialAccel,
-        averageSpeed: isBasketball ? 17.8 : 14.5,
-        movementIntensity: initialIntensity,
-        performanceScore: initialScore,
-        status: 'Completed',
-      });
-
-      setSessions((prev) => [created, ...prev]);
+      if (typeof startTrackingSession === 'function') {
+        startTrackingSession({
+          sport: newSport,
+          targetDurationMinutes: Number(newDuration),
+        });
+      }
       setIsModalOpen(false);
-      // Reload stats
-      loadDashboardData();
     } catch (err) {
-      alert('Không thể bắt đầu buổi tập. Vui lòng thử lại.');
+      alert(err.message || 'Không thể bắt đầu buổi tập. Vui lòng thử lại.');
     } finally {
       setCreatingSession(false);
     }
   };
 
   const handleExportReport = () => {
-    // Generate simple CSV report
-    const headers = 'ID,Bộ Môn,Thời Lượng(phút),Cú Nhảy,Gia Tốc TB,Điểm Số,Trạng Thái\n';
+    // UTF-8 BOM prefix ensures Microsoft Excel on Windows parses Vietnamese characters flawlessly
+    const utf8Bom = '\uFEFF';
+    const headers = 'ID,Bộ Môn,Thời Lượng (phút),Cú Nhảy,Gia Tốc TB,Điểm Số,Trạng Thái\n';
     const rows = sessions
       .map(
         (s) =>
-          `${s.id},${s.sport},${s.durationMinutes},${s.totalJumps},${s.averageAcceleration},${s.performanceScore}%,${s.status}`
+          `${s.id},"${s.sport || 'Chưa xác định'}",${s.durationMinutes || 0},${s.totalJumps || 0},${s.averageAcceleration || 0},${s.performanceScore || 0}%,${s.status || 'Completed'}`
       )
       .join('\n');
-    const blob = new Blob([headers + rows], { type: 'text/csv' });
+    const blob = new Blob([utf8Bom, headers + rows], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `SecondSkin_BaoCao_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
   if (loading && !overview) {
@@ -166,6 +177,75 @@ export default function Dashboard() {
         </div>
       )}
 
+
+      {/* PHẦN LIVE TRACKING SESSION (KHI ĐANG TRONG BUỔI TẬP THỜI GIAN THỰC) */}
+      {autoSession && (autoSession.status === 'recording' || autoSession.status === 'cooldown') && (
+        <section className="live-session-banner-section">
+          <div className="live-session-card">
+            <div className="live-session-header">
+              <div className="live-indicator-wrap">
+                <span className="live-pulse-dot"></span>
+                <span className="live-badge">ĐANG THEO DÕI TRỰC TIẾP</span>
+                <span className="live-sport-name">
+                  {autoSession.sport === 'Basketball' ? 'Bóng rổ' : autoSession.sport === 'Running' ? 'Chạy bộ' : autoSession.sport || 'Bóng rổ'}
+                </span>
+              </div>
+              <div className="live-target-time">
+                Mục tiêu dự kiến: <strong>{autoSession.targetDurationMinutes || 45} phút</strong>
+              </div>
+            </div>
+
+            <div className="live-session-metrics">
+              <div className="live-metric-box timer-box">
+                <Clock size={18} className="highlight-cyan" />
+                <div className="live-metric-info">
+                  <span className="live-metric-label">Thời Gian Tập</span>
+                  <span className="live-metric-value">{formatTimer(autoSession.elapsedSeconds)}</span>
+                </div>
+              </div>
+
+              <div className="live-metric-box">
+                <Activity size={18} className="highlight-neon" />
+                <div className="live-metric-info">
+                  <span className="live-metric-label">Cú Nhảy (Jumps)</span>
+                  <span className="live-metric-value">{autoSession.jumpCount || 0} lần</span>
+                </div>
+              </div>
+
+              <div className="live-metric-box">
+                <Compass size={18} className="highlight-cyan" />
+                <div className="live-metric-info">
+                  <span className="live-metric-label">Đổi Hướng</span>
+                  <span className="live-metric-value">{autoSession.directionChangeCount || 0} lần</span>
+                </div>
+              </div>
+
+              <div className="live-metric-box">
+                <Gauge size={18} />
+                <div className="live-metric-info">
+                  <span className="live-metric-label">Gia Tốc TB</span>
+                  <span className="live-metric-value">{autoSession.avgAccel || 0} {unitLabels.accel}</span>
+                </div>
+              </div>
+
+              <div className="live-metric-actions">
+                <button
+                  type="button"
+                  className="btn btn-finish-session"
+                  onClick={async () => {
+                    await finalizeAutoSession(true);
+                    loadDashboardData();
+                  }}
+                  disabled={autoSession.isSaving}
+                >
+                  {autoSession.isSaving ? 'Đang tổng hợp dữ liệu...' : 'Dừng & Hoàn Thành Buổi Tập'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* PHẦN 1: OVERVIEW - 6 STATISTIC CARDS */}
       <section className="overview-section">
         <div className="grid-cols-6">
@@ -185,8 +265,8 @@ export default function Dashboard() {
           />
           <StatCard
             title="Gia tốc trung bình"
-            value={overview?.averageAcceleration ?? 0.0}
-            unit="m/s²"
+            value={overview?.averageAcceleration != null ? convertAccel(overview.averageAcceleration) : 0.0}
+            unit={unitLabels.accel}
             change={overview?.averageAccelerationChange ?? '0%'}
             icon={Gauge}
             accent="cyan"
@@ -199,7 +279,7 @@ export default function Dashboard() {
             accent="green"
           />
           <StatCard
-            title="Đổi hướng di chuyển"
+            title="Tổng lần đổi hướng"
             value={overview?.directionChanges?.toLocaleString() ?? '0'}
             change={overview?.directionChangesChange ?? '0'}
             icon={Compass}
@@ -225,25 +305,20 @@ export default function Dashboard() {
       <section className="analysis-section">
         <div className="section-title-wrap">
           <h2 className="section-heading">Phân Tích Hoạt Động Sinh Trắc Học</h2>
-          <span className="section-tag">THEO DÕI CHUYỂN ĐỘNG AI</span>
+          <span className="section-tag">PHIÊN GẦN NHẤT • THEO DÕI CHUYỂN ĐỘNG AI</span>
         </div>
         <ActivityCard analysis={activityAnalysis} />
       </section>
 
-      {/* PHẦN 4: SENSOR DATA */}
-      <section className="sensor-section">
-        <SensorCard sensorStatus={effectiveSensorStatus} />
-      </section>
-
-      {/* PHẦN 5: RECENT SESSIONS */}
+      {/* PHẦN 4: RECENT SESSIONS */}
       <section className="sessions-section">
         <SessionTable sessions={sessions} />
       </section>
 
       {/* Quick Start Session Modal */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-box card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay dashboard-modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-box card session-start-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title-group">
                 <Play className="modal-icon highlight-cyan" size={20} />
@@ -280,10 +355,47 @@ export default function Dashboard() {
                 />
               </div>
 
-              <div className="form-sensor-info">
-                <span className="info-label">Cảm biến kết nối:</span>
-                <span className="info-val">Miếng dán Second Skin #001 (Kết nối BLE)</span>
-              </div>
+              {isDeviceConnected ? (
+                <div className="form-sensor-info connected">
+                  <div className="sensor-connected-pill">
+                    <span className="status-dot connected" />
+                    <span className="sensor-name">
+                      {bleDevice?.name || 'Miếng dán Second Skin Pod (Đang hoạt động)'}
+                    </span>
+                  </div>
+                  <span className="sensor-status-tag">Đã kết nối BLE</span>
+                </div>
+              ) : (
+                <div className="form-sensor-info disconnected">
+                  <div className="sensor-warning-content">
+                    <div className="warning-title-wrap">
+                      <AlertTriangle size={15} className="warning-icon" />
+                      <span>Chưa kết nối thiết bị cảm biến</span>
+                    </div>
+                    <p className="warning-desc">
+                      Vui lòng kết nối miếng dán Second Skin Pod qua Bluetooth để có thể bắt đầu theo dõi buổi tập.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-quick-connect-ble"
+                    onClick={async () => {
+                      setConnectingBle(true);
+                      try {
+                        await connectBle();
+                      } catch (err) {
+                        // User dismissed pairing popup or error
+                      } finally {
+                        setConnectingBle(false);
+                      }
+                    }}
+                    disabled={connectingBle}
+                  >
+                    <Bluetooth size={13} />
+                    <span>{connectingBle ? 'Đang dò...' : 'Kết nối ngay'}</span>
+                  </button>
+                </div>
+              )}
 
               <div className="modal-actions">
                 <button
@@ -293,10 +405,22 @@ export default function Dashboard() {
                 >
                   Hủy
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={creatingSession}>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={!isDeviceConnected || creatingSession}
+                  title={!isDeviceConnected ? 'Cần kết nối cảm biến để kích hoạt theo dõi' : 'Bắt đầu theo dõi buổi tập'}
+                >
                   {creatingSession ? 'Đang khởi tạo cảm biến...' : 'Bắt Đầu Theo Dõi'}
                 </button>
               </div>
+
+              {!isDeviceConnected && (
+                <div className="session-blocked-notice">
+                  <AlertCircle size={13} />
+                  <span>Nút theo dõi sẽ tự động mở khóa ngay khi thiết bị được kết nối.</span>
+                </div>
+              )}
             </form>
           </div>
         </div>

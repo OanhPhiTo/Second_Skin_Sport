@@ -5,12 +5,14 @@ import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { BleProvider } from './context/BleContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { UnitProvider } from './context/UnitContext';
 import NotificationToast from './components/NotificationToast';
 import ErrorBoundary from './components/ErrorBoundary';
 import { authService } from './services/api';
 import './styles/global.css';
 
 // Lazy load route pages for high Lighthouse Performance & code-splitting
+const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Statistics = lazy(() => import('./pages/Statistics'));
 const Activities = lazy(() => import('./pages/Activities'));
@@ -66,8 +68,16 @@ export default function App() {
       <BrowserRouter>
       <BleProvider>
         <NotificationProvider>
-          <NotificationToast />
-          <Routes>
+          <UnitProvider>
+            <NotificationToast />
+            <Routes>
+            {/* Public Landing & Product Showcase */}
+            <Route path="/home" element={
+              <Suspense fallback={<PageFallback />}>
+                <Home />
+              </Suspense>
+            } />
+
             <Route path="/login" element={
               <Suspense fallback={<PageFallback />}>
                 <Login />
@@ -80,7 +90,7 @@ export default function App() {
             } />
             
             {/* Athlete Protected Routes */}
-            <Route element={<ProtectedRoute />}>
+            <Route element={<ProtectedRoute redirectPath="/home" />}>
               <Route path="/" element={<DashboardLayout />}>
                 <Route
                   index
@@ -183,6 +193,7 @@ export default function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </UnitProvider>
         </NotificationProvider>
       </BleProvider>
       </BrowserRouter>

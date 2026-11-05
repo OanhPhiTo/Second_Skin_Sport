@@ -159,8 +159,12 @@
 }
 
 /* Session Detail Modal - Pixel-perfect to Mockup */
+.activities-page .session-detail-modal,
+.modal-overlay .session-detail-modal,
+.modal-box.session-detail-modal,
 .session-detail-modal {
-  max-width: 720px;
+  max-width: 760px !important;
+  width: 94% !important;
   width: 94%;
   max-height: 90vh;
   overflow-y: auto;
@@ -366,9 +370,13 @@
 }
 
 /* Dedicated AI Coach Modal - Expanded Horizontal Layout to Fit Content Without Scrolling */
+.activities-page .session-ai-modal,
+.modal-overlay .session-ai-modal,
+.modal-box.session-ai-modal,
 .session-ai-modal {
-  max-width: 1240px;
-  width: 95vw;
+  max-width: 1240px !important;
+  width: 95vw !important;
+  min-width: min(94vw, 1080px);
   padding: 20px 26px 16px 26px;
   max-height: 94vh;
   overflow-y: auto;
@@ -644,3 +652,27 @@
   }
 }
 
+
+
+/* Enhanced Dropdown Filter Styling for Activities Toolbar */
+.toolbar-select {
+  color-scheme: dark !important;
+  cursor: pointer;
+}
+
+.toolbar-select option {
+  background-color: #111827 !important;
+  color: #f3f4f6 !important;
+  padding: 8px 12px;
+}
+
+@media (max-width: 1080px) {
+  .activities-page .session-ai-modal,
+  .modal-overlay .session-ai-modal,
+  .modal-box.session-ai-modal,
+  .session-ai-modal {
+    min-width: 0 !important;
+    width: 95vw !important;
+    max-width: 95vw !important;
+  }
+}

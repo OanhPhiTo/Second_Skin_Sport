@@ -24,9 +24,11 @@ import {
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import { statisticsService } from '../services/api';
+import { useUnit } from '../context/UnitContext';
 import './Statistics.css';
 
 export default function Statistics() {
+  const { isImperial, unitLabels, convertSpeed, convertAccel } = useUnit();
   const [selectedSport, setSelectedSport] = useState('All');
   const [selectedTime, setSelectedTime] = useState('This Week');
   const [statsList, setStatsList] = useState([]);
@@ -177,9 +179,9 @@ export default function Statistics() {
 
       {/* Aggregate KPI Cards */}
       <div className="grid-cols-6 stats-kpis">
-        <StatCard title="Tốc độ trung bình" value={avgSpeed} unit="km/h" change={speedTrend} icon={Navigation} accent="blue" />
-        <StatCard title="Gia tốc trung bình" value={avgAccel} unit="m/s²" change={accelTrend} icon={Gauge} accent="cyan" />
-        <StatCard title="Tổng quãng đường" value={totalDistance} unit="km" change={distTrend} icon={Zap} accent="cyan" />
+        <StatCard title="Tốc độ trung bình" value={convertSpeed(avgSpeed)} unit={unitLabels.speed} change={speedTrend} icon={Navigation} accent="blue" />
+        <StatCard title="Gia tốc trung bình" value={convertAccel(avgAccel)} unit={unitLabels.accel} change={accelTrend} icon={Gauge} accent="cyan" />
+        <StatCard title="Tổng quãng đường" value={isImperial ? +(Number(totalDistance || 0) * 0.621371).toFixed(1) : totalDistance} unit={unitLabels.distance} change={distTrend} icon={Zap} accent="cyan" />
         <StatCard title="Tổng cú nhảy" value={totalJumps} change={jumpsTrend} icon={ArrowUpRight} accent="green" />
         <StatCard title="Cường độ trung bình" value={`${avgIntensity}%`} change={intensityTrend} icon={Activity} accent="purple" />
         <StatCard title="Điểm hiệu suất" value={`${avgScore}%`} change={scoreTrend} icon={Award} accent="green" />
@@ -202,10 +204,10 @@ export default function Statistics() {
                   stroke="#64748b"
                   tick={{ fill: '#94a3b8', fontSize: 11 }}
                   width={68}
-                  tickFormatter={(v) => `${v} km/h`}
+                  tickFormatter={(v) => `${convertSpeed(v)} ${unitLabels.speed}`}
                 />
                 <Tooltip />
-                <Line type="monotone" dataKey="speed" name="Tốc độ (km/h)" stroke="#4facfe" strokeWidth={3} dot={{ fill: '#4facfe', r: 4 }} />
+                <Line type="monotone" dataKey="speed" name={`Tốc độ (${unitLabels.speed})`} stroke="#4facfe" strokeWidth={3} dot={{ fill: '#4facfe', r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -232,10 +234,10 @@ export default function Statistics() {
                   stroke="#64748b"
                   tick={{ fill: '#94a3b8', fontSize: 11 }}
                   width={68}
-                  tickFormatter={(v) => `${v} m/s²`}
+                  tickFormatter={(v) => `${convertAccel(v)} ${unitLabels.accel}`}
                 />
                 <Tooltip />
-                <Area type="monotone" dataKey="acceleration" name="Gia tốc (m/s²)" stroke="#00f2fe" strokeWidth={3} fill="url(#accelGrad)" />
+                <Area type="monotone" dataKey="acceleration" name={`Gia tốc (${unitLabels.accel})`} stroke="#00f2fe" strokeWidth={3} fill="url(#accelGrad)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>

@@ -10,6 +10,7 @@ import com.secondskin.sport.entity.SportSession;
 import com.secondskin.sport.repository.PerformanceStatisticRepository;
 import com.secondskin.sport.repository.SensorDataRepository;
 import com.secondskin.sport.repository.SportSessionRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 public class AutoSessionService {
 
@@ -83,6 +85,20 @@ public class AutoSessionService {
         }
         String deviceId = dto.getDeviceId() != null ? dto.getDeviceId() : "ESP32-SUPERMINI-01";
         String status = dto.getStatus() != null ? dto.getStatus() : "Completed";
+
+        // Idempotency check: prevent duplicate auto-session creation within 15 seconds for the same user, sport and start time
+        List<SportSession> recentSessions = sessionRepository.findByUserIdOrderByStartTimeDesc(userId);
+        if (!recentSessions.isEmpty()) {
+            SportSession latest = recentSessions.get(0);
+            if (latest.getStartTime() != null && start != null && latest.getSport() != null) {
+                long diffSeconds = Math.abs(Duration.between(latest.getStartTime(), start).getSeconds());
+                if (diffSeconds <= 15 && latest.getSport().equalsIgnoreCase(sport)) {
+                    log.warn(">>> [DUPLICATE BLOCKED] AutoSession for user {} with start time {} already exists as session #{}",
+                            userId, start, latest.getId());
+                    return mapToDTO(latest, null);
+                }
+            }
+        }
 
         SportSession session = new SportSession(
                 userId, deviceId, sport, start, end, durationMinutes,

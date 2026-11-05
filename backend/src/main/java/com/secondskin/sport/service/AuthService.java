@@ -34,15 +34,22 @@ public class AuthService {
     private final EmailService emailService;
 
     public AuthResponse register(RegisterRequest request) {
-        if(repository.existsByEmail(request.getEmail())){
-             throw new RuntimeException("Thông tin đăng ký không hợp lệ hoặc tài khoản đã tồn tại.");
+        String email = request.getEmail() != null ? request.getEmail().trim().toLowerCase() : "";
+        if (email.isBlank()) {
+            throw new IllegalArgumentException("Email không được để trống.");
+        }
+        if (repository.existsByEmailIgnoreCase(email) || repository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");
+        }
+        if (request.getPassword() == null || request.getPassword().length() < 8 || !request.getPassword().matches("^(?=.*[A-Za-z])(?=.*\\d).+$")) {
+            throw new IllegalArgumentException("Mật khẩu phải có ít nhất 8 ký tự và chứa cả chữ và số.");
         }
         String preferredSport = request.getPreferredSport() == null || request.getPreferredSport().isBlank()
                 ? "Running"
                 : request.getPreferredSport().trim();
         var user = new User(
-                request.getName(),
-                request.getEmail(),
+                request.getName() != null ? request.getName().trim() : "",
+                email,
                 passwordEncoder.encode(request.getPassword()),
                 Role.USER,
                 preferredSport

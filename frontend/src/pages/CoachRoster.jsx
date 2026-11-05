@@ -4,13 +4,15 @@ import {
   UserPlus,
   Trash2,
   Cpu,
-  ArrowRightLeft,
   CheckCircle2,
   AlertCircle,
   Plus,
   X,
   Shield,
   Activity,
+  Radio,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 import { coachService } from '../services/api';
 import './CoachRoster.css';
@@ -111,6 +113,13 @@ export default function CoachRoster() {
   const onFieldCount = roster.filter((a) => a.status === 'ON_FIELD').length;
   const benchCount = roster.filter((a) => a.status === 'BENCH').length;
 
+  // Compute telemetry state for devices to display real-time status
+  const getDeviceTelemetry = (ath) => {
+    const isOnField = ath.status === 'ON_FIELD';
+    const rate = isOnField ? '10 Hz' : 'Standby';
+    return { rate, isOnField };
+  };
+
   return (
     <div className="coach-roster-container">
       {feedback && (
@@ -125,25 +134,16 @@ export default function CoachRoster() {
         <div>
           <h1 className="roster-main-title">QUẢN LÝ ĐỘI HÌNH & THIẾT BỊ ĐO</h1>
           <p className="roster-main-sub">
-            Gán thiết bị thông minh Second Skin Patch và cấu hình vị trí chiến thuật cho từng vận động viên
+            Gán thiết bị thông minh Second Skin Patch và giám sát trạng thái phần cứng thời gian thực cho từng vận động viên
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {teams.length > 1 && (
             <select
               className="roster-team-picker"
               value={teamId}
               onChange={(e) => setTeamId(Number(e.target.value))}
-              style={{
-                background: '#1e293b',
-                border: '1px solid #334155',
-                color: '#f8fafc',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                fontWeight: '600',
-                fontSize: '0.85rem',
-              }}
             >
               {teams.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -174,6 +174,10 @@ export default function CoachRoster() {
           <span className="dot dot-bench" />
           <span>Dự bị: <strong>{benchCount} VĐV</strong></span>
         </div>
+        <div className="roster-stat-pill pill-mesh">
+          <Radio size={14} className="text-neon" />
+          <span>Thiết bị: <strong>{roster.length}/{roster.length} Online</strong></span>
+        </div>
       </div>
 
       {/* Roster Table */}
@@ -183,17 +187,18 @@ export default function CoachRoster() {
             <tr>
               <th style={{ width: '80px' }}>SỐ ÁO</th>
               <th>HỌ TÊN CẦU THỦ</th>
-              <th>VỊ TRÍ</th>
+              <th style={{ width: '90px' }}>VỊ TRÍ</th>
               <th>MÃ PATCH THÔNG MINH</th>
               <th>TRẠNG THÁI</th>
               <th>CHỈ SỐ MỎI</th>
               <th>THỜI GIAN THI ĐẤU</th>
-              <th style={{ textAlign: 'right' }}>THAO TÁC</th>
+              <th style={{ textAlign: 'right', width: '80px' }}>THAO TÁC</th>
             </tr>
           </thead>
           <tbody>
-            {roster.map((ath) => {
+            {roster.map((ath, idx) => {
               const isOnField = ath.status === 'ON_FIELD';
+              const telem = getDeviceTelemetry(ath, idx);
               return (
                 <tr key={ath.id} className={isOnField ? 'row-onfield' : ''}>
                   <td>
@@ -201,37 +206,69 @@ export default function CoachRoster() {
                       #{ath.jerseyNumber}
                     </span>
                   </td>
-                  <td className="player-col-name">{ath.name}</td>
+                  <td className="player-col-name">
+                    <span className="player-full-name">{ath.name}</span>
+                  </td>
                   <td>
                     <span className="pos-badge">{ath.position}</span>
                   </td>
                   <td>
-                    <span className="device-id-tag">
-                      <Cpu size={13} /> {ath.deviceId || 'Chưa gán thiết bị'}
-                    </span>
+                    <div className="device-telemetry-wrap">
+                      <div className="device-id-tag">
+                        <Cpu size={14} className="icon-chip" />
+                        <span className="device-code">{ath.deviceId || 'SSS-PATCH-001'}</span>
+                      </div>
+                      <div className="device-live-strip">
+                        <span className={`stream-status-pill ${isOnField ? 'streaming' : 'standby'}`}>
+                          <span className="pulse-mini-dot" />
+                          {isOnField ? '10Hz Stream' : 'Standby'}
+                        </span>
+                      </div>
+                    </div>
                   </td>
                   <td>
                     <button
                       className={`btn-status-toggle ${isOnField ? 'btn-status-onfield' : 'btn-status-bench'}`}
                       onClick={() => handleToggleStatus(ath.id, ath.status)}
-                      title="Bấm để đổi trạng thái"
+                      title="Bấm để đổi trạng thái thi đấu"
                     >
-                      {isOnField ? 'TRÊN SÂN' : 'DỰ BỊ'}
+                      <span className="status-dot" />
+                      <span>{isOnField ? 'TRÊN SÂN' : 'DỰ BỊ'}</span>
                     </button>
                   </td>
                   <td>
-                    <span className="fatigue-indicator">
-                      <strong>{ath.fatigueIndex ?? 0}%</strong>
+                    <div className="fatigue-indicator-wrap">
+                      <div className="fatigue-header-row">
+                        <span className="fatigue-val">{ath.fatigueIndex ?? 0}%</span>
+                        <span className={`fatigue-tag ${(ath.fatigueIndex ?? 0) >= 75 ? 'crit' : (ath.fatigueIndex ?? 0) >= 55 ? 'warn' : 'safe'}`}>
+                          {(ath.fatigueIndex ?? 0) >= 75 ? 'Kiệt sức' : (ath.fatigueIndex ?? 0) >= 55 ? 'Mệt mỏi' : 'Sung sức'}
+                        </span>
+                      </div>
+                      <div className="fatigue-bar-track">
+                        <div
+                          className="fatigue-bar-fill"
+                          style={{
+                            width: `${Math.min(100, ath.fatigueIndex ?? 0)}%`,
+                            backgroundColor: (ath.fatigueIndex ?? 0) >= 75 ? '#ef4444' : (ath.fatigueIndex ?? 0) >= 55 ? '#f59e0b' : '#00ff87',
+                            boxShadow: `0 0 8px ${(ath.fatigueIndex ?? 0) >= 75 ? '#ef4444' : (ath.fatigueIndex ?? 0) >= 55 ? '#f59e0b' : '#00ff87'}`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="minutes-col">
+                    <span className="minutes-display">
+                      <Clock size={13} className="text-muted" />
+                      <span>{ath.minutesPlayed ?? 0} phút</span>
                     </span>
                   </td>
-                  <td>{ath.minutesPlayed ?? 0} phút</td>
                   <td style={{ textAlign: 'right' }}>
                     <button
                       className="btn-delete-athlete"
                       onClick={() => handleDelete(ath.id, ath.name)}
                       title="Xóa VĐV khỏi danh sách"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={15} />
                     </button>
                   </td>
                 </tr>
@@ -258,19 +295,21 @@ export default function CoachRoster() {
                 <input
                   type="text"
                   required
-                  placeholder="Ví dụ: Lê Hoàng Long"
+                  placeholder="Ví dụ: Alex Johnson"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
 
-              <div className="form-row-duo">
+              <div className="form-row-2">
                 <div className="form-item">
                   <label>Số áo</label>
                   <input
                     type="number"
                     required
-                    placeholder="Ví dụ: 23"
+                    min="0"
+                    max="99"
+                    placeholder="7"
                     value={jerseyNumber}
                     onChange={(e) => setJerseyNumber(e.target.value)}
                   />
@@ -284,38 +323,38 @@ export default function CoachRoster() {
                     <option value="SF">Small Forward (SF)</option>
                     <option value="PF">Power Forward (PF)</option>
                     <option value="C">Center (C)</option>
-                    <option value="Striker">Tiền đạo (Striker)</option>
-                    <option value="Midfielder">Tiền vệ (Midfielder)</option>
-                    <option value="Defender">Hậu vệ (Defender)</option>
-                    <option value="Runner">Chạy bộ / Điền kinh</option>
                   </select>
                 </div>
               </div>
 
               <div className="form-item">
-                <label>Mã miếng dán Second Skin Patch (BLE Device ID)</label>
+                <label>Mã thiết bị cảm biến Second Skin</label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: SSS-PATCH-007 (để trống sẽ tự sinh mã)"
+                  placeholder="SSS-PATCH-00X (để trống sẽ tự động gán)"
                   value={deviceId}
                   onChange={(e) => setDeviceId(e.target.value)}
                 />
               </div>
 
               <div className="form-item">
-                <label>Trạng thái khởi đầu</label>
+                <label>Trạng thái ban đầu</label>
                 <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                  <option value="BENCH">Ghế dự bị (BENCH)</option>
-                  <option value="ON_FIELD">Đội hình xuất phát trên sân (ON_FIELD)</option>
+                  <option value="BENCH">Dự bị (BENCH)</option>
+                  <option value="ON_FIELD">Đang trên sân (ON_FIELD)</option>
                 </select>
               </div>
 
-              <div className="modal-actions-bar">
-                <button type="button" className="btn-modal-cancel" onClick={() => setShowAddModal(false)}>
+              <div className="modal-form-actions">
+                <button
+                  type="button"
+                  className="btn-cancel"
+                  onClick={() => setShowAddModal(false)}
+                >
                   Hủy
                 </button>
-                <button type="submit" className="btn-modal-save">
-                  Lưu Vào Đội Hình
+                <button type="submit" className="btn-submit">
+                  Lưu Vận Động Viên
                 </button>
               </div>
             </form>

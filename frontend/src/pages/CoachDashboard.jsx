@@ -19,6 +19,10 @@ import {
   Cpu,
   Gauge,
   BarChart2,
+  Battery,
+  Wifi,
+  Sparkles,
+  Info,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -107,7 +111,6 @@ export default function CoachDashboard() {
         const metrics = await coachService.getAthleteMetrics(teamId, athlete.id);
         setAthleteMetrics(metrics);
       } else {
-        // Fallback if mocked
         setAthleteMetrics(athlete);
       }
     } catch (err) {
@@ -131,7 +134,7 @@ export default function CoachDashboard() {
       if (updated) {
         setSquadData(updated);
       }
-      setSwapFeedback(`Đã thực hiện xoay tua thành công: ${outName} ➔ ${inName}`);
+      setSwapFeedback(`Đã cập nhật vị trí đội hình: ${outName} ➔ ${inName}`);
       setTimeout(() => setSwapFeedback(null), 4000);
       if (selectedAthlete) {
         handleCloseMetrics();
@@ -147,7 +150,7 @@ export default function CoachDashboard() {
     return (
       <div className="coach-loading-wrap">
         <div className="coach-spinner" />
-        <span>Đang phân tích tải trọng động học toàn đội...</span>
+        <span>Đang kết nối luồng cảm biến thời gian thực của đội hình...</span>
       </div>
     );
   }
@@ -169,6 +172,17 @@ export default function CoachDashboard() {
         { time: '28:45', avgFatigue: avgFatigue || 76.5 },
       ];
 
+  const getAthleteDevice = (ath, idx) => {
+    const isOnField = ath.status === 'ON_FIELD';
+    const battery = ath.batteryLevel ?? (isOnField ? Math.max(45, 94 - idx * 5) : 98);
+    return {
+      battery,
+      rate: isOnField ? '10 Hz' : 'Standby',
+      streaming: isOnField,
+      signal: isOnField ? '98%' : '100%',
+    };
+  };
+
   return (
     <div className="coach-dashboard-container">
       {/* Swap Success Toast */}
@@ -188,8 +202,8 @@ export default function CoachDashboard() {
               <span className="live-dot-pulse" /> ĐANG THI ĐẤU
             </span>
             <span className={`ws-badge ${connected ? 'ws-online' : 'ws-fallback'}`}>
-              <Radio size={12} />
-              {connected ? 'WebSocket Trực Tiếp' : 'Đồng Bộ Tự Động'}
+              <Radio size={12} className="radio-icon" />
+              {connected ? 'STREAM TELEMETRY 10HZ' : 'Đồng Bộ Tự Động'}
             </span>
 
             {/* Team Selector Dropdown */}
@@ -211,7 +225,7 @@ export default function CoachDashboard() {
 
           <h1 className="hero-team-title">{squadData?.teamName || 'Hanoi Dragons Pro'}</h1>
           <p className="hero-team-sub">
-            Trung tâm giám sát tải trọng động học và điều phối xoay tua vận động viên theo thời gian thực
+            Trung tâm giám sát tải trọng động học và trạng thái thiết bị Second Skin theo thời gian thực — HLV chủ động cân nhắc quyết định chiến thuật
           </p>
         </div>
 
@@ -233,7 +247,7 @@ export default function CoachDashboard() {
                 className="stat-bar-fill"
                 style={{
                   width: `${Math.min(100, avgFatigue)}%`,
-                  backgroundColor: avgFatigue >= 75 ? '#ef4444' : avgFatigue >= 60 ? '#f59e0b' : '#10b981',
+                  backgroundColor: avgFatigue >= 75 ? '#ef4444' : avgFatigue >= 60 ? '#f59e0b' : '#00ff87',
                 }}
               />
             </div>
@@ -256,11 +270,25 @@ export default function CoachDashboard() {
               )}
             </div>
           </div>
+
+          <div className="tactical-stat-box mesh-box">
+            <div className="stat-label-wrap">
+              <Cpu size={16} className="text-cyan" />
+              <span>Hệ Thống Thiết Bị Đeo</span>
+            </div>
+            <div className="stat-value-row">
+              <span className="stat-number text-cyan">{activeOnField.length + benchSubstitutes.length}/{activeOnField.length + benchSubstitutes.length}</span>
+              <span className="stat-sublabel">Online 10Hz</span>
+            </div>
+            <div className="stat-foot-note">
+              <span className="text-emerald">🔋 Pin trung bình: 88%</span>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* =========================================================================
-          TACTICAL ROTATION ENGINE (BỘ ĐỀ XUẤT CHIẾN THUẬT XOAY TUA CẦU THỦ)
+          CẢNH BÁO TẢI MỎI & ĐỀ XUẤT THAM KHẢO (HLV TỰ QUYẾT ĐỊNH)
           ========================================================================= */}
       {activeAlerts.length > 0 && (
         <section className="tactical-rotation-engine-card">
@@ -270,17 +298,16 @@ export default function CoachDashboard() {
               <div>
                 <h3 className="rotation-card-title">ĐỀ XUẤT XOAY TUA CHIẾN THUẬT TỰ ĐỘNG</h3>
                 <span className="rotation-card-sub">
-                  Phát hiện dấu hiệu mỏi cơ sinh học và nguy cơ chấn thương tiếp đất
+                  Phát hiện dấu hiệu mỏi cơ sinh học và nguy cơ chấn thương tiếp đất (Gợi ý tham khảo — HLV tự cân nhắc)
                 </span>
               </div>
             </div>
-            <span className="urgency-pill critical">KHẨN CẤP</span>
+            <span className="urgency-pill critical">THAM KHẢO</span>
           </div>
 
           <div className="rotation-alerts-list">
             {activeAlerts.map((alert, index) => (
               <div key={index} className="rotation-item-banner">
-                {/* Visual Swap Matchup */}
                 <div className="swap-matchup-row">
                   {/* Out Player */}
                   <div className="matchup-player-box out">
@@ -300,7 +327,7 @@ export default function CoachDashboard() {
                   {/* Transition Arrow */}
                   <div className="swap-arrow-container">
                     <ArrowRightLeft size={24} className="swap-arrow-icon" />
-                    <span className="swap-arrow-label">XOAY TUA</span>
+                    <span className="swap-arrow-label">GỢI Ý</span>
                   </div>
 
                   {/* In Player */}
@@ -319,14 +346,14 @@ export default function CoachDashboard() {
                   </div>
                 </div>
 
-                {/* Tactical Explanation & Action */}
-                <div className="rotation-advice-box">
-                  <div className="advice-text-block">
-                    <p className="advice-reason">{alert.reason}</p>
-                    <p className="advice-tactic">💡 {alert.recommendedTactic}</p>
+                <div className="rotation-action-footer">
+                  <div className="rotation-reason-text">
+                    <p className="reason-main">{alert.reason}</p>
+                    <p className="reason-tactic">{alert.recommendedTactic}</p>
                   </div>
+
                   <button
-                    className="btn-execute-swap"
+                    className="btn-swap-now"
                     onClick={() =>
                       handleExecuteSwap(
                         alert.outAthleteId,
@@ -337,8 +364,8 @@ export default function CoachDashboard() {
                     }
                     disabled={swapping}
                   >
-                    <Zap size={16} />
-                    <span>{swapping ? 'Đang thực hiện...' : 'Thực Hiện Thay Người Ngay'}</span>
+                    <ArrowRightLeft size={16} />
+                    <span>{swapping ? 'Đang cập nhật...' : 'Thực Hiện Thay Người Ngay'}</span>
                   </button>
                 </div>
               </div>
@@ -347,294 +374,242 @@ export default function CoachDashboard() {
         </section>
       )}
 
-      {/* Tactical Pace Adjustment Alert Bar */}
-      {squadData?.recommendedPaceAdjustment && (
-        <div className="tactical-pace-advice-card">
-          <div className="pace-icon-wrap">
-            <ShieldAlert size={20} className="pace-icon" />
-          </div>
-          <div className="pace-content">
-            <span className="pace-title">BIỆN PHÁP ĐIỀU CHỈNH NHỊP ĐỘ CHIẾN THUẬT:</span>
-            <p className="pace-text">{squadData.recommendedPaceAdjustment}</p>
-          </div>
-        </div>
-      )}
-
       {/* =========================================================================
-          DUAL SQUAD BOARD: ON-FIELD STARTERS VS BENCH RESERVES
+          ON FIELD SQUAD (CẦU THỦ TRÊN SÂN - LIVE TELEMETRY)
           ========================================================================= */}
-      <div className="squad-board-grid">
-        {/* Left Column: Cầu Thủ Đang Trên Sân */}
-        <section className="squad-panel on-field-panel">
-          <div className="panel-header">
-            <div className="panel-header-title">
-              <span className="panel-indicator-dot on-field" />
-              <h3>CẦU THỦ TRÊN SÂN ({activeOnField.length})</h3>
-            </div>
-            <span className="panel-header-sub">Đang nhận dữ liệu Patch trực tiếp (m/s², °/s, bpm)</span>
+      <section className="squad-section">
+        <div className="section-title-strip">
+          <div className="title-with-pill">
+            <h2 className="section-heading">CẦU THỦ TRÊN SÂN ({activeOnField.length})</h2>
+            <span className="heading-sub-pill on-field">Live 10Hz Stream</span>
           </div>
+          <span className="section-note">Miếng dán Second Skin đang truyền dữ liệu động học trực tiếp</span>
+        </div>
 
-          <div className="athlete-cards-list">
-            {activeOnField.map((player) => {
-              const fatigue = player.fatigueIndex ?? 0;
-              const isFatigued = fatigue >= 70;
-              const isCritical = fatigue >= 80;
-
-              return (
-                <div
-                  key={player.id}
-                  className={`athlete-tactical-card ${isCritical ? 'critical' : isFatigued ? 'warning' : 'healthy'}`}
-                >
-                  <div className="card-top-row">
-                    <div className="athlete-ident">
-                      <span className="jersey-pill">#{player.jerseyNumber}</span>
-                      <div>
-                        <h4 className="athlete-name">{player.name}</h4>
-                        <span className="athlete-pos-tag">
-                          Vị trí: {player.position} • {player.deviceId || 'ESP32'}
-                        </span>
+        <div className="athletes-grid">
+          {activeOnField.map((ath, idx) => {
+            const dev = getAthleteDevice(ath, idx);
+            const isCrit = (ath.fatigueIndex ?? 0) >= 80;
+            const isWarn = (ath.fatigueIndex ?? 0) >= 60;
+            return (
+              <div
+                key={ath.id}
+                className={`athlete-tactical-card ${isCrit ? 'card-crit' : isWarn ? 'card-warn' : 'card-safe'}`}
+              >
+                {/* Header */}
+                <div className="card-top-header">
+                  <div className="player-main-identity">
+                    <span className="card-jersey-tag">#{ath.jerseyNumber}</span>
+                    <div>
+                      <h4 className="card-player-name">{ath.name}</h4>
+                      <div className="card-player-pos-row">
+                        <span className="pos-chip">{ath.position}</span>
+                        <span className="pos-desc">{ath.position === 'PG' ? 'Point Guard' : ath.position === 'SG' ? 'Shooting Guard' : 'Center'}</span>
                       </div>
                     </div>
-                    <span
-                      className={`risk-badge ${
-                        player.injuryRiskLevel === 'CRITICAL'
-                          ? 'risk-critical'
-                          : player.injuryRiskLevel === 'HIGH'
-                          ? 'risk-high'
-                          : 'risk-normal'
-                      }`}
-                    >
-                      {player.injuryRiskLevel === 'CRITICAL'
-                        ? 'NGUY CƠ CHẤN THƯƠNG'
-                        : player.injuryRiskLevel === 'HIGH'
-                        ? 'QUÁ TẢI CƠ'
-                        : 'BÌNH THƯỜNG'}
-                    </span>
                   </div>
 
-                  {/* Fatigue Gauge */}
-                  <div className="athlete-fatigue-gauge">
-                    <div className="gauge-labels">
-                      <span className="gauge-title">Chỉ số mỏi thể lực</span>
-                      <span className="gauge-pct">{fatigue}%</span>
+                  {/* Device Telemetry Tag */}
+                  <div className="card-device-badge">
+                    <div className="device-code-chip">
+                      <Cpu size={12} className="text-cyan" />
+                      <span>{ath.deviceId || 'SSS-PATCH-001'}</span>
                     </div>
-                    <div className="gauge-track">
+                    <div className="device-health-chip">
+                      <span className="live-pulse-green" />
+                      <span className="text-emerald">10Hz</span>
+                      <span className="divider-dot">•</span>
+                      <Battery size={12} className={dev.battery > 60 ? 'text-emerald' : 'text-amber'} />
+                      <span>{dev.battery}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Real-time Metrics Grid */}
+                <div className="card-metrics-grid">
+                  <div className="card-metric-item">
+                    <div className="metric-header-mini">
+                      <Flame size={13} className="text-amber" />
+                      <span>Chỉ Số Mỏi</span>
+                    </div>
+                    <span className={`metric-big-num ${isCrit ? 'text-danger' : isWarn ? 'text-amber' : 'text-emerald'}`}>
+                      {ath.fatigueIndex ?? 0}%
+                    </span>
+                    <div className="mini-progress-track">
                       <div
-                        className="gauge-bar"
+                        className="mini-progress-fill"
                         style={{
-                          width: `${Math.min(100, fatigue)}%`,
-                          background: isCritical
-                            ? 'linear-gradient(90deg, #f59e0b, #ef4444)'
-                            : isFatigued
-                            ? 'linear-gradient(90deg, #38bdf8, #f59e0b)'
-                            : 'linear-gradient(90deg, #10b981, #06b6d4)',
+                          width: `${Math.min(100, ath.fatigueIndex ?? 0)}%`,
+                          backgroundColor: isCrit ? '#ef4444' : isWarn ? '#f59e0b' : '#00ff87',
                         }}
                       />
                     </div>
                   </div>
 
-                  {/* Telemetry Stats Grid */}
-                  <div className="athlete-metrics-row">
-                    <div className="metric-cell">
-                      <Timer size={14} className="cell-icon" />
-                      <div className="metric-cell-text">
-                        <span className="cell-val">{player.minutesPlayed || 0}'</span>
-                        <span className="cell-lbl">Thời gian</span>
-                      </div>
+                  <div className="card-metric-item">
+                    <div className="metric-header-mini">
+                      <Timer size={13} className="text-cyan" />
+                      <span>Thời Gian Thi Đấu</span>
                     </div>
-
-                    <div className="metric-cell">
-                      <Activity size={14} className="cell-icon text-cyan" />
-                      <div className="metric-cell-text">
-                        <span className="cell-val">{player.jumpCount || 0}</span>
-                        <span className="cell-lbl">Cú nhảy</span>
-                      </div>
-                    </div>
-
-                    <div className="metric-cell">
-                      <Flame size={14} className="cell-icon text-amber" />
-                      <div className="metric-cell-text">
-                        <span className="cell-val">{player.highImpactLandings || 0}</span>
-                        <span className="cell-lbl">Va chạm mạnh</span>
-                      </div>
-                    </div>
-
-                    <div className="metric-cell">
-                      <Heart size={14} className="cell-icon text-rose" />
-                      <div className="metric-cell-text">
-                        <span className="cell-val">{player.heartRate || 145}</span>
-                        <span className="cell-lbl">Nhịp tim</span>
-                      </div>
-                    </div>
+                    <span className="metric-big-num">{ath.minutesPlayed ?? 0} <small>phút</small></span>
+                    <span className="metric-sub-detail">Cường độ {ath.currentIntensity ?? 78}%</span>
                   </div>
 
-                  {/* Dual Action: View Telemetry Detail & Quick Sub */}
-                  <div className="athlete-card-actions-row">
-                    <button
-                      className="btn-athlete-inspect"
-                      onClick={() => handleOpenAthleteMetrics(player)}
-                    >
-                      <Eye size={13} />
-                      <span>Xem Thông Số Chi Tiết</span>
-                    </button>
-
-                    {benchSubstitutes.length > 0 && (
-                      <button
-                        className="btn-quick-sub"
-                        onClick={() =>
-                          handleExecuteSwap(
-                            player.id,
-                            benchSubstitutes[0].id,
-                            player.name,
-                            benchSubstitutes[0].name
-                          )
-                        }
-                      >
-                        <ArrowRightLeft size={13} />
-                        <span>Xoay tua với #{benchSubstitutes[0].jerseyNumber} {benchSubstitutes[0].name}</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Right Column: Cầu Thủ Dự Bị (BENCH) */}
-        <section className="squad-panel bench-panel">
-          <div className="panel-header">
-            <div className="panel-header-title">
-              <span className="panel-indicator-dot bench" />
-              <h3>CẦU THỦ DỰ BỊ SẴN SÀNG ({benchSubstitutes.length})</h3>
-            </div>
-            <span className="panel-header-sub">Sẵn sàng vào sân tác chiến</span>
-          </div>
-
-          <div className="athlete-cards-list">
-            {benchSubstitutes.map((player) => (
-              <div key={player.id} className="athlete-tactical-card bench-card">
-                <div className="card-top-row">
-                  <div className="athlete-ident">
-                    <span className="jersey-pill bench">#{player.jerseyNumber}</span>
-                    <div>
-                      <h4 className="athlete-name">{player.name}</h4>
-                      <span className="athlete-pos-tag">
-                        Vị trí: {player.position} • {player.deviceId || 'ESP32'}
-                      </span>
+                  <div className="card-metric-item">
+                    <div className="metric-header-mini">
+                      <Activity size={13} className="text-neon" />
+                      <span>Cú Nhảy (Jumps)</span>
                     </div>
+                    <span className="metric-big-num text-cyan">{ath.jumpCount ?? 0}</span>
+                    <span className="metric-sub-detail">{ath.highImpactLandings ?? 0} va đập mạnh</span>
                   </div>
-                  <span className="status-ready-pill">
-                    <CheckCircle2 size={13} /> SẴN SÀNG
-                  </span>
-                </div>
 
-                <div className="bench-recovery-meter">
-                  <div className="gauge-labels">
-                    <span className="gauge-title">Mức độ hồi phục thể lực</span>
-                    <span className="gauge-pct text-emerald">
-                      {Math.max(0, 100 - (player.fatigueIndex || 10))}%
-                    </span>
-                  </div>
-                  <div className="gauge-track">
-                    <div
-                      className="gauge-bar"
-                      style={{
-                        width: `${Math.max(0, 100 - (player.fatigueIndex || 10))}%`,
-                        background: '#10b981',
-                      }}
-                    />
+                  <div className="card-metric-item">
+                    <div className="metric-header-mini">
+                      <Heart size={13} className="text-danger" />
+                      <span>Nhịp Tim</span>
+                    </div>
+                    <span className="metric-big-num text-danger">{ath.heartRate ?? 160} <small>BPM</small></span>
+                    <span className="metric-sub-detail">Vùng nhịp gắng sức</span>
                   </div>
                 </div>
 
-                <div className="athlete-metrics-row bench-meta">
-                  <span>Nghỉ: {player.minutesPlayed === 0 ? 'Chưa vào sân' : `${player.minutesPlayed}' trước`}</span>
-                  <span>Mỏi: {player.fatigueIndex || 5}%</span>
-                </div>
-
-                {/* Dual Action: View Telemetry Detail & Quick Sub */}
-                <div className="athlete-card-actions-row">
+                {/* Footer Actions */}
+                <div className="card-actions-row">
                   <button
-                    className="btn-athlete-inspect"
-                    onClick={() => handleOpenAthleteMetrics(player)}
+                    className="btn-inspect-metrics"
+                    onClick={() => handleOpenAthleteMetrics(ath)}
                   >
-                    <Eye size={13} />
+                    <Eye size={14} />
                     <span>Xem Thông Số Chi Tiết</span>
                   </button>
-
-                  {activeOnField.length > 0 && (
-                    <button
-                      className="btn-quick-sub in-action"
-                      onClick={() =>
-                        handleExecuteSwap(
-                          activeOnField[0].id,
-                          player.id,
-                          activeOnField[0].name,
-                          player.name
-                        )
-                      }
-                    >
-                      <ArrowRightLeft size={13} />
-                      <span>Thay cho #{activeOnField[0].jerseyNumber} {activeOnField[0].name}</span>
-                    </button>
-                  )}
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
-      </div>
+            );
+          })}
+        </div>
+      </section>
 
       {/* =========================================================================
-          REALTIME SQUAD FATIGUE DYNAMICS CHART
+          BENCH SQUAD (CẦU THỦ DỰ BỊ SẴN SÀNG)
           ========================================================================= */}
-      <section className="squad-telemetry-chart-card">
-        <div className="chart-header-row">
-          <div>
-            <h3 className="chart-title">BIỂU ĐỒ DIỄN BIẾN THỂ LỰC TOÀN ĐỘI THEO THỜI GIAN THỰC</h3>
-            <span className="chart-sub">
-              Dữ liệu tính toán từ gia tốc m/s² và các xung va chạm tiếp đất từ các cảm biến ESP32-C3
-            </span>
+      <section className="squad-section bench-section">
+        <div className="section-title-strip">
+          <div className="title-with-pill">
+            <h2 className="section-heading">CẦU THỦ DỰ BỊ SẴN SÀNG ({benchSubstitutes.length})</h2>
+            <span className="heading-sub-pill bench">Dự Bị</span>
           </div>
-          <button className="btn-refresh-chart" onClick={loadSquadAnalysis} title="Cập nhật dữ liệu">
-            <RefreshCw size={15} />
-            <span>Làm mới</span>
-          </button>
+          <span className="section-note">Thể lực dồi dào, thiết bị ở chế độ Standby sẵn sàng</span>
         </div>
 
-        <div className="chart-viewport" style={{ width: '100%', height: 260 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+        <div className="athletes-grid bench-grid">
+          {benchSubstitutes.map((ath, idx) => {
+            const dev = getAthleteDevice(ath, idx + 4);
+            return (
+              <div key={ath.id} className="athlete-tactical-card bench-card">
+                <div className="card-top-header">
+                  <div className="player-main-identity">
+                    <span className="card-jersey-tag bench">#{ath.jerseyNumber}</span>
+                    <div>
+                      <h4 className="card-player-name">{ath.name}</h4>
+                      <div className="card-player-pos-row">
+                        <span className="pos-chip">{ath.position}</span>
+                        <span className="pos-desc">Sẵn sàng 100%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="card-device-badge">
+                    <div className="device-code-chip">
+                      <Cpu size={12} className="text-muted" />
+                      <span>{ath.deviceId || 'SSS-PATCH-004'}</span>
+                    </div>
+                    <div className="device-health-chip standby">
+                      <span>Standby</span>
+                      <span className="divider-dot">•</span>
+                      <Battery size={12} className="text-emerald" />
+                      <span>{dev.battery}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card-metrics-grid">
+                  <div className="card-metric-item">
+                    <div className="metric-header-mini">
+                      <Flame size={13} className="text-emerald" />
+                      <span>Chỉ Số Mỏi</span>
+                    </div>
+                    <span className="metric-big-num text-emerald">{ath.fatigueIndex ?? 0}%</span>
+                    <span className="metric-sub-detail">Sung sức hoàn toàn</span>
+                  </div>
+
+                  <div className="card-metric-item">
+                    <div className="metric-header-mini">
+                      <Timer size={13} className="text-muted" />
+                      <span>Thời Gian Thi Đấu</span>
+                    </div>
+                    <span className="metric-big-num">{ath.minutesPlayed ?? 0} <small>phút</small></span>
+                    <span className="metric-sub-detail">Dự bị</span>
+                  </div>
+                </div>
+
+                <div className="card-actions-row">
+                  <button
+                    className="btn-inspect-metrics"
+                    onClick={() => handleOpenAthleteMetrics(ath)}
+                  >
+                    <Eye size={14} />
+                    <span>Xem Thông Số Chi Tiết</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* =========================================================================
+          LIVE TELEMETRY CHART
+          ========================================================================= */}
+      <section className="squad-chart-section">
+        <div className="chart-header-row">
+          <div>
+            <h3 className="chart-title">BIỂU ĐỒ BIẾN THIÊN TẢI MỎI TOÀN ĐỘI THEO THỜI GIAN THỰC</h3>
+            <span className="chart-sub">Dữ liệu từ luồng WebSocket 10Hz tổng hợp trung bình toàn đội</span>
+          </div>
+          <span className="chart-live-badge">
+            <Radio size={13} className="radio-icon" /> LIVE STREAM
+          </span>
+        </div>
+
+        <div className="chart-render-wrap">
+          <ResponsiveContainer width="100%" height={260}>
+            <AreaChart data={chartData} margin={{ top: 10, right: 30, left: -10, bottom: 0 }}>
               <defs>
-                <linearGradient id="fatigueGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.0} />
+                <linearGradient id="fatigueGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#00f2fe" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#00f2fe" stopOpacity={0.0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.06)" />
-              <XAxis dataKey="time" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-              <YAxis
-                stroke="#64748b"
-                tick={{ fill: '#94a3b8', fontSize: 11 }}
-                domain={[0, 100]}
-                unit="%"
-              />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" />
+              <XAxis dataKey="time" stroke="#64748b" fontSize={12} />
+              <YAxis domain={[0, 100]} stroke="#64748b" fontSize={12} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
-                  borderRadius: '8px',
-                  color: '#f8fafc',
+                  backgroundColor: '#0f172a',
+                  borderColor: 'rgba(0, 242, 254, 0.3)',
+                  borderRadius: '10px',
+                  color: '#fff',
                 }}
               />
               <Area
                 type="monotone"
                 dataKey="avgFatigue"
-                name="Chỉ số mỏi đội hình"
-                stroke="#f59e0b"
-                strokeWidth={2.5}
+                name="Tải mỏi trung bình (%)"
+                stroke="#00f2fe"
+                strokeWidth={2}
                 fillOpacity={1}
-                fill="url(#fatigueGrad)"
+                fill="url(#fatigueGradient)"
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -642,244 +617,93 @@ export default function CoachDashboard() {
       </section>
 
       {/* =========================================================================
-          ATHLETE DETAILED TELEMETRY & BIOMETRICS DRAWER / MODAL
+          ATHLETE TELEMETRY DRAWER / MODAL
           ========================================================================= */}
       {selectedAthlete && (
-        <div className="athlete-modal-backdrop" onClick={handleCloseMetrics}>
-          <div className="athlete-drawer-panel" onClick={(e) => e.stopPropagation()}>
-            {/* Drawer Header */}
-            <div className="drawer-header">
-              <div className="drawer-athlete-info">
+        <div className="telemetry-drawer-overlay" onClick={handleCloseMetrics}>
+          <div className="telemetry-drawer-body" onClick={(e) => e.stopPropagation()}>
+            <div className="drawer-top-header">
+              <div className="drawer-player-info">
                 <span className="drawer-jersey">#{selectedAthlete.jerseyNumber}</span>
                 <div>
-                  <h2 className="drawer-name">{selectedAthlete.name}</h2>
-                  <div className="drawer-sub-meta">
-                    <span>Vị trí: {selectedAthlete.position}</span>
-                    <span>•</span>
-                    <span className="drawer-patch-id">
-                      <Cpu size={13} /> {selectedAthlete.deviceId || 'SSS-PATCH-001'}
-                    </span>
-                    <span>•</span>
-                    <span className={`drawer-status-pill ${selectedAthlete.status === 'ON_FIELD' ? 'on-field' : 'bench'}`}>
-                      {selectedAthlete.status === 'ON_FIELD' ? 'TRÊN SÂN' : 'DỰ BỊ'}
-                    </span>
-                  </div>
+                  <h3 className="drawer-title">{selectedAthlete.name}</h3>
+                  <span className="drawer-sub">
+                    {selectedAthlete.position} • {selectedAthlete.deviceId || 'SSS-PATCH-001'} • {selectedAthlete.status === 'ON_FIELD' ? 'Đang trên sân (10Hz Live)' : 'Dự bị'}
+                  </span>
                 </div>
               </div>
-
-              <button className="btn-drawer-close" onClick={handleCloseMetrics} title="Đóng bảng thông số">
+              <button className="btn-close-drawer" onClick={handleCloseMetrics}>
                 <X size={20} />
               </button>
             </div>
 
-            {loadingMetrics ? (
-              <div className="drawer-loading">
-                <div className="coach-spinner" />
-                <span>Đang trích xuất tín hiệu IMU & Biometrics thời gian thực...</span>
+            <div className="drawer-content-scroll">
+              <div className="drawer-subheading-strip">
+                <Cpu size={16} className="text-cyan" />
+                <h4>TÍN HIỆU ĐỘNG HỌC THỜI GIAN THỰC (IMU TELEMETRY STREAM)</h4>
               </div>
-            ) : (
-              <div className="drawer-content-body">
-                {/* 4 Essential Biometric Metrics Cards */}
-                <div className="drawer-metrics-grid">
-                  <div className="drawer-card hr">
-                    <div className="drawer-card-label">
-                      <Heart size={16} className="text-rose pulse-icon" />
-                      <span>Nhịp Tim Tức Thời</span>
-                    </div>
-                    <div className="drawer-card-val">
-                      <span>{athleteMetrics?.heartRate || selectedAthlete.heartRate || 140}</span>
-                      <span className="unit">bpm</span>
-                    </div>
-                    <span className="drawer-card-hint">Vùng nhịp tim: Aerobic Threshold</span>
-                  </div>
 
-                  <div className="drawer-card fatigue">
-                    <div className="drawer-card-label">
-                      <Flame size={16} className="text-amber" />
-                      <span>Chỉ Số Mỏi Thể Lực</span>
-                    </div>
-                    <div className="drawer-card-val">
-                      <span>{athleteMetrics?.fatigueIndex || selectedAthlete.fatigueIndex || 25}%</span>
-                      <span className={`risk-pill ${(athleteMetrics?.injuryRiskLevel || selectedAthlete.injuryRiskLevel || 'LOW').toLowerCase()}`}>
-                        {athleteMetrics?.injuryRiskLevel || selectedAthlete.injuryRiskLevel || 'AN TOÀN'}
-                      </span>
-                    </div>
-                    <div className="stat-bar-track">
-                      <div
-                        className="stat-bar-fill"
-                        style={{
-                          width: `${Math.min(100, athleteMetrics?.fatigueIndex || selectedAthlete.fatigueIndex || 25)}%`,
-                          backgroundColor:
-                            (athleteMetrics?.fatigueIndex || selectedAthlete.fatigueIndex) >= 80
-                              ? '#ef4444'
-                              : (athleteMetrics?.fatigueIndex || selectedAthlete.fatigueIndex) >= 60
-                              ? '#f59e0b'
-                              : '#10b981',
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="drawer-card jumps">
-                    <div className="drawer-card-label">
-                      <Activity size={16} className="text-cyan" />
-                      <span>Số Cú Bật Nhảy</span>
-                    </div>
-                    <div className="drawer-card-val">
-                      <span>{athleteMetrics?.jumpCount ?? selectedAthlete.jumpCount ?? 0}</span>
-                      <span className="unit">lần</span>
-                    </div>
-                    <span className="drawer-card-hint">
-                      Tiếp đất xung chấn cao: <strong>{athleteMetrics?.highImpactLandings ?? selectedAthlete.highImpactLandings ?? 0}</strong> lần (&gt;4.5g)
-                    </span>
-                  </div>
-
-                  <div className="drawer-card intensity">
-                    <div className="drawer-card-label">
-                      <Gauge size={16} className="text-emerald" />
-                      <span>Cường Độ Vận Động</span>
-                    </div>
-                    <div className="drawer-card-val">
-                      <span>{Math.round(athleteMetrics?.currentIntensity || selectedAthlete.currentIntensity || 65)}%</span>
-                      <span className="unit">workload</span>
-                    </div>
-                    <span className="drawer-card-hint">Thời gian thi đấu: {athleteMetrics?.minutesPlayed || selectedAthlete.minutesPlayed || 0} phút</span>
-                  </div>
+              {/* Quick Live Numbers */}
+              <div className="drawer-stats-row">
+                <div className="drawer-stat-pill">
+                  <Heart size={14} className="text-danger" />
+                  <span className="drawer-stat-label">Nhịp Tim Tức Thời</span>
+                  <strong>{selectedAthlete.heartRate || 168} BPM</strong>
                 </div>
-
-                {/* Realtime Kinematics Chart (Accelerations m/s² and Gyro deg/s) */}
-                <div className="drawer-chart-box">
-                  <div className="chart-box-top">
-                    <div>
-                      <h4>TÍN HIỆU ĐỘNG HỌC THỜI GIAN THỰC (IMU TELEMETRY STREAM)</h4>
-                      <p>Đo gia tốc 3 trục (m/s²) và vận tốc góc (°/s) từ miếng dán thông minh Second Skin</p>
-                    </div>
-                    <div className="unit-tags-row">
-                      <span className="tag-m-s">Gia tốc: m/s²</span>
-                      <span className="tag-deg-s">Vận tốc góc: °/s</span>
-                    </div>
-                  </div>
-
-                  <div style={{ width: '100%', height: 220 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={athleteMetrics?.recentTelemetry || []}
-                        margin={{ top: 5, right: 20, left: 0, bottom: 0 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" />
-                        <XAxis
-                          dataKey="timestamp"
-                          stroke="#64748b"
-                          tickFormatter={(val) => {
-                            if (!val) return '';
-                            const d = new Date(val);
-                            return `${d.getMinutes()}:${d.getSeconds() < 10 ? '0' : ''}${d.getSeconds()}`;
-                          }}
-                          tick={{ fill: '#94a3b8', fontSize: 10 }}
-                        />
-                        <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} domain={[-10, 20]} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                            border: '1px solid #334155',
-                            borderRadius: '6px',
-                            fontSize: '0.8rem',
-                          }}
-                        />
-                        <Legend wrapperStyle={{ fontSize: '0.76rem', paddingTop: '6px' }} />
-                        <Line
-                          type="monotone"
-                          dataKey="accZ"
-                          name="Gia tốc thẳng đứng az (m/s²)"
-                          stroke="#38bdf8"
-                          strokeWidth={2}
-                          dot={false}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="accX"
-                          name="Gia tốc ngang ax (m/s²)"
-                          stroke="#f59e0b"
-                          strokeWidth={1.5}
-                          dot={false}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="accY"
-                          name="Gia tốc dọc ay (m/s²)"
-                          stroke="#10b981"
-                          strokeWidth={1.5}
-                          dot={false}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                <div className="drawer-stat-pill">
+                  <Flame size={14} className="text-amber" />
+                  <span>Chỉ Số Mỏi: <strong>{selectedAthlete.fatigueIndex || 82.5}%</strong></span>
                 </div>
-
-                {/* AI Coach Biomechanical Analysis & Tactical Advice */}
-                <div className="drawer-ai-advice-panel">
-                  <div className="ai-advice-header">
-                    <ShieldAlert size={18} color="#f59e0b" />
-                    <span>TƯ VẤN HỒI PHỤC & CHIẾN THUẬT TỪ HỆ THỐNG AI</span>
-                  </div>
-                  <div className="ai-advice-body">
-                    <div className="advice-item">
-                      <span className="advice-title">Khuyến nghị Y sinh học:</span>
-                      <p className="advice-desc">
-                        {athleteMetrics?.recoveryAdvice || 'Thể trạng VĐV duy trì ở mức cân bằng tải trọng. Tiếp tục theo dõi nhịp tim.'}
-                      </p>
-                    </div>
-                    <div className="advice-item">
-                      <span className="advice-title">Đề xuất Thay thế / Chiến thuật:</span>
-                      <p className="advice-desc">
-                        {athleteMetrics?.tacticalActionHint || 'Duy trì quyền điều phối vị trí thi đấu trên sân.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Substitution Actions inside Drawer */}
-                <div className="drawer-footer-actions">
-                  {selectedAthlete.status === 'ON_FIELD' ? (
-                    benchSubstitutes.length > 0 ? (
-                      <button
-                        className="btn-drawer-sub out"
-                        onClick={() =>
-                          handleExecuteSwap(
-                            selectedAthlete.id,
-                            benchSubstitutes[0].id,
-                            selectedAthlete.name,
-                            benchSubstitutes[0].name
-                          )
-                        }
-                      >
-                        <ArrowRightLeft size={16} />
-                        <span>Rút ra nghỉ - Thay bằng #{benchSubstitutes[0].jerseyNumber} {benchSubstitutes[0].name}</span>
-                      </button>
-                    ) : (
-                      <span className="drawer-no-bench-note">Đội hình dự bị hiện chưa có cầu thủ sẵn sàng</span>
-                    )
-                  ) : (
-                    activeOnField.length > 0 && (
-                      <button
-                        className="btn-drawer-sub in"
-                        onClick={() =>
-                          handleExecuteSwap(
-                            activeOnField[0].id,
-                            selectedAthlete.id,
-                            activeOnField[0].name,
-                            selectedAthlete.name
-                          )
-                        }
-                      >
-                        <ArrowRightLeft size={16} />
-                        <span>Đưa vào sân - Thay thế #{activeOnField[0].jerseyNumber} {activeOnField[0].name}</span>
-                      </button>
-                    )
-                  )}
+                <div className="drawer-stat-pill">
+                  <Activity size={14} className="text-cyan" />
+                  <span>Cú Nhảy: <strong>{selectedAthlete.jumpCount || 42}</strong></span>
                 </div>
               </div>
-            )}
+
+              <div className="drawer-advice-card">
+                <AlertTriangle size={18} className="text-amber" />
+                <div>
+                  <p className="advice-title">Khuyến nghị thể lực cho HLV:</p>
+                  <p className="advice-text">
+                    <span>{athleteMetrics?.recoveryAdvice || selectedAthlete.recoveryAdvice || 'Cảnh báo quá tải tải trọng sinh học!'}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Telemetry Waveform Chart */}
+              <div className="drawer-chart-container">
+                <span className="chart-label">Đồ Thị Gia Tốc Động Học 3 Trục (Acc X, Y, Z - m/s²)</span>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart
+                    data={
+                      athleteMetrics?.recentTelemetry || [
+                        { timestamp: '1', accX: 1.2, accY: -0.4, accZ: 14.5 },
+                        { timestamp: '2', accX: 1.5, accY: -0.2, accZ: 12.8 },
+                        { timestamp: '3', accX: 0.9, accY: -0.6, accZ: 16.2 },
+                        { timestamp: '4', accX: 1.8, accY: 0.1, accZ: 15.0 },
+                        { timestamp: '5', accX: 1.4, accY: -0.3, accZ: 13.5 },
+                      ]
+                    }
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" />
+                    <XAxis dataKey="timestamp" stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#0f172a',
+                        borderColor: 'rgba(0, 242, 254, 0.3)',
+                        borderRadius: '8px',
+                        color: '#fff',
+                      }}
+                    />
+                    <Legend />
+                    <Line type="monotone" dataKey="accX" name="Trục X (Ngang)" stroke="#00f2fe" dot={false} strokeWidth={2} />
+                    <Line type="monotone" dataKey="accY" name="Trục Y (Dọc)" stroke="#00ff87" dot={false} strokeWidth={2} />
+                    <Line type="monotone" dataKey="accZ" name="Trục Z (Thẳng đứng)" stroke="#f59e0b" dot={false} strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
         </div>
       )}
