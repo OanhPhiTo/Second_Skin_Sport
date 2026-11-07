@@ -16,8 +16,8 @@ Tài liệu này ghi nhận hiện trạng triển khai thực tế của hệ t
 | **Thuật toán Nhảy (Jump)** | ✅ Hoàn thành | Đã kiểm chứng thuật toán với Unit Test | Đo thời gian bay (airtime), tính chiều cao nhảy ($h$), đo lực tiếp đất ($G$), bắn sự kiện WebSocket. |
 | **Đặc trưng Động học DSP & Thống kê Thực (F15)** | ✅ Hoàn thành | Đã kiểm chứng qua `BiomechanicalFeatureExtractorTest` & `StatisticsServiceTest` | Đo độ êm tiếp đất, đối xứng 2 chân, độ vững thân trên, độ bùng nổ, tính `accelChange` và `fatigueIndex` động từ telemetry cảm biến thực tế. |
 | **Trợ lý AI Coach (Groq)** | ✅ Hoàn thành | Unit Test/Fallback; API cloud chưa live-verified | Tích hợp Groq Chat Completions API qua REST; tự động chuyển sang Local DSP Engine khi không có API key hoặc API lỗi; báo 404 chuẩn khi session không tồn tại. |
-| **Firmware ESP32-C3 SuperMini** | ✅ Hoàn thành | Đã nạp và kiểm tra Serial / BLE | Hỗ trợ đọc cảm biến MPU6050 qua I2C, tự động bật chế độ giả lập nếu cảm biến chưa gắn. |
-| **Web Bluetooth Direct Stream** | ✅ Hoàn thành | Đã kiểm tra trên trình duyệt Chrome | Kết nối BLE trực tiếp từ Web tới ESP32-C3 để xem biểu đồ dao động 6 trục thời gian thực. |
+| **Firmware ESP32-C3 SuperMini** | ✅ Hoàn thành | Đã nạp và kiểm tra Serial / BLE | Hỗ trợ đọc MPU6050 qua I2C (Accel ±8g, Gyro ±500°/s, DLPF ~42Hz), lấy mẫu chuẩn 100Hz non-blocking, FSM Kinematics phân biệt Chạy vs Nhảy, xuất CSV thời gian thực. |
+| **Web Bluetooth Direct Stream** | ✅ Hoàn thành | Đã kiểm tra trên trình duyệt Chrome | Kết nối BLE trực tiếp tới ESP32-C3: biểu đồ gia tốc a_mag trực quan hóa các vạch ngưỡng FSM và công cụ ghi log/gắn nhãn CSV trực tiếp trên Web. |
 | **Giao diện VĐV & Thống kê** | ✅ Hoàn thành | Đã kiểm tra UI build & Recharts | Dashboard VĐV, hiển thị số buổi tập, biểu đồ phân tích hoạt động, lịch sử luyện tập. |
 | **Thông Báo Kết Thúc Phiên Tập (Notification Engine)** | ✅ Hoàn thành | Đã có Unit Test & Frontend Test (36/36 passed) | Push WebSocket `/topic/notifications`, REST API `/api/notifications/**`, Floating Toast UI và Interactive Dropdown chuông thông báo trên Navbar. |
 

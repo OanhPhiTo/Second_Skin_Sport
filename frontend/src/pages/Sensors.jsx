@@ -32,6 +32,7 @@ import {
   Footprints,
 } from 'lucide-react';
 import SensorCard from '../components/SensorCard';
+import KinematicChart from '../components/KinematicChart';
 import { deviceService, sensorDataService, sessionService } from '../services/api';
 import { useBle } from '../context/BleContext';
 import { useUnit } from '../context/UnitContext';
@@ -378,12 +379,6 @@ export default function Sensors() {
                 </span>
               </div>
               <div className="auto-stat-item">
-                <span className="auto-stat-label"><Footprints size={14} className="highlight-cyan" /> Bước đi bộ</span>
-                <span className="auto-stat-val highlight-cyan">
-                  {autoSessionDisplay.walkStepCount ?? 0} <small>bước</small>
-                </span>
-              </div>
-              <div className="auto-stat-item">
                 <span className="auto-stat-label"><Compass size={14} /> Đổi hướng</span>
                 <span className="auto-stat-val">{autoSessionDisplay.directionChangeCount} lần</span>
               </div>
@@ -396,8 +391,6 @@ export default function Sensors() {
                 <span className="auto-stat-val badge-sport-label">
                   {autoSessionDisplay.status === 'idle'
                     ? '💤 Chờ vận động (Idle)'
-                    : autoSessionDisplay.classifiedActivity === 'walking' || autoSessionDisplay.sport === 'Walking'
-                    ? '🚶 Đi bộ (Walking)'
                     : autoSessionDisplay.classifiedActivity === 'jumping' || autoSessionDisplay.sport === 'Basketball'
                       ? '🏀 Bật nhảy (Jumping)'
                       : '🏃 Chạy bộ (Running)'}
@@ -549,6 +542,7 @@ export default function Sensors() {
           </span>
         </div>
         <SensorCard sensorStatus={sensorStatus} />
+        <KinematicChart />
       </div>
 
       {/* Device Management Cards Grid */}

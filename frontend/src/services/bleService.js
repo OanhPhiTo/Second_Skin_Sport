@@ -293,6 +293,46 @@ class BleService {
     await this.commandChar.writeValue(new TextEncoder().encode(payload));
     return true;
   }
+
+  /**
+   * Send Kinematic Thresholds configuration struct to ESP32 over BLE
+   */
+  async sendKinematicConfig(config) {
+    if (!this.isConnected || !this.commandChar) {
+      throw new Error('Chưa kết nối Bluetooth với thiết bị ESP32.');
+    }
+    const payload = JSON.stringify({
+      cmd: 'set_config',
+      flt: Number(config.flightThresh ?? 0.40),
+      run_imp: Number(config.runImpact ?? 2.00),
+      jmp_imp: Number(config.jumpImpact ?? 2.80),
+      jmp_air: Number(config.jumpAirtime ?? 220),
+      run_ref: Number(config.runRefractory ?? 250),
+      jmp_ref: Number(config.jumpRefractory ?? 350),
+    });
+    await this.commandChar.writeValue(new TextEncoder().encode(payload));
+    return true;
+  }
+
+  /**
+   * Toggle CSV Log Output over Serial on ESP32
+   */
+  async sendCsvLogCommand(enable = true) {
+    if (!this.isConnected || !this.commandChar) return false;
+    const payload = JSON.stringify({ cmd: 'csv_log', enable: Boolean(enable) });
+    await this.commandChar.writeValue(new TextEncoder().encode(payload));
+    return true;
+  }
+
+  /**
+   * Trigger zero-motion calibration on ESP32
+   */
+  async sendCalibrateCommand() {
+    if (!this.isConnected || !this.commandChar) return false;
+    const payload = JSON.stringify({ cmd: 'calibrate' });
+    await this.commandChar.writeValue(new TextEncoder().encode(payload));
+    return true;
+  }
 }
 
 export const bleService = new BleService();
