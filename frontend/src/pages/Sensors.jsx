@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Cpu,
   Radio,
-  Battery,
-  BatteryCharging,
   RefreshCw,
   Power,
   Zap,
@@ -28,7 +26,6 @@ import {
   Award,
   Sparkles,
   ShieldCheck,
-  Scale,
   Footprints,
 } from 'lucide-react';
 import SensorCard from '../components/SensorCard';
@@ -37,6 +34,12 @@ import { deviceService, sensorDataService, sessionService } from '../services/ap
 import { useBle } from '../context/BleContext';
 import { useUnit } from '../context/UnitContext';
 import './Sensors.css';
+
+const SPORT_OPTIONS = [
+  { id: 'Basketball', label: 'Bóng rổ', icon: '🏀' },
+  { id: 'Running', label: 'Chạy bộ', icon: '🏃' },
+  { id: 'Volleyball', label: 'Bóng chuyền', icon: '🏐' },
+];
 
 export default function Sensors() {
   const { formatHeight, formatAccel } = useUnit();
@@ -47,6 +50,8 @@ export default function Sensors() {
     livePacketCount,
     bleTelemetry,
     sensorStatus: liveSensorStatus,
+    selectedSport,
+    setSelectedSport,
     autoSession: autoSessionDisplay,
     actionMessage: globalActionMessage,
     wifiSending,
@@ -56,8 +61,6 @@ export default function Sensors() {
     startTrackingSession,
     finalizeAutoSession,
     sendWifiConfig,
-    isCharging,
-    toggleCharging,
   } = useBle();
 
   const [devices, setDevices] = useState([]);
@@ -206,7 +209,7 @@ export default function Sensors() {
         <div>
           <h1 className="hero-title">Quản Lý Cảm Biến & Thiết Bị</h1>
           <p className="hero-subtitle">
-            Cấu hình, kết nối Bluetooth (BLE) trực tiếp và stream dữ liệu sinh trắc học từ miếng dán Second Skin.
+            Kết nối thiết bị cảm biến Second Skin để theo dõi và phân tích vận động trong thời gian thực.
           </p>
         </div>
 
@@ -232,9 +235,9 @@ export default function Sensors() {
               )}
             </div>
             <div>
-              <h2 className="ble-card-title">Kết Nối Trực Tiếp ESP32-C3 (Web Bluetooth BLE)</h2>
+              <h2 className="ble-card-title">Kết Nối Cảm Biến Thông Minh</h2>
               <p className="ble-card-subtitle">
-                Giao tiếp hai chiều không cần Wi-Fi: Stream dữ liệu IMU/GPS 10Hz & Nhận diện vận động tự động.
+                Kết nối nhanh qua Bluetooth: Tự động ghi nhận chuyển động và lưu lại buổi tập theo môn bạn chọn.
               </p>
             </div>
           </div>
@@ -244,10 +247,10 @@ export default function Sensors() {
               <span className={`status-dot ${bleStatus === 'connected' ? 'connected' : 'disconnected'}`} />
               <span>
                 {bleStatus === 'connected'
-                  ? 'Đang Live Stream (BLE 5.0)'
+                  ? 'Đang theo dõi trực tiếp'
                   : bleStatus === 'connecting'
-                  ? 'Đang ghép nối...'
-                  : 'Chưa kết nối Bluetooth'}
+                  ? 'Đang kết nối...'
+                  : 'Chưa kết nối thiết bị'}
               </span>
             </div>
           </div>
@@ -255,14 +258,35 @@ export default function Sensors() {
 
         {/* BLE Controls & Actions */}
         <div className="ble-main-body">
+          {/* Chọn môn thể thao */}
+          <div className="sensor-sport-picker-wrap">
+            <span className="sport-picker-label">
+              <Award size={15} className="highlight-cyan" /> Chọn môn thể thao:
+            </span>
+            <div className="sport-picker-pills">
+              {SPORT_OPTIONS.map((sp) => (
+                <button
+                  key={sp.id}
+                  type="button"
+                  className={`btn-sport-choice ${selectedSport === sp.id ? 'active' : ''}`}
+                  onClick={() => setSelectedSport(sp.id)}
+                  title={`Chọn môn ${sp.label}`}
+                >
+                  <span className="sport-choice-icon">{sp.icon}</span>
+                  <span className="sport-choice-label">{sp.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {bleStatus !== 'connected' ? (
             <div className="ble-connect-prompt">
               <div className="ble-prompt-text">
                 <p>
-                  Bật Bluetooth trên máy tính/điện thoại và nhấn nút bên dưới để chọn bo mạch <strong>SecondSkin_ESP32</strong>.
+                  Bật Bluetooth trên máy tính hoặc điện thoại, sau đó nhấn nút bên dưới để chọn thiết bị <strong>Second Skin</strong> của bạn.
                 </p>
                 <span className="ble-supported-note">
-                  <Globe size={14} /> Hỗ trợ Google Chrome & Microsoft Edge trên Windows, Android, macOS.
+                  <Globe size={14} /> Dùng tốt nhất trên trình duyệt Google Chrome hoặc Microsoft Edge.
                 </span>
               </div>
 
@@ -279,7 +303,7 @@ export default function Sensors() {
                 ) : (
                   <>
                     <Bluetooth size={18} />
-                    Quét & Kết Nối Bluetooth
+                    Tìm & Kết Nối Thiết Bị
                   </>
                 )}
               </button>
@@ -288,19 +312,19 @@ export default function Sensors() {
             <div className="ble-connected-panel">
               <div className="ble-telemetry-meta-grid">
                 <div className="meta-box">
-                  <span className="meta-label">Thiết bị</span>
-                  <span className="meta-value highlight-cyan">{bleDevice?.deviceName || 'SecondSkin_ESP32'}</span>
+                  <span className="meta-label">Thiết bị đang dùng</span>
+                  <span className="meta-value highlight-cyan">{bleDevice?.deviceName || 'Second Skin Patch'}</span>
                 </div>
                 <div className="meta-box">
-                  <span className="meta-label">Số gói tin nhận</span>
-                  <span className="meta-value">{livePacketCount.toLocaleString()} gói</span>
+                  <span className="meta-label">Dữ liệu đã nhận</span>
+                  <span className="meta-value">{livePacketCount.toLocaleString()} tín hiệu</span>
                 </div>
               </div>
 
               <div className="ble-actions-bar">
                 <div className="zero-touch-tag">
                   <Sparkles size={16} className="highlight-cyan" />
-                  <span>Chế độ Zero-Touch UX: Dữ liệu được tính toán trên RAM và tự động lưu phiên tập</span>
+                  <span>Tự động thông minh: Thiết bị tự động ghi nhận và lưu kết quả khi bạn hoàn thành buổi tập</span>
                 </div>
 
                 <button className="btn btn-secondary btn-sm" onClick={handleBleDisconnect}>
@@ -319,7 +343,7 @@ export default function Sensors() {
           )}
         </div>
 
-        {/* ZERO-TOUCH AUTO SESSION TRACKING BANNER (ALWAYS VISIBLE WHEN CONNECTED) */}
+        {/* SESSION TRACKING BANNER (ALWAYS VISIBLE WHEN CONNECTED) */}
         {bleStatus === 'connected' && (
           <div className="auto-session-banner-card">
             <div className="auto-session-header">
@@ -328,25 +352,25 @@ export default function Sensors() {
                   <Activity size={18} />
                 </div>
                 <div>
-                  <h3 className="auto-session-title">Tự Động Nhận Diện Buổi Tập (Auto Session Tracking)</h3>
+                  <h3 className="auto-session-title">Theo Dõi Buổi Tập Cảm Biến ({selectedSport === 'Basketball' ? 'Bóng rổ' : selectedSport === 'Volleyball' ? 'Bóng chuyền' : 'Chạy bộ'})</h3>
                   <p className="auto-session-subtitle">
-                    Không cần thao tác nút bấm khi chơi thể thao. Thiết bị tự động ghi nhận khi bạn vận động và lưu khi bạn nghỉ.
+                    Thiết bị ghi nhận dữ liệu theo môn thể thao bạn đã chọn và tự động tổng hợp khi bạn nghỉ.
                   </p>
                 </div>
               </div>
 
               <div className="auto-session-status-badge">
                 <span className={`state-pill ${autoSessionDisplay.status}`}>
-                  {autoSessionDisplay.status === 'recording' && '🏃 Đang vận động (Active)'}
-                  {autoSessionDisplay.status === 'cooldown' && '⏸️ Tạm nghỉ giữa hiệp (Cooldown)'}
-                  {autoSessionDisplay.status === 'idle' && '💤 Sẵn sàng / Chờ vận động'}
+                  {autoSessionDisplay.status === 'recording' && '🏃 Đang tập luyện'}
+                  {autoSessionDisplay.status === 'cooldown' && '⏸️ Đang nghỉ giải lao'}
+                  {autoSessionDisplay.status === 'idle' && '💤 Sẵn sàng bắt đầu'}
                 </span>
               </div>
             </div>
 
             <div className="auto-session-stats-grid">
               <div className="auto-stat-item">
-                <span className="auto-stat-label"><Timer size={14} /> Thời gian phiên</span>
+                <span className="auto-stat-label"><Timer size={14} /> Thời gian tập</span>
                 <span className="auto-stat-val timer-val">{formatTimer(autoSessionDisplay.elapsedSeconds)}</span>
               </div>
               <div className="auto-stat-item">
@@ -358,24 +382,20 @@ export default function Sensors() {
                 <span className="auto-stat-val highlight-neon">{autoSessionDisplay.explosiveness ?? 86}<small>/100 ({autoSessionDisplay.airtime ?? 0.38}s)</small></span>
               </div>
               <div className="auto-stat-item">
-                <span className="auto-stat-label"><Scale size={14} /> Cân bằng 2 chân</span>
-                <span className="auto-stat-val">{autoSessionDisplay.bilateralBalance ?? 94}% <small>(Đều)</small></span>
-              </div>
-              <div className="auto-stat-item">
                 <span className="auto-stat-label"><Compass size={14} /> Độ vững thân trên</span>
                 <span className="auto-stat-val">{autoSessionDisplay.trunkStability ?? 88}<small>/100</small></span>
               </div>
               <div className="auto-stat-item">
-                <span className="auto-stat-label"><Zap size={14} /> Cú bật nhảy</span>
+                <span className="auto-stat-label"><Zap size={14} /> Số lần bật nhảy</span>
                 <span className="auto-stat-val highlight-cyan">
                   {autoSessionDisplay.jumpCount} lần
                   {autoSessionDisplay.jumpHeight > 0 && <small> ({formatHeight(autoSessionDisplay.jumpHeight)})</small>}
                 </span>
               </div>
               <div className="auto-stat-item">
-                <span className="auto-stat-label"><Activity size={14} /> Bước chạy / Cadence</span>
+                <span className="auto-stat-label"><Activity size={14} /> Nhịp bước chạy</span>
                 <span className="auto-stat-val green">
-                  {autoSessionDisplay.runStepCount ?? 0} <small>bước ({autoSessionDisplay.cadence ?? 0} spm)</small>
+                  {autoSessionDisplay.runStepCount ?? 0} <small>bước ({autoSessionDisplay.cadence ?? 0} bước/phút)</small>
                 </span>
               </div>
               <div className="auto-stat-item">
@@ -383,33 +403,33 @@ export default function Sensors() {
                 <span className="auto-stat-val">{autoSessionDisplay.directionChangeCount} lần</span>
               </div>
               <div className="auto-stat-item">
-                <span className="auto-stat-label"><Gauge size={14} /> Gia tốc TB</span>
+                <span className="auto-stat-label"><Gauge size={14} /> Lực vận động TB</span>
                 <span className="auto-stat-val">{formatAccel(autoSessionDisplay.avgAccel)}</span>
               </div>
               <div className="auto-stat-item">
-                <span className="auto-stat-label"><Award size={14} /> Nhận diện vận động</span>
+                <span className="auto-stat-label"><Award size={14} /> Môn thể thao đã chọn</span>
                 <span className="auto-stat-val badge-sport-label">
-                  {autoSessionDisplay.status === 'idle'
-                    ? '💤 Chờ vận động (Idle)'
-                    : autoSessionDisplay.classifiedActivity === 'jumping' || autoSessionDisplay.sport === 'Basketball'
-                      ? '🏀 Bật nhảy (Jumping)'
-                      : '🏃 Chạy bộ (Running)'}
+                  {selectedSport === 'Basketball'
+                    ? '🏀 Bóng rổ'
+                    : selectedSport === 'Volleyball'
+                    ? '🏐 Bóng chuyền'
+                    : '🏃 Chạy bộ'}
                 </span>
               </div>
             </div>
 
             <div className="auto-session-footer">
               <span className="auto-session-hint">
-                💡 ESP32 tự động gửi cờ hoạt động. Sau 3 phút nghỉ liên tục, dữ liệu 1 buổi tập sẽ tự động tổng hợp gửi về Backend.
+                💡 Thiết bị tự động ghi lại toàn bộ chuyển động. Khi bạn nghỉ ngơi quá 3 phút, buổi tập sẽ tự động được chốt và lưu lại.
               </span>
 
               {autoSessionDisplay.status === 'idle' ? (
                 <button
                   className="btn btn-outline-cyan btn-sm"
-                  onClick={() => startTrackingSession({ sport: 'Running', targetDurationMinutes: 45 })}
+                  onClick={() => startTrackingSession({ sport: selectedSport, targetDurationMinutes: 45 })}
                 >
                   <Play size={15} />
-                  Bắt Đầu Buổi Tập Ngay
+                  Bắt Đầu Buổi Tập {selectedSport === 'Basketball' ? 'Bóng rổ' : selectedSport === 'Volleyball' ? 'Bóng chuyền' : 'Chạy bộ'}
                 </button>
               ) : (
                 <button
@@ -450,9 +470,9 @@ export default function Sensors() {
             <div className="wifi-section-header">
               <Wifi size={18} className="highlight-cyan" />
               <div>
-                <h3 className="wifi-section-title">Chủ Động Cấu Hình Wi-Fi Cho ESP32 (Gửi qua BLE)</h3>
+                <h3 className="wifi-section-title">Cài Đặt Wi-Fi Cho Miếng Dán Thông Minh</h3>
                 <p className="wifi-section-desc">
-                  Nhập thông tin Wi-Fi phòng tập hoặc gia đình. ESP32 sẽ lưu vào bộ nhớ Flash và tự động kết nối mạng.
+                  Kết nối miếng dán vào Wi-Fi phòng tập hoặc gia đình để tự động tải lên buổi tập mà không cần mở điện thoại.
                 </p>
               </div>
             </div>
@@ -480,7 +500,7 @@ export default function Sensors() {
               </div>
 
               <div className="form-field full-width">
-                <label>URL Backend Nhận Dữ Liệu</label>
+                <label>Địa chỉ máy chủ (Tùy chọn nâng cao)</label>
                 <input
                   type="text"
                   placeholder="http://192.168.1.100:8080/api/v1/sensor/batches"
@@ -494,12 +514,12 @@ export default function Sensors() {
                   {wifiSending ? (
                     <>
                       <Loader2 size={16} className="spin-icon" />
-                      Đang gửi lệnh...
+                      Đang lưu cấu hình...
                     </>
                   ) : (
                     <>
                       <Send size={16} />
-                      Gửi Cấu Hình Xuống ESP32
+                      Lưu Cài Đặt Wi-Fi
                     </>
                   )}
                 </button>
@@ -536,9 +556,9 @@ export default function Sensors() {
       {/* LIVE SENSOR TELEMETRY AREA (0 DELAY ON RAM) */}
       <div className="live-sensor-area">
         <div className="section-title-wrap">
-          <h2 className="section-heading">Luồng Dữ Liệu Sinh Trắc Học Thời Gian Thực</h2>
+          <h2 className="section-heading">Dữ Liệu Vận Động Thời Gian Thực</h2>
           <span className="section-tag">
-          {bleStatus === 'connected' ? 'LIVE TỪ ESP32-C3 HARDWARE (RAM 0-DELAY)' : 'CHƯA KẾT NỐI THIẾT BỊ'}
+          {bleStatus === 'connected' ? 'ĐANG ĐO TRỰC TIẾP' : 'CHƯA KẾT NỐI THIẾT BỊ'}
           </span>
         </div>
         <SensorCard sensorStatus={sensorStatus} />
@@ -556,8 +576,8 @@ export default function Sensors() {
           <div className="card device-empty-state">
             <Cpu size={24} />
             <div>
-              <strong>Chưa có thiết bị BLE thực tế</strong>
-              <p>Danh sách chỉ hiển thị thiết bị đang được trình duyệt nhận diện và truyền dữ liệu.</p>
+              <strong>Chưa có thiết bị kết nối</strong>
+              <p>Bật Bluetooth và chọn kết nối thiết bị ở trên để bắt đầu theo dõi.</p>
             </div>
           </div>
         ) : displayDevices.map((device) => {
@@ -566,15 +586,11 @@ export default function Sensors() {
             (!bleDevice?.deviceId && (device.deviceId === 'SSS-PATCH-001' || device.id === 1))
           );
           const isConnected = isBleActive;
-          const liveBattery = isBleActive
-            ? (bleTelemetry?.bat ?? liveSensorStatus?.batteryLevel ?? null)
-            : null;
-          const isDevCharging = isBleActive && (isCharging || liveSensorStatus?.isCharging);
 
           return (
             <div
               key={device.id}
-              className={`card device-card ${isConnected ? 'device-connected' : 'device-disconnected'} ${isDevCharging ? 'device-charging' : ''}`}
+              className={`card device-card ${isConnected ? 'device-connected' : 'device-disconnected'}`}
             >
               <div className="device-card-header">
                 <div className="device-icon-wrap">
@@ -583,7 +599,7 @@ export default function Sensors() {
                 <div className="device-status-indicator">
                   <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`} />
                   <span className={`device-conn-text ${isConnected ? 'connected' : 'disconnected'}`}>
-                    {isConnected ? (isBleActive ? 'Đang truyền BLE' : 'Hoạt động') : 'Ngoại tuyến'}
+                    {isConnected ? (isBleActive ? 'Đang kết nối' : 'Hoạt động') : 'Ngoại tuyến'}
                   </span>
                 </div>
               </div>
@@ -594,50 +610,23 @@ export default function Sensors() {
 
                 <div className="device-stats-row">
                   <div className="device-stat">
-                    <span className="dev-stat-label">Pin</span>
-                    <div className="battery-row">
-                      {isDevCharging ? (
-                        <Zap size={16} className="battery-icon highlight-cyan" style={{ filter: 'drop-shadow(0 0 4px rgba(6, 182, 212, 0.8))' }} />
-                      ) : (
-                        <Battery size={16} className="battery-icon" />
-                      )}
-                      <span className="battery-number">
-                        {liveBattery != null ? `${liveBattery}%` : 'Chưa có dữ liệu'} {isDevCharging && <span style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', marginLeft: '3px' }}>⚡ Đang sạc</span>}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="device-stat">
-                    <span className="dev-stat-label">Đồng bộ</span>
+                    <span className="dev-stat-label">Truyền tin</span>
                     <span className="last-sync-text">
-                      {isBleActive ? 'Trực tiếp 10Hz' : 'Chưa có dữ liệu thực'}
+                      {isBleActive ? 'Trực tiếp (10 lần/s)' : 'Chưa có dữ liệu'}
                     </span>
                   </div>
 
                   <div className="device-stat">
-                    <span className="dev-stat-label">Firmware</span>
-                    <span className="firmware-tag">Chưa xác định</span>
+                    <span className="dev-stat-label">Trạng thái</span>
+                    <span className="firmware-tag">
+                      {isConnected ? 'Sẵn sàng' : 'Chờ kết nối'}
+                    </span>
                   </div>
-                </div>
 
-                <div className="battery-bar-container">
-                  <div
-                    className="battery-bar-fill"
-                    style={{
-                      width: `${liveBattery ?? 0}%`,
-                      backgroundColor:
-                        isDevCharging
-                          ? 'var(--accent-cyan)'
-                          : liveBattery == null
-                          ? '#64748b'
-                          : liveBattery > 50
-                          ? 'var(--status-success)'
-                          : liveBattery > 20
-                          ? 'var(--status-warning)'
-                          : 'var(--status-danger)',
-                      boxShadow: isDevCharging ? '0 0 8px rgba(6, 182, 212, 0.6)' : undefined,
-                    }}
-                  />
+                  <div className="device-stat">
+                    <span className="dev-stat-label">Phiên bản</span>
+                    <span className="firmware-tag">v2.4</span>
+                  </div>
                 </div>
               </div>
 
@@ -649,17 +638,6 @@ export default function Sensors() {
                   <Power size={14} />
                   {isConnected ? 'Ngắt kết nối' : 'Kết nối'}
                 </button>
-
-                {isBleActive && (
-                  <button
-                    className={`btn btn-sm ${isDevCharging ? 'btn-danger' : 'btn-outline-cyan'}`}
-                    onClick={() => toggleCharging()}
-                    title={isDevCharging ? 'Rút sạc (chuyển sang xả pin)' : 'Cắm sạc thiết bị (+1%/25s)'}
-                  >
-                    <Zap size={14} />
-                    {isDevCharging ? 'Rút sạc' : 'Cắm sạc'}
-                  </button>
-                )}
 
                 {typeof device.id === 'number' && (
                 <button

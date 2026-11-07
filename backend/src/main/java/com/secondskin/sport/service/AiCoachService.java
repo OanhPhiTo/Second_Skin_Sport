@@ -59,9 +59,15 @@ public class AiCoachService {
     public int calculateCalories(SportSession session) {
         if (session == null) return 0;
         String sport = session.getSport() != null ? session.getSport() : "Running";
-        boolean isRunning = "running".equalsIgnoreCase(sport);
         int duration = session.getDurationMinutes() > 0 ? session.getDurationMinutes() : 30;
-        double met = isRunning ? 9.8 : 8.2;
+        double met;
+        if ("running".equalsIgnoreCase(sport)) {
+            met = 9.8;
+        } else if ("volleyball".equalsIgnoreCase(sport)) {
+            met = 8.5;
+        } else {
+            met = 8.2;
+        }
         return (int) Math.round(met * 70.0 * (duration / 60.0));
     }
 
@@ -166,22 +172,21 @@ public class AiCoachService {
         String prompt = String.format(
                 "Bạn là một Huấn Luyện Viên AI và chuyên gia khoa học thể thao cho hệ thống thiết bị đeo 'Second Skin Sport'.\n" +
                 "Mục tiêu của bạn là giúp người dùng DỄ HIỂU BẢN THÂN: hiểu họ đang hoạt động ra sao, phong độ thế nào và cần cải thiện điều gì bằng ngôn ngữ đời thường, tích cực và dễ áp dụng.\n\n" +
-                "DỮ LIỆU ĐỘNG HỌC THU THẬP TỪ CẢM BIẾN (Chuyên sâu 2 môn: Chạy bộ & Bóng rổ):\n" +
+                "DỮ LIỆU ĐỘNG HỌC THU THẬP TỪ CẢM BIẾN (Chạy bộ, Bóng rổ & Bóng chuyền):\n" +
                 "- Môn thể thao: %s\n" +
                 "- Thời lượng: %d phút | Tốc độ TB: %.1f km/h | Gia tốc TB: %.2f m/s²\n" +
                 "- Số cú bật nhảy: %d | Số pha đổi hướng bứt tốc: %d\n" +
                 "- Lực dội tiếp đất đỉnh điểm: %.1fG (Độ êm tiếp đất: %d/100)\n" +
-                "- Độ cân bằng hai chân: %d%% (Chân chịu lực chính: %s)\n" +
                 "- Nhịp bước (Cadence): %d bước/phút (Độ đều nhịp: %d%%)\n" +
                 "- Độ vững thân trên: %d/100 (Góc chúi người: %.1f độ)\n" +
                 "- Độ bùng nổ: %d/100 | Mức độ mỏi cơ: %d%%\n" +
                 "- Tiêu hao năng lượng đo đạc cơ học (MET): %d kcal\n\n" +
                 "YÊU CẦU: Trả về ĐÚNG MỘT JSON thuần túy (không bọc trong markdown, không có text phụ) có cấu trúc sau:\n" +
                 "{\n" +
-                "  \"activityType\": \"<Tên hoạt động, VD: Bóng rổ - Tấn công & Bật nhảy linh hoạt hoặc Chạy bộ - Rèn luyện sức bền>\",\n" +
+                "  \"activityType\": \"<Tên hoạt động, VD: Bóng rổ - Tấn công & Bật nhảy linh hoạt, Chạy bộ - Rèn luyện sức bền hoặc Bóng chuyền - Tấn công & Chắn bóng>\",\n" +
                 "  \"performanceScore\": <Điểm tổng kết từ 1-100>,\n" +
                 "  \"currentPerformance\": \"<1-2 đoạn văn ngắn giải thích người dùng đang hoạt động ra sao: nhịp độ, thể lực, sự bùng nổ bằng giọng nói ấm áp, gần gũi>\",\n" +
-                "  \"areasForImprovement\": [\"<Điểm yếu kỹ thuật 1 cần sửa, VD: Tiếp đất hơi cứng>\", \"<Điểm yếu kỹ thuật 2, VD: Lệch trọng tâm chân phải>\"],\n" +
+                "  \"areasForImprovement\": [\"<Điểm yếu kỹ thuật 1 cần sửa, VD: Tiếp đất hơi cứng>\", \"<Điểm yếu kỹ thuật 2, VD: Góc chúi thân trên dao động>\"],\n" +
                 "  \"actionableDrills\": [\"<Bài tập cụ thể 1 khắc phục điểm yếu>\", \"<Bài tập cụ thể 2>\", \"<Bài tập cụ thể 3>\"],\n" +
                 "  \"injuryRiskLevel\": \"<LOW hoặc MEDIUM hoặc HIGH>\",\n" +
                 "  \"injuryRiskExplanation\": \"<Cảnh báo nguy cơ chấn thương gối/cổ chân/gân gót dễ hiểu>\",\n" +
@@ -198,8 +203,6 @@ public class AiCoachService {
                 session.getDirectionChanges(),
                 metrics.getPeakLandingImpactG(),
                 metrics.getLandingSoftnessScore(),
-                metrics.getBilateralSymmetryPct(),
-                metrics.getDominantSide(),
                 metrics.getCadenceRpm(),
                 metrics.getRhythmConsistencyPct(),
                 metrics.getTrunkStabilityScore(),
@@ -267,12 +270,12 @@ public class AiCoachService {
         int directionChanges = session.getDirectionChanges();
         int intensity = session.getMovementIntensity() > 0 ? session.getMovementIntensity() : 75;
 
-        // 1. Tính toán Calo (MET: Running=9.8, Basketball=8.2) chuẩn khoa học
+        // 1. Tính toán Calo (MET: Running=9.8, Volleyball=8.5, Basketball=8.2) chuẩn khoa học
         int calories = calculateCalories(session);
 
         // 2. Điểm phong độ
         int score = isRunning
-                ? (int) Math.min(98, Math.max(68, Math.round((intensity * 0.45) + (metrics.getLandingSoftnessScore() * 0.25) + (metrics.getBilateralSymmetryPct() * 0.3))))
+                ? (int) Math.min(98, Math.max(68, Math.round((intensity * 0.45) + (metrics.getLandingSoftnessScore() * 0.3) + (metrics.getTrunkStabilityScore() * 0.25))))
                 : (int) Math.min(98, Math.max(65, Math.round((intensity * 0.4) + (metrics.getExplosivenessScore() * 0.3) + (metrics.getLandingSoftnessScore() * 0.3))));
 
         // 3. Phân tích phong độ hiện tại (Ngôn ngữ đời thường)
@@ -284,24 +287,20 @@ public class AiCoachService {
         String riskLevel = "LOW";
         String riskExplanation;
 
+        boolean isVolleyball = "volleyball".equalsIgnoreCase(sport);
+
         if (isRunning) {
             // === CHẠY BỘ (RUNNING) ===
             currentPerformance = String.format(
                     "Bạn đã hoàn thành buổi chạy %d phút với tốc độ trung bình %.1f km/h và nhịp bước %d bước/phút. " +
-                    "Độ cân bằng hai chân đạt %d%%, thể hiện sự đồng đều rất tốt giữa chân trái và chân phải. " +
                     "Độ êm tiếp đất đạt %d/100 giúp hạn chế đáng kể chấn động dội ngược lên lưng.",
                     duration, session.getAverageSpeed(), metrics.getCadenceRpm(),
-                    metrics.getBilateralSymmetryPct(), metrics.getLandingSoftnessScore()
+                    metrics.getLandingSoftnessScore()
             );
 
             if (metrics.getLandingSoftnessScore() < 75 || metrics.getPeakLandingImpactG() > 2.8) {
                 areasForImprovement.add("Kỹ thuật tiếp đất còn dồn lực lớn về gót chân (" + metrics.getPeakLandingImpactG() + "G) khi tăng tốc độ.");
                 actionableDrills.add("Bài tập Chạy bước nhỏ (A-Skip) trên ức bàn chân: 3 hiệp x 30m để hình thành phản xạ Midfoot strike.");
-            }
-
-            if (metrics.getBilateralSymmetryPct() < 88) {
-                areasForImprovement.add("Chân " + ("LEFT".equals(metrics.getDominantSide()) ? "trái" : "phải") + " đang chịu tải nhiều hơn chân còn lại, dễ gây lệch trục hông.");
-                actionableDrills.add("Bài tập Single-leg Squat (Squat 1 chân): 3 hiệp x 10 lần mỗi bên để cân bằng sức mạnh cơ đùi.");
             }
 
             if (metrics.getCadenceRpm() < 162) {
@@ -327,13 +326,59 @@ public class AiCoachService {
                 recoveryAdvice.add("Bổ sung 400-500ml nước bù điện giải ngay sau buổi chạy.");
                 recoveryAdvice.add("Thực hiện 10 phút kéo giãn cơ bắp chân và cơ gập hông.");
             } else {
-                riskExplanation = "Xung lực tiếp đất và độ cân bằng sải chân hoàn toàn trong ngưỡng lý tưởng, nguy cơ chấn thương rất thấp.";
+                riskExplanation = "Xung lực tiếp đất và độ vững thân trên hoàn toàn trong ngưỡng lý tưởng, nguy cơ chấn thương rất thấp.";
                 recoveryAdvice.add("Đi bộ thả lỏng 5 phút và hít thở sâu để ổn định nhịp thở và hồi phục thể trạng.");
                 recoveryAdvice.add("Bổ sung bữa ăn giàu protein nạc và tinh bột tiêu hóa chậm.");
             }
 
             postureFeedback.add("Độ chúi thân trên: " + metrics.getTrunkLeanAngleDegrees() + "° (Góc khí động học chuẩn 6-10° hỗ trợ trọng tâm rơi tự nhiên).");
             postureFeedback.add("Độ vững vùng hông và lưng đạt " + metrics.getTrunkStabilityScore() + "/100, không bị lắc lư mất thăng bằng.");
+
+        } else if (isVolleyball) {
+            // === BÓNG CHUYỀN (VOLLEYBALL) ===
+            currentPerformance = String.format(
+                    "Bạn đã hoàn thành buổi tập bóng chuyền trong %d phút với %d cú bật nhảy và %d pha đổi hướng di chuyển. " +
+                    "Độ bùng nổ đạt %d/100 với thời gian trên không trung bình %.2fs. " +
+                    "Độ vững thân trên đạt %d/100 giúp duy trì thăng bằng tốt khi bật đập và chắn bóng.",
+                    duration, jumps, directionChanges, metrics.getExplosivenessScore(),
+                    metrics.getAverageAirtimeSeconds(), metrics.getTrunkStabilityScore()
+            );
+
+            if (metrics.getLandingSoftnessScore() < 78 || metrics.getPeakLandingImpactG() > 3.2) {
+                areasForImprovement.add("Lực tiếp đất sau các pha chắn bóng đạt tới " + metrics.getPeakLandingImpactG() + "G, khớp gối cần chùng sâu hơn để giảm chấn.");
+                actionableDrills.add("Bài tập Depth Drop (Rơi từ bục 30cm tiếp đất êm không phát ra tiếng): 3 hiệp x 8 lần.");
+            }
+
+            if (directionChanges > 50 && metrics.getTrunkStabilityScore() < 80) {
+                areasForImprovement.add("Góc thân trên bị nghiêng nhiều khi thực hiện di chuyển cứu bóng.");
+                actionableDrills.add("Bài tập Chạy luồn cọc số 8 (Agility Cone Drill): rèn luyện kỹ thuật hạ thấp trọng tâm hông.");
+            }
+
+            if (areasForImprovement.isEmpty()) {
+                areasForImprovement.add("Tối ưu hóa lực đẩy cổ chân để rút ngắn thời gian chuẩn bị cất cánh.");
+                actionableDrills.add("Bài tập Bật nhảy chắn bóng liên hoàn (Block jumps): 3 hiệp x 10 lần.");
+            }
+
+            // Đánh giá nguy cơ chấn thương bóng chuyền
+            if (jumps > 40 || (metrics.getPeakLandingImpactG() > 3.3 && metrics.getFatigueIndex() > 30)) {
+                riskLevel = "HIGH";
+                riskExplanation = "Áp lực dồn nén lên khớp gối và dây chằng cổ chân ở mức cao do tần suất bật nhảy lớn (" + jumps + " lần).";
+                recoveryAdvice.add("Chườm lạnh hai đầu gối 15-20 phút để giảm căng thẳng vi thể quanh gân.");
+                recoveryAdvice.add("Kéo giãn cơ tứ đầu đùi (Quadriceps) và cơ mông.");
+                recoveryAdvice.add("Hạn chế bật nhảy cường độ cao trong ngày mai.");
+            } else if (jumps > 20 || directionChanges > 50) {
+                riskLevel = "MEDIUM";
+                riskExplanation = "Độ chịu lực khớp cổ chân và gối tốt. Có dấu hiệu mỏi nhẹ do nhiều pha bật đập bóng liên tục.";
+                recoveryAdvice.add("Xoay thả lỏng khớp cổ chân và ngâm chân nước ấm thư giãn.");
+                recoveryAdvice.add("Bổ sung nước và protein trong 30 phút sau buổi tập.");
+            } else {
+                riskExplanation = "Khả năng giảm chấn và phối hợp vận động an toàn tuyệt đối, khớp gối hấp thụ lực rất êm.";
+                recoveryAdvice.add("Thực hiện 5 phút giãn cơ tĩnh toàn thân.");
+                recoveryAdvice.add("Nghỉ ngơi và bổ sung dinh dưỡng điều độ.");
+            }
+
+            postureFeedback.add("Lực tiếp đất trung bình: " + metrics.getPeakLandingImpactG() + "G (Điểm êm: " + metrics.getLandingSoftnessScore() + "/100).");
+            postureFeedback.add("Độ vững thân trên: " + metrics.getTrunkStabilityScore() + "/100.");
 
         } else {
             // === BÓNG RỔ (BASKETBALL) ===
@@ -348,11 +393,6 @@ public class AiCoachService {
             if (metrics.getLandingSoftnessScore() < 78 || metrics.getPeakLandingImpactG() > 3.2) {
                 areasForImprovement.add("Lực tiếp đất sau các pha tranh chấp trên không đạt tới " + metrics.getPeakLandingImpactG() + "G, khớp gối cần chùng sâu hơn để giảm chấn.");
                 actionableDrills.add("Bài tập Depth Drop (Rơi từ bục 30cm tiếp đất êm không phát ra tiếng): 3 hiệp x 8 lần.");
-            }
-
-            if (metrics.getBilateralSymmetryPct() < 86) {
-                areasForImprovement.add("Xu hướng tiếp đất dồn trọng tâm về chân " + ("LEFT".equals(metrics.getDominantSide()) ? "trái" : "phải") + ", tăng nguy cơ lật sơmi cổ chân.");
-                actionableDrills.add("Bài tập Đứng thăng bằng 1 chân trên đệm hơi (Bosu Ball): 3 hiệp x 30 giây mỗi chân.");
             }
 
             if (directionChanges > 60 && metrics.getTrunkStabilityScore() < 80) {
@@ -384,7 +424,6 @@ public class AiCoachService {
             }
 
             postureFeedback.add("Lực tiếp đất trung bình: " + metrics.getPeakLandingImpactG() + "G (Điểm êm: " + metrics.getLandingSoftnessScore() + "/100).");
-            postureFeedback.add("Tỷ lệ phân phối lực hai chân: " + metrics.getBilateralSymmetryPct() + "% đối xứng.");
         }
 
         String summary = String.format(

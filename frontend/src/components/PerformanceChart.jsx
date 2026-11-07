@@ -127,7 +127,7 @@ export default function PerformanceChart() {
       <div className="chart-header">
         <div>
           <h2 className="card-title">Hiệu Suất Chuyển Động</h2>
-          <p className="card-subtitle">Dữ liệu đo cảm biến thời gian thực & cường độ vận động sinh trắc học</p>
+          <p className="card-subtitle">Biểu đồ chuyển động theo thời gian thực và cường độ vận động</p>
         </div>
 
         <div className="time-range-toggle">

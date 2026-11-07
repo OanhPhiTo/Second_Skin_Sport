@@ -29,7 +29,7 @@ export default function SessionTable({ sessions, onSelectSession }) {
       <div className="card-header">
         <div>
           <h2 className="card-title">Các Buổi Tập Gần Đây</h2>
-          <p className="card-subtitle">Các buổi tập thể thao đã ghi nhận và chi tiết sinh trắc học tự động</p>
+          <p className="card-subtitle">Các buổi tập đã ghi nhận và chỉ số vận động chi tiết</p>
         </div>
         <button className="btn btn-outline-cyan btn-sm" onClick={() => navigate('/activities')}>
           Xem tất cả hoạt động

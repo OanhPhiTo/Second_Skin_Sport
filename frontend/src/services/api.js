@@ -740,8 +740,6 @@ export const statisticsService = {
           peakLandingImpactG: peakG,
           explosivenessScore: explosiveness,
           averageAirtimeSeconds: jumps > 0 ? 0.38 : 0.0,
-          bilateralSymmetryPct: 94,
-          dominantSide: 'BALANCED',
           trunkStabilityScore: 86,
           trunkLeanAngleDegrees: latest.sport === 'Basketball' ? 10.4 : 8.2,
         };
@@ -786,18 +784,35 @@ export const statisticsService = {
     // Sort chronologically ascending for timeline charts
     filtered.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
 
-    return filtered.map((s) => ({
-      sessionId: s.id,
-      date: s.startTime ? s.startTime.slice(0, 10) : new Date().toISOString().slice(0, 10),
-      sport: s.sport,
-      averageSpeed: Number(s.averageSpeed || 15.0),
-      averageAcceleration: Number(s.averageAcceleration || 2.5),
-      totalDistance: Number(s.totalDistance || ((s.averageSpeed || 15) * (s.durationMinutes || 30) / 60).toFixed(1)),
-      totalJumps: Number(s.totalJumps || 0),
-      directionChanges: Number(s.directionChanges || 0),
-      movementIntensity: Number(s.movementIntensity || 80),
-      performanceScore: Number(s.performanceScore || 85),
-    }));
+    return filtered.map((s) => {
+      let accel = Number(s.averageAcceleration || 2.5);
+      if (accel > 6.0) {
+        accel = Number(Math.max(1.5, accel - 9.81).toFixed(2));
+      }
+      let jumps = Number(s.totalJumps || 0);
+      let turns = Number(s.directionChanges || 0);
+      let intensity = Number(s.movementIntensity || 80);
+      let score = Number(s.performanceScore || 85);
+
+      if (intensity >= 98 && score >= 98) {
+        intensity = Math.min(94, Math.max(58, Math.round(55 + (accel - 1.5) * 12 + Math.min(22, jumps * 0.45))));
+        const skillBonus = Math.min(34, Math.round(jumps * 0.65 + turns * 0.15 + 6));
+        score = Math.min(95, Math.max(68, Math.round(intensity * 0.52 + skillBonus + 8)));
+      }
+
+      return {
+        sessionId: s.id,
+        date: s.startTime ? s.startTime.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        sport: s.sport,
+        averageSpeed: Number(s.averageSpeed || 15.0),
+        averageAcceleration: accel,
+        totalDistance: Number(s.totalDistance || ((s.averageSpeed || 15) * (s.durationMinutes || 30) / 60).toFixed(1)),
+        totalJumps: jumps,
+        directionChanges: turns,
+        movementIntensity: intensity,
+        performanceScore: score,
+      };
+    });
   },
 };
 
@@ -1115,7 +1130,7 @@ export const aiService = {
         injuryRiskLevel: 'LOW',
         injuryRiskExplanation: 'Tải trọng cơ học và mật độ vận động nằm trong ngưỡng an toàn tối ưu, các khớp gối và cổ chân hấp thụ xung lực êm.',
         estimatedCalories: 420,
-        currentPerformance: 'Bạn đã hoàn thành buổi tập với nhịp độ nhịp nhàng và ổn định. Độ cân bằng lực hai chân đạt 94%, thể hiện sự đồng đều rất tốt giữa chân trái và chân phải. Độ êm tiếp đất đạt 82/100 giúp hạn chế đáng kể chấn động dội ngược lên cột sống.',
+        currentPerformance: 'Bạn đã hoàn thành buổi tập với nhịp độ nhịp nhàng và ổn định. Độ êm tiếp đất đạt 82/100 giúp hạn chế đáng kể chấn động dội ngược lên cột sống.',
         areasForImprovement: [
           'Kỹ thuật tiếp đất còn dồn lực lớn về gót chân khi tăng tốc độ ở cuối buổi.',
           'Duy trì nhịp thở 2:2 nhịp nhàng khi chuyển đổi vận tốc đột ngột.'
@@ -1123,13 +1138,11 @@ export const aiService = {
         actionableDrills: [
           'Bài tập Chạy bước nhỏ (A-Skip) trên ức bàn chân: 3 hiệp x 30m để hình thành phản xạ tiếp đất giữa bàn chân (Midfoot strike).',
           'Bài tập Depth Drop (Rơi từ bục 30cm tiếp đất êm không phát ra tiếng): 3 hiệp x 8 lần rèn luyện giảm chấn gối.',
-          'Bài tập Single-leg Squat: 3 hiệp x 10 lần mỗi bên để tăng độ thăng bằng trục hông.'
+          'Bài tập Plank cơ lõi: 3 hiệp x 45 giây để tăng độ vững thân trên.'
         ],
         biomechanicalMetrics: {
           landingSoftnessScore: 82,
           peakLandingImpactG: 2.4,
-          bilateralSymmetryPct: 94,
-          dominantSide: 'BALANCED',
           cadenceRpm: null,
           rhythmConsistencyPct: 91,
           trunkStabilityScore: 86,

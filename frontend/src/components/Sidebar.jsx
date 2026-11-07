@@ -21,7 +21,6 @@ export default function Sidebar({ isOpen, onClose, patchStatus }) {
   const isBle = bleStatus === 'connected';
   // A registered backend device is not proof of a live browser BLE link.
   const isConnected = isBle;
-  const battery = isBle ? (bleTelemetry?.bat ?? patchStatus?.batteryLevel ?? 92) : (patchStatus?.batteryLevel ?? 92);
   const deviceName = isBle ? (bleDevice?.deviceName || 'SecondSkin_ESP32') : (patchStatus?.deviceName || 'PATCH #001');
 
   const role = authService.getUserRole();
@@ -86,24 +85,8 @@ export default function Sidebar({ isOpen, onClose, patchStatus }) {
                 {isConnected ? 'TRỰC TUYẾN' : 'NGOẠI TUYẾN'}
               </span>
             </div>
-            <div className="patch-battery-bar">
-              <div
-                className="battery-fill"
-                style={{
-                  width: `${isConnected ? battery : 0}%`,
-                  background: !isConnected
-                    ? '#64748b'
-                    : isCharging
-                    ? 'var(--accent-cyan)'
-                    : battery < 20
-                    ? '#ef4444'
-                    : undefined,
-                  boxShadow: isCharging ? '0 0 8px rgba(6, 182, 212, 0.6)' : undefined,
-                }}
-              ></div>
-            </div>
             <div className="patch-meta">
-              <span>{isConnected ? (isCharging ? `⚡ Đang sạc: ${battery}%` : `Pin: ${battery}%`) : 'Trạng thái: Đã ngắt kết nối'}</span>
+              <span>{isConnected ? 'Thiết bị: Đang kết nối' : 'Trạng thái: Đã ngắt kết nối'}</span>
               <span>BLE 5.2</span>
             </div>
           </div>

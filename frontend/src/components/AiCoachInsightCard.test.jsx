@@ -19,8 +19,6 @@ describe('AiCoachInsightCard Component', () => {
     biomechanicalMetrics: {
       landingSoftnessScore: 80,
       peakLandingImpactG: 2.6,
-      bilateralSymmetryPct: 94,
-      dominantSide: 'BALANCED',
       cadenceRpm: 135,
       rhythmConsistencyPct: 89,
       trunkStabilityScore: 86,
@@ -53,9 +51,8 @@ describe('AiCoachInsightCard Component', () => {
     expect(screen.getByText('Bạn Đang Hoạt Động Ra Sao?')).toBeDefined();
     expect(screen.getByText(/Bạn đã chơi một trận bóng rổ nhiệt huyết/i)).toBeDefined();
 
-    // 5 Biomechanical Metrics
+    // Biomechanical Metrics
     expect(screen.getByText('Độ Êm Tiếp Đất')).toBeDefined();
-    expect(screen.getByText('Cân Bằng 2 Chân')).toBeDefined();
     expect(screen.getByText('Nhịp Vận Động')).toBeDefined();
     expect(screen.getByText('Độ Vững Thân Trên')).toBeDefined();
     expect(screen.getByText('Độ Bùng Nổ')).toBeDefined();

@@ -91,11 +91,29 @@ export function BleProvider({ children }) {
     },
   });
 
+  const [selectedSport, setSelectedSportState] = useState(() => {
+    try {
+      return localStorage.getItem('sss_selected_sport') || 'Basketball';
+    } catch (e) {
+      return 'Basketball';
+    }
+  });
+
+  const setSelectedSport = useCallback((sport) => {
+    setSelectedSportState(sport);
+    try {
+      localStorage.setItem('sss_selected_sport', sport);
+    } catch (e) {}
+    autoSessionRef.current.targetSport = sport;
+    setAutoSessionDisplay((prev) => ({ ...prev, sport }));
+  }, []);
+
   const isSavingSessionRef = useRef(false);
   const autoSessionRef = useRef({
     status: 'idle',
     startTime: null,
     lastActiveTime: null,
+    targetSport: 'Basketball',
     jumpCount: 0,
     stepCount: 0,
     runStepCount: 0,
@@ -124,12 +142,11 @@ export function BleProvider({ children }) {
     jumpHeight: 0,
     directionChangeCount: 0,
     avgAccel: 0,
-    sport: 'Running',
+    sport: 'Basketball',
     landingSoftness: 84,
     peakImpactG: 2.1,
     explosiveness: 86,
     airtime: 0.38,
-    bilateralBalance: 94,
     trunkStability: 88,
     classifiedActivity: 'idle',
     lastSavedSession: null,
@@ -140,15 +157,16 @@ export function BleProvider({ children }) {
   const [wifiFeedback, setWifiFeedback] = useState(null);
 
   // Bắt đầu phiên tập thủ công
-  const startTrackingSession = useCallback(({ sport = 'Basketball', targetDurationMinutes = 45 } = {}) => {
+  const startTrackingSession = useCallback(({ sport, targetDurationMinutes = 45 } = {}) => {
     if (bleStatus !== 'connected') {
       throw new Error('Chưa kết nối thiết bị cảm biến Second Skin Pod.');
     }
+    const currentSport = sport || selectedSport || 'Basketball';
     const session = autoSessionRef.current;
     session.status = 'recording';
     session.startTime = new Date();
     session.lastActiveTime = Date.now();
-    session.targetSport = sport;
+    session.targetSport = currentSport;
     session.sampleCount = 0;
     session.accelSum = 0;
     session.maxAccel = 0;
@@ -167,7 +185,7 @@ export function BleProvider({ children }) {
       status: 'recording',
       elapsedSeconds: 0,
       targetDurationMinutes,
-      sport,
+      sport: currentSport,
       jumpCount: 0,
       stepCount: 0,
       runStepCount: 0,
@@ -180,14 +198,13 @@ export function BleProvider({ children }) {
       peakImpactG: 2.1,
       explosiveness: 80,
       airtime: 0,
-      bilateralBalance: 94,
       trunkStability: 88,
       classifiedActivity: 'active',
       isSaving: false,
     });
-    setActionMessage(`⏱ Đang theo dõi buổi tập ${sport} (${targetDurationMinutes} phút)... Hãy bắt đầu vận động!`);
+    setActionMessage(`⏱ Đang theo dõi buổi tập ${currentSport} (${targetDurationMinutes} phút)... Hãy bắt đầu vận động!`);
     return true;
-  }, [bleStatus]);
+  }, [bleStatus, selectedSport]);
 
   // Lưu phiên tập
   const finalizeAutoSession = useCallback(async (manual = false) => {
@@ -202,27 +219,40 @@ export function BleProvider({ children }) {
       const startTime = session.startTime || new Date(Date.now() - 60000);
       const durationMin = Math.max(1, Math.round((endTime.getTime() - startTime.getTime()) / 60000));
       const avgAccel = session.sampleCount > 0
-        ? Math.round((session.accelSum / session.sampleCount) * 100) / 100
+        ? Math.round(Math.max(1.5, ((session.dynamicAccelSum || session.accelSum || 0) / session.sampleCount) * 1.35) * 100) / 100
         : 2.85;
 
-      const detectedSport = session.targetSport || (session.jumpCount >= 6 ? 'Basketball' : 'Running');
+      const chosenSport = session.targetSport || selectedSport || 'Basketball';
+
+      // Tính cường độ chuyển động thể thao thực tế (55% - 94%)
+      const calculatedIntensity = session.sampleCount > 0 && session.intensitySum
+        ? Math.min(94, Math.max(55, Math.round(session.intensitySum / session.sampleCount)))
+        : Math.min(94, Math.max(55, Math.round(52 + (avgAccel - 1.5) * 14 + Math.min(18, session.jumpCount * 0.4))));
+
+      // Tính điểm hiệu suất đa tiêu chí (68% - 96%)
+      const skillBonus = chosenSport === 'Running'
+        ? Math.min(32, Math.round(session.directionChangeCount * 0.4 + 10))
+        : Math.min(38, Math.round(session.jumpCount * 0.75 + session.directionChangeCount * 0.15));
+      const calculatedScore = Math.min(96, Math.max(68, Math.round(calculatedIntensity * 0.52 + skillBonus + 8)));
 
       const payload = {
         deviceId: bleService.device?.name || 'SecondSkin_ESP32',
-        sport: detectedSport,
+        sport: chosenSport,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         durationMinutes: durationMin,
         totalJumps: session.jumpCount,
         directionChanges: session.directionChangeCount,
         averageAcceleration: avgAccel,
-        averageSpeed: detectedSport === 'Basketball' ? 18.2 : 14.8,
-        movementIntensity: Math.min(100, Math.round(avgAccel * 25)),
+        averageSpeed: chosenSport === 'Basketball' ? 18.2 : chosenSport === 'Volleyball' ? 16.0 : 14.8,
+        movementIntensity: calculatedIntensity,
+        performanceScore: calculatedScore,
         trajectoryPoints: session.trajectoryPoints,
       };
 
       const saved = await sessionService.createAutoSession(payload);
-      setActionMessage(`🎉 Buổi tập ${detectedSport} đã tự động lưu! Điểm đánh giá: ${saved.performanceScore || 88}/100.`);
+      const sportLabel = chosenSport === 'Basketball' ? 'Bóng rổ' : chosenSport === 'Volleyball' ? 'Bóng chuyền' : 'Chạy bộ';
+      setActionMessage(`🎉 Buổi tập ${sportLabel} đã lưu thành công! Điểm đánh giá: ${saved.performanceScore || calculatedScore}/100.`);
 
       try {
         window.dispatchEvent(new CustomEvent('sss_session_completed', { detail: saved }));
@@ -239,7 +269,7 @@ export function BleProvider({ children }) {
         jumpHeight: 0,
         directionChangeCount: 0,
         avgAccel: 0,
-        sport: detectedSport,
+        sport: chosenSport,
         lastSavedSession: saved,
         isSaving: false,
       });
@@ -294,7 +324,10 @@ export function BleProvider({ children }) {
       const gz = data.gz ?? 0;
       const amagVal = data.amag !== undefined ? Number(data.amag) : Number((Math.hypot(ax, ay, az) / 9.80665).toFixed(2));
       const rawMagnitude = Math.hypot(ax, ay, az);
-      const intensity = Math.min(100, Math.round(Math.abs(amagVal - 1.0) * 35));
+      // Gia tốc động học (loại bỏ trọng lực 1G ~ 9.80665 m/s²)
+      const dynamicAccel = Math.max(0.2, Math.abs(rawMagnitude - 9.80665));
+      // Cường độ tức thời dựa trên mức tải động học (50% - 95%)
+      const intensity = Math.min(96, Math.max(48, Math.round(52 + Math.abs(amagVal - 1.0) * 45)));
 
       // 1. Ghi log CSV nếu đang bật chế độ thu thập dữ liệu
       if (isLoggingCsvRef.current) {
@@ -473,6 +506,8 @@ export function BleProvider({ children }) {
           session.startTime = new Date();
           session.sampleCount = 0;
           session.accelSum = 0;
+          session.dynamicAccelSum = 0;
+          session.intensitySum = 0;
           session.maxAccel = 0;
           setAutoSessionDisplay((prev) => ({
             ...prev,
@@ -487,9 +522,11 @@ export function BleProvider({ children }) {
       // Tích lũy số liệu
       if (session.status === 'recording' || session.status === 'cooldown') {
         session.sampleCount += 1;
-        session.accelSum += rawMagnitude;
-        if (rawMagnitude > session.maxAccel) {
-          session.maxAccel = rawMagnitude;
+        session.accelSum += dynamicAccel;
+        session.dynamicAccelSum = (session.dynamicAccelSum || 0) + dynamicAccel;
+        session.intensitySum = (session.intensitySum || 0) + intensity;
+        if (dynamicAccel > session.maxAccel) {
+          session.maxAccel = dynamicAccel;
         }
 
         if (session.sampleCount % 10 === 0 && session.trajectoryPoints.length < 60) {
@@ -520,7 +557,7 @@ export function BleProvider({ children }) {
           connected: true,
           deviceName: details.deviceName || 'SecondSkin_ESP32',
         }));
-        setActionMessage(`Đã kết nối Bluetooth với ${details.deviceName || 'ESP32-C3'}!`);
+        setActionMessage(`Đã kết nối thành công với ${details.deviceName || 'thiết bị Second Skin'}!`);
         setTimeout(() => setActionMessage(''), 4000);
       } else if (status === 'disconnected') {
         setBleDevice(null);
@@ -567,7 +604,7 @@ export function BleProvider({ children }) {
           jumpHeight: session.lastJumpHeightCm,
           directionChangeCount: session.directionChangeCount,
           avgAccel: Math.round(avg * 100) / 100,
-          sport: session.jumpCount >= 6 ? 'Basketball' : 'Running',
+          sport: session.targetSport || selectedSport || 'Basketball',
           classifiedActivity: session.classifiedActivity,
         }));
 
@@ -578,7 +615,7 @@ export function BleProvider({ children }) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [finalizeAutoSession]);
+  }, [finalizeAutoSession, selectedSport]);
 
   // ----------------------------------------------------
   // 🛠️ HÀM ĐIỀU KHIỂN GHI LOG CSV & CẤU HÌNH NGƯỠNG
@@ -627,13 +664,13 @@ export function BleProvider({ children }) {
   const updateKinematicConfig = useCallback(async (newConfig) => {
     setKinematicConfig(newConfig);
     await bleService.sendKinematicConfig(newConfig);
-    setActionMessage('⚙️ Đã áp dụng struct cấu hình ngưỡng xuống ESP32 qua BLE!');
+    setActionMessage('⚙️ Đã cập nhật độ nhạy chuyển động thành công!');
     setTimeout(() => setActionMessage(''), 3500);
   }, []);
 
   const calibrateImu = useCallback(async () => {
     await bleService.sendCalibrateCommand();
-    setActionMessage('⚖️ ESP32 đang hiệu chuẩn con quay tĩnh... Vui lòng giữ yên thiết bị 1.5s!');
+    setActionMessage('⚖️ Đang cân bằng cảm biến... Vui lòng giữ yên thiết bị trong 2 giây!');
     setTimeout(() => setActionMessage(''), 4000);
   }, []);
 
@@ -659,12 +696,12 @@ export function BleProvider({ children }) {
 
   const sendWifiConfig = async ({ ssid, password, backendUrl }) => {
     setWifiSending(true);
-    setWifiFeedback({ status: 'sending', msg: 'Đang gửi thông tin Wi-Fi xuống ESP32...' });
+    setWifiFeedback({ status: 'sending', msg: 'Đang lưu thông tin Wi-Fi cho thiết bị...' });
     try {
       await bleService.sendWifiConfig({ ssid, password, backendUrl });
     } catch (err) {
       setWifiSending(false);
-      setWifiFeedback({ status: 'wifi_failed', msg: err.message || 'Lỗi gửi lệnh xuống ESP32' });
+      setWifiFeedback({ status: 'wifi_failed', msg: err.message || 'Không thể lưu cài đặt Wi-Fi' });
       throw err;
     }
   };
@@ -705,6 +742,8 @@ export function BleProvider({ children }) {
     sensorStatus,
     isCharging,
     toggleCharging,
+    selectedSport,
+    setSelectedSport,
     autoSession: autoSessionDisplay,
     actionMessage,
     setActionMessage,

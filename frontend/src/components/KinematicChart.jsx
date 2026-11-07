@@ -80,7 +80,7 @@ export default function KinematicChart() {
     e.preventDefault();
     try {
       await updateKinematicConfig(formConfig);
-      setConfigSuccess('Đã đồng bộ ngưỡng mới xuống ESP32!');
+      setConfigSuccess('Đã cập nhật độ nhạy chuyển động thành công!');
       setTimeout(() => setConfigSuccess(''), 3500);
     } catch (err) {
       alert('Lỗi cập nhật cấu hình: ' + err.message);
@@ -98,9 +98,9 @@ export default function KinematicChart() {
             <Activity size={20} className="highlight-cyan" />
           </div>
           <div>
-            <h3 className="kinematic-card-title">Phân Tích Động Học IMU & Trực Quan Hóa Ngưỡng (Kinematics)</h3>
+            <h3 className="kinematic-card-title">Biểu Đồ Chuyển Động & Nhận Diện Động Tác</h3>
             <p className="kinematic-card-subtitle">
-              Biểu đồ độ lớn gia tốc $a\_mag$ (đơn vị $g$), các vạch ngưỡng FSM và đánh dấu sự kiện Chạy / Nhảy.
+              Trực quan hóa lực vận động, tự động nhận diện từng bước chạy và cú bật nhảy theo thời gian thực.
             </p>
           </div>
         </div>
@@ -113,7 +113,7 @@ export default function KinematicChart() {
             disabled={!isConnected}
           >
             <Sliders size={14} />
-            {configOpen ? 'Ẩn Cấu Hình' : 'Chỉnh Ngưỡng FSM'}
+            {configOpen ? 'Ẩn Cài Đặt' : 'Tùy Chỉnh Độ Nhạy'}
           </button>
 
           <button
@@ -121,10 +121,10 @@ export default function KinematicChart() {
             className="btn btn-outline-cyan btn-sm"
             onClick={calibrateImu}
             disabled={!isConnected}
-            title="Giữ yên thiết bị 1.5s để hiệu chuẩn offset tĩnh"
+            title="Đặt thiết bị nằm yên trong 2 giây rồi bấm để cân bằng lại cảm biến"
           >
             <RotateCcw size={14} />
-            Hiệu Chuẩn Zero-Offset
+            Cân Bằng Cảm Biến
           </button>
         </div>
       </div>
@@ -134,7 +134,7 @@ export default function KinematicChart() {
         <form className="kinematic-config-panel" onSubmit={handleApplyConfig}>
           <div className="config-grid">
             <div className="config-item">
-              <label>Ngưỡng Pha Bay (g):</label>
+              <label>Độ nhạy khi nhảy lên (g):</label>
               <input
                 type="number"
                 step="0.05"
@@ -143,11 +143,11 @@ export default function KinematicChart() {
                 value={formConfig.flightThresh}
                 onChange={(e) => setFormConfig({ ...formConfig, flightThresh: parseFloat(e.target.value) })}
               />
-              <span className="config-hint">Mặc định: 0.40g (rơi tự do/nhấc bổng)</span>
+              <span className="config-hint">Mặc định: 0.40g (lực nhấc chân khi bắt đầu nhảy)</span>
             </div>
 
             <div className="config-item">
-              <label>Chạm Đất Chạy (g):</label>
+              <label>Lực chạm đất khi chạy (g):</label>
               <input
                 type="number"
                 step="0.1"
@@ -156,11 +156,11 @@ export default function KinematicChart() {
                 value={formConfig.runImpact}
                 onChange={(e) => setFormConfig({ ...formConfig, runImpact: parseFloat(e.target.value) })}
               />
-              <span className="config-hint">Mặc định: 2.00g (va chạm chân tại gối)</span>
+              <span className="config-hint">Mặc định: 2.00g (lực chân chạm sàn khi chạy)</span>
             </div>
 
             <div className="config-item">
-              <label>Tiếp Đất Nhảy (g):</label>
+              <label>Lực tiếp đất khi nhảy (g):</label>
               <input
                 type="number"
                 step="0.1"
@@ -169,11 +169,11 @@ export default function KinematicChart() {
                 value={formConfig.jumpImpact}
                 onChange={(e) => setFormConfig({ ...formConfig, jumpImpact: parseFloat(e.target.value) })}
               />
-              <span className="config-hint">Mặc định: 2.80g (xung lực nhảy cao)</span>
+              <span className="config-hint">Mặc định: 2.80g (lực nén tiếp đất sau cú nhảy)</span>
             </div>
 
             <div className="config-item">
-              <label>Airtime Nhảy Min (ms):</label>
+              <label>Thời gian bay tối thiểu (ms):</label>
               <input
                 type="number"
                 step="10"
@@ -182,11 +182,11 @@ export default function KinematicChart() {
                 value={formConfig.jumpAirtime}
                 onChange={(e) => setFormConfig({ ...formConfig, jumpAirtime: parseInt(e.target.value, 10) })}
               />
-              <span className="config-hint">Mặc định: 220ms (phân biệt với bước chạy)</span>
+              <span className="config-hint">Mặc định: 220ms (thời gian trên không tính là cú nhảy)</span>
             </div>
 
             <div className="config-item">
-              <label>Trơ Bước Chạy (ms):</label>
+              <label>Khoảng cách bước chạy (ms):</label>
               <input
                 type="number"
                 step="10"
@@ -195,11 +195,11 @@ export default function KinematicChart() {
                 value={formConfig.runRefractory}
                 onChange={(e) => setFormConfig({ ...formConfig, runRefractory: parseInt(e.target.value, 10) })}
               />
-              <span className="config-hint">Mặc định: 250ms (chống đếm trùng)</span>
+              <span className="config-hint">Mặc định: 250ms (chống tính trùng bước chân)</span>
             </div>
 
             <div className="config-item">
-              <label>Trơ Tiếp Đất Nhảy (ms):</label>
+              <label>Khoảng cách giữa các cú nhảy (ms):</label>
               <input
                 type="number"
                 step="20"
@@ -208,14 +208,14 @@ export default function KinematicChart() {
                 value={formConfig.jumpRefractory}
                 onChange={(e) => setFormConfig({ ...formConfig, jumpRefractory: parseInt(e.target.value, 10) })}
               />
-              <span className="config-hint">Mặc định: 350ms (giảm chấn)</span>
+              <span className="config-hint">Mặc định: 350ms (thời gian phục hồi sau tiếp đất)</span>
             </div>
           </div>
 
           <div className="config-actions-row">
             <button type="submit" className="btn btn-primary btn-sm">
               <RefreshCw size={14} />
-              Áp Dụng Xuống ESP32 (BLE)
+              Lưu Độ Nhạy Mới
             </button>
             {configSuccess && (
               <span className="config-success-msg">
@@ -247,9 +247,9 @@ export default function KinematicChart() {
                 color: '#f8fafc',
               }}
               formatter={(value, name) => {
-                if (name === 'amag') return [`${value} g`, 'Gia tốc tổng hợp'];
-                if (name === 'jumpMarker' && value) return [`${value} g`, '🏀 Cú nhảy (JUMP)'];
-                if (name === 'stepMarker' && value) return [`${value} g`, '🏃 Bước chạy (RUN)'];
+                if (name === 'amag') return [`${value} g`, 'Lực vận động'];
+                if (name === 'jumpMarker' && value) return [`${value} g`, '🏀 Cú nhảy'];
+                if (name === 'stepMarker' && value) return [`${value} g`, '🏃 Bước chạy'];
                 return [value, name];
               }}
             />

@@ -173,7 +173,7 @@ public class EmpiricalKinematicsAnd404StressTest {
     }
 
     @Test
-    @DisplayName("Challenge 2.2: Variations in lateral acceleration and roll produce corresponding variations in bilateral symmetry and dominant side")
+    @DisplayName("Challenge 2.2: Telemetry variations produce valid kinematic metrics without errors when bilateral symmetry is removed")
     void testKinematics_BilateralSymmetryVariation() {
         SportSession sessionBalanced = createMockSession(11L, "Running", 2.5);
         SportSession sessionLeftBiased = createMockSession(12L, "Running", 2.5);
@@ -205,23 +205,22 @@ public class EmpiricalKinematicsAnd404StressTest {
         Mockito.when(sessionRepository.findByUserId(100L)).thenReturn(List.of(sessionBalanced));
         Mockito.when(sensorDataRepository.findBySessionIdOrderByTimestampAsc(11L)).thenReturn(balancedData);
         ActivityAnalysisDTO resultBalanced = statisticsService.getActivityAnalysis();
-        assertEquals("BALANCED", resultBalanced.getDominantSide());
-        assertTrue(resultBalanced.getBilateralSymmetryPct() >= 90, "Balanced symmetry should be >= 90%");
+        assertNotNull(resultBalanced);
+        assertTrue(resultBalanced.getLandingSoftnessScore() > 0);
 
         // Assert Left
         Mockito.when(sessionRepository.findByUserId(100L)).thenReturn(List.of(sessionLeftBiased));
         Mockito.when(sensorDataRepository.findBySessionIdOrderByTimestampAsc(12L)).thenReturn(leftData);
         ActivityAnalysisDTO resultLeft = statisticsService.getActivityAnalysis();
-        assertEquals("LEFT", resultLeft.getDominantSide(), "Heavy left tilt must identify dominantSide as LEFT");
-        assertTrue(resultLeft.getBilateralSymmetryPct() < resultBalanced.getBilateralSymmetryPct(),
-                "Asymmetrical gait must reduce bilateral symmetry percentage");
+        assertNotNull(resultLeft);
+        assertTrue(resultLeft.getLandingSoftnessScore() > 0);
 
         // Assert Right
         Mockito.when(sessionRepository.findByUserId(100L)).thenReturn(List.of(sessionRightBiased));
         Mockito.when(sensorDataRepository.findBySessionIdOrderByTimestampAsc(13L)).thenReturn(rightData);
         ActivityAnalysisDTO resultRight = statisticsService.getActivityAnalysis();
-        assertEquals("RIGHT", resultRight.getDominantSide(), "Heavy right tilt must identify dominantSide as RIGHT");
-        assertTrue(resultRight.getBilateralSymmetryPct() < resultBalanced.getBilateralSymmetryPct());
+        assertNotNull(resultRight);
+        assertTrue(resultRight.getLandingSoftnessScore() > 0);
     }
 
     @Test

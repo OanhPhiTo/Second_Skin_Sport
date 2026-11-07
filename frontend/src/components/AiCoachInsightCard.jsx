@@ -7,7 +7,6 @@ import {
   TrendingUp,
   Activity,
   Zap,
-  Scale,
   Compass,
   CheckCircle2,
   AlertTriangle,
@@ -24,8 +23,6 @@ export default function AiCoachInsightCard({ insights }) {
   const metrics = insights.biomechanicalMetrics || {
     landingSoftnessScore: 82,
     peakLandingImpactG: 2.4,
-    bilateralSymmetryPct: 94,
-    dominantSide: 'BALANCED',
     cadenceRpm: null,
     rhythmConsistencyPct: 91,
     trunkStabilityScore: 86,
@@ -97,25 +94,6 @@ export default function AiCoachInsightCard({ insights }) {
                   />
                 </div>
                 <span className="metric-sub-note">Lực dội: {metrics.peakLandingImpactG}G</span>
-              </div>
-
-              {/* Bilateral Symmetry */}
-              <div className="biomech-metric-item">
-                <div className="metric-header">
-                  <span className="metric-label">
-                    <Scale size={14} className="highlight-cyan" /> Cân Bằng 2 Chân
-                  </span>
-                  <span className="metric-val">{metrics.bilateralSymmetryPct}%</span>
-                </div>
-                <div className="metric-progress-bg">
-                  <div
-                    className="metric-progress-fill green-fill"
-                    style={{ width: `${metrics.bilateralSymmetryPct}%` }}
-                  />
-                </div>
-                <span className="metric-sub-note">
-                  {metrics.dominantSide === 'BALANCED' ? 'Rất cân đối (Hai chân chịu lực đều)' : `Chân ${metrics.dominantSide.toLowerCase()} chịu lực nhiều hơn`}
-                </span>
               </div>
 
               {/* Cadence / Rhythm */}

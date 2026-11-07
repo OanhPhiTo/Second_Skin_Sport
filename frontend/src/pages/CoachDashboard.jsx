@@ -19,7 +19,6 @@ import {
   Cpu,
   Gauge,
   BarChart2,
-  Battery,
   Wifi,
   Sparkles,
   Info,
@@ -281,7 +280,7 @@ export default function CoachDashboard() {
               <span className="stat-sublabel">Online 10Hz</span>
             </div>
             <div className="stat-foot-note">
-              <span className="text-emerald">🔋 Pin trung bình: 88%</span>
+              <span className="text-emerald">● Trạng thái: Hoạt động ổn định</span>
             </div>
           </div>
         </div>
@@ -417,10 +416,7 @@ export default function CoachDashboard() {
                     </div>
                     <div className="device-health-chip">
                       <span className="live-pulse-green" />
-                      <span className="text-emerald">10Hz</span>
-                      <span className="divider-dot">•</span>
-                      <Battery size={12} className={dev.battery > 60 ? 'text-emerald' : 'text-amber'} />
-                      <span>{dev.battery}%</span>
+                      <span className="text-emerald">10Hz Stream</span>
                     </div>
                   </div>
                 </div>
@@ -526,9 +522,6 @@ export default function CoachDashboard() {
                     </div>
                     <div className="device-health-chip standby">
                       <span>Standby</span>
-                      <span className="divider-dot">•</span>
-                      <Battery size={12} className="text-emerald" />
-                      <span>{dev.battery}%</span>
                     </div>
                   </div>
                 </div>

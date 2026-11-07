@@ -61,8 +61,11 @@ public class AutoSessionService {
         int jumps = dto.getTotalJumps() != null ? dto.getTotalJumps() : 0;
         int directionChanges = dto.getDirectionChanges() != null ? dto.getDirectionChanges() : 0;
         double avgAccel = dto.getAverageAcceleration() != null ? dto.getAverageAcceleration() : 2.85;
+        // Gravity compensation if raw accelerometer magnitude with 1G (~9.81 m/s²) was provided
+        if (avgAccel > 6.0) {
+            avgAccel = Math.round(Math.max(1.2, avgAccel - 9.80665) * 100.0) / 100.0;
+        }
         double avgSpeed = dto.getAverageSpeed() != null ? dto.getAverageSpeed() : 16.5;
-        int intensity = dto.getMovementIntensity() != null ? dto.getMovementIntensity() : 80;
 
         // Auto sport classification if not explicitly provided
         String sport = dto.getSport();
@@ -70,9 +73,22 @@ public class AutoSessionService {
             sport = (jumps >= 15 || directionChanges >= 80) ? "Basketball" : "Running";
         }
 
-        // Calculate performance score if not provided
-        int score = dto.getPerformanceScore() != null ? dto.getPerformanceScore() :
-                Math.min(100, Math.max(50, (int) Math.round(intensity * 0.5 + Math.min(scoreFromMetrics(sport, jumps, directionChanges, avgAccel), 50))));
+        int intensity = dto.getMovementIntensity() != null ? dto.getMovementIntensity() : 80;
+        // Normalize corrupted or saturated intensity (>= 99) to dynamic sports-science range
+        if (intensity >= 99 || intensity <= 0) {
+            intensity = (int) Math.min(94, Math.max(55, Math.round(52.0 + (avgAccel - 1.5) * 14.0 + Math.min(18.0, jumps * 0.35))));
+        }
+
+        // Calculate performance score if not provided or saturated at 100%
+        int score;
+        if (dto.getPerformanceScore() != null && dto.getPerformanceScore() < 99 && dto.getPerformanceScore() > 0) {
+            score = dto.getPerformanceScore();
+        } else {
+            double skillScore = ("Basketball".equalsIgnoreCase(sport) || "Volleyball".equalsIgnoreCase(sport))
+                    ? Math.min(32.0, jumps * 0.65 + directionChanges * 0.12)
+                    : Math.min(32.0, directionChanges * 0.35 + 10.0);
+            score = (int) Math.min(96, Math.max(68, Math.round(intensity * 0.52 + skillScore + 8.0)));
+        }
 
         com.secondskin.sport.entity.User currentUser = com.secondskin.sport.security.SecurityUtils.getCurrentUser().orElse(null);
         Long userId;
@@ -166,7 +182,7 @@ public class AutoSessionService {
     }
 
     private double scoreFromMetrics(String sport, int jumps, int directionChanges, double avgAccel) {
-        if ("Basketball".equalsIgnoreCase(sport)) {
+        if ("Basketball".equalsIgnoreCase(sport) || "Volleyball".equalsIgnoreCase(sport)) {
             return (jumps * 0.6) + (directionChanges * 0.2) + (avgAccel * 4.0);
         } else {
             return (avgAccel * 10.0) + (directionChanges * 0.3);

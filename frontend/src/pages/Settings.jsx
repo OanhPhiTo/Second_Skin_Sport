@@ -51,14 +51,14 @@ export default function Settings() {
 
   const handleCalibration = async () => {
     if (bleStatus !== 'connected') {
-      setCalibrationStatus('Hãy kết nối ESP32 qua Bluetooth trước');
+      setCalibrationStatus('Vui lòng kết nối thiết bị trước');
       return;
     }
     try {
       await bleService.sendSensorConfig({ samplingRate, calibrate: true });
-      setCalibrationStatus(`Đã gửi lệnh hiệu chuẩn (${samplingRate})`);
+      setCalibrationStatus(`Đã cân bằng cảm biến (${samplingRate})`);
     } catch (error) {
-      setCalibrationStatus(error.message || 'Không thể hiệu chuẩn thiết bị');
+      setCalibrationStatus(error.message || 'Không thể cân bằng thiết bị');
     }
   };
 
@@ -137,28 +137,28 @@ export default function Settings() {
             </div>
             <div>
               <h3>Cài Đặt Thiết Bị & Cảm Biến</h3>
-              <p className="card-subtitle">Tần số lấy mẫu phần cứng, độ nhạy IMU và đồng bộ Bluetooth</p>
+              <p className="card-subtitle">Tần số đo lường, độ nhạy chuyển động và đồng bộ thiết bị</p>
             </div>
           </div>
 
           <div className="settings-fields-stack">
             <div className="form-group">
-              <label>Tần số lấy mẫu đo lường</label>
+              <label>Tần số đo lường</label>
               <select
                 value={samplingRate}
                 onChange={(e) => setSamplingRate(e.target.value)}
                 className="form-select"
               >
-                <option value="50 Hz">50 Hz (Tiết kiệm pin - Tiêu thụ thấp)</option>
-                <option value="100 Hz">100 Hz (Khuyên dùng - Cân bằng)</option>
-                <option value="200 Hz">200 Hz (Chuyển động cường độ cực cao)</option>
+                <option value="50 Hz">50 Hz (Tiết kiệm năng lượng)</option>
+                <option value="100 Hz">100 Hz (Khuyên dùng - Cân bằng & Mượt mà)</option>
+                <option value="200 Hz">200 Hz (Đo chuyển động tốc độ cao)</option>
               </select>
             </div>
 
             <div className="toggle-setting-row">
               <div>
                 <span className="toggle-title">Tự động đồng bộ khi kết thúc buổi tập</span>
-                <p className="toggle-desc">Tự động tải lên các gói tin IMU được đệm qua BLE</p>
+                <p className="toggle-desc">Tự động lưu và đồng bộ dữ liệu buổi tập khi bạn hoàn thành</p>
               </div>
               <label className="switch">
                 <input
@@ -172,13 +172,13 @@ export default function Settings() {
 
             <div className="toggle-setting-row">
               <div>
-                <span className="toggle-title">Hiệu chuẩn phần cứng IMU</span>
-                <p className="toggle-desc">Tự động khử trôi con quay hồi chuyển khi bắt đầu buổi tập</p>
+                <span className="toggle-title">Cân bằng lại cảm biến</span>
+                <p className="toggle-desc">Tự động cân bằng góc nghiêng và tư thế chuẩn xác trước khi tập</p>
               </div>
               <div className="calibration-control">
                 <span className={`calibration-status ${bleStatus === 'connected' ? 'ready' : ''}`}>{calibrationStatus}</span>
                 <button type="button" className="btn btn-outline-cyan btn-sm" onClick={handleCalibration}>
-                  Hiệu chuẩn ngay
+                  Cân bằng ngay
                 </button>
               </div>
             </div>

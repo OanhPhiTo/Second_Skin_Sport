@@ -81,7 +81,7 @@ public class AiCoachServiceTest {
         // Check biomechanical metrics
         assertNotNull(result.getBiomechanicalMetrics());
         assertTrue(result.getBiomechanicalMetrics().getLandingSoftnessScore() > 0);
-        assertTrue(result.getBiomechanicalMetrics().getBilateralSymmetryPct() > 0);
+        assertTrue(result.getBiomechanicalMetrics().getTrunkStabilityScore() > 0);
 
         // Check recovery advice
         assertNotNull(result.getRecoveryAdvice());

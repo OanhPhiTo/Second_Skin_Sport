@@ -78,7 +78,6 @@ export default function Reports() {
     : 0;
   const explosiveness = sessionCount > 0 ? Math.min(100, Math.max(50, Math.round(Number(avgAccel) * 28))) : 0;
   const averageAirtime = totalJumps > 0 ? 0.38 : 0;
-  const bilateralSymmetry = sessionCount > 0 ? 94 : 0;
   const trunkStability = sessionCount > 0 ? 86 : 0;
   const trunkLeanAngle = sport === 'Basketball' ? 10.4 : 8.2;
   const fatigueIndex = sessionCount > 0
@@ -139,7 +138,7 @@ export default function Reports() {
         <div>
           <h1 className="hero-title">Báo Cáo Hiệu Suất</h1>
           <p className="hero-subtitle">
-            Tạo đánh giá thể thao chuyên sâu, kiểm toán sinh trắc học và xuất báo cáo.
+            Tạo đánh giá thể thao chuyên sâu, phân tích chuyển động và xuất báo cáo.
           </p>
         </div>
 
@@ -312,10 +311,6 @@ export default function Reports() {
                   <strong>{explosiveness}/100 ({averageAirtime.toFixed(2)}s)</strong>
                 </div>
                 <div className="report-row">
-                  <span>Cân bằng hai chân</span>
-                  <strong>{bilateralSymmetry}% (BALANCED)</strong>
-                </div>
-                <div className="report-row">
                   <span>Độ vững thân trên</span>
                   <strong>{trunkStability}/100 ({trunkLeanAngle}°)</strong>
                 </div>
@@ -335,7 +330,7 @@ export default function Reports() {
               <p className="recommendation-text">
                 {sport === 'Basketball'
                   ? `Trong ${sessionCount} phiên 7 ngày, vận động viên đạt ${totalJumps} cú bật nhảy và ${totalCuts} pha đảo hướng. AI ghi nhận độ êm tiếp đất ${landingSoftness}/100, độ bùng nổ ${explosiveness}/100 và độ vững thân trên ${trunkStability}/100. Khuyến nghị duy trì bài tập plyometric có kiểm soát, theo dõi chỉ số mỏi ${fatigueIndex}% và bổ sung điện giải sau hiệp 3.`
-                  : `Trong ${sessionCount} phiên 7 ngày, vận động viên duy trì tốc độ ${avgSpeed} km/h với gia tốc ${avgAccel} m/s². AI ghi nhận độ êm tiếp đất ${landingSoftness}/100, cân bằng hai chân ${bilateralSymmetry}% và độ vững thân trên ${trunkStability}/100. Khuyến nghị giãn cơ bắp chuối 10 phút sau tập và duy trì nhịp vận động ổn định.`}
+                  : `Trong ${sessionCount} phiên 7 ngày, vận động viên duy trì tốc độ ${avgSpeed} km/h với gia tốc ${avgAccel} m/s². AI ghi nhận độ êm tiếp đất ${landingSoftness}/100 và độ vững thân trên ${trunkStability}/100. Khuyến nghị giãn cơ bắp chuối 10 phút sau tập và duy trì nhịp vận động ổn định.`}
               </p>
             </div>
           </div>

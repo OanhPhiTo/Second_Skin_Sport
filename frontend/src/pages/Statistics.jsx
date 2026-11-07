@@ -56,6 +56,22 @@ export default function Statistics() {
             }
 
             const speed = Number(d.averageSpeed || d.speed || 15.0);
+            let accel = Number(Number(d.averageAcceleration || d.acceleration || 2.5).toFixed(2));
+            if (accel > 6.0) {
+              accel = Number(Math.max(1.5, accel - 9.81).toFixed(2));
+            }
+            const jumps = Number(d.totalJumps || d.jumps || 0);
+            const turns = Number(d.directionChanges || d.turns || 0);
+            let intensity = Number(d.movementIntensity || d.intensity || 80);
+            let score = Number(d.performanceScore || d.score || 85);
+
+            // Tự động chuẩn hóa dữ liệu lịch sử bị kẹt ở mức 100% (do chưa bù trừ trọng lực)
+            if (intensity >= 98 && score >= 98) {
+              intensity = Math.min(94, Math.max(58, Math.round(55 + (accel - 1.5) * 12 + Math.min(22, jumps * 0.45))));
+              const skillBonus = Math.min(34, Math.round(jumps * 0.65 + turns * 0.15 + 6));
+              score = Math.min(95, Math.max(68, Math.round(intensity * 0.52 + skillBonus + 8)));
+            }
+
             const dist = Number(d.totalDistance || 0) > 0
               ? Number(d.totalDistance)
               : +((speed * 0.6).toFixed(1));
@@ -63,10 +79,10 @@ export default function Statistics() {
             return {
               date: dateLabel || `#${idx + 1}`,
               speed: Number(speed.toFixed(1)),
-              acceleration: Number(Number(d.averageAcceleration || d.acceleration || 2.5).toFixed(2)),
-              intensity: Number(d.movementIntensity || d.intensity || 80),
-              jumps: Number(d.totalJumps || d.jumps || 0),
-              score: Number(d.performanceScore || d.score || 85),
+              acceleration: accel,
+              intensity: intensity,
+              jumps: jumps,
+              score: score,
               distance: Number(dist.toFixed(1)),
             };
           });

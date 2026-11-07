@@ -26,8 +26,6 @@ public class BiomechanicalFeatureExtractor {
         // 1. Phân tích lực dội tiếp đất (Landing Impact Force)
         double maxMagnitude = 0.0;
         double sumMagnitude = 0.0;
-        double leftImpulse = 0.0;
-        double rightImpulse = 0.0;
         double sumPitch = 0.0;
         double sumRoll = 0.0;
         double[] magnitudes = new double[n];
@@ -45,13 +43,6 @@ public class BiomechanicalFeatureExtractor {
             }
             sumMagnitude += mag;
 
-            // Phân tích đối xứng lực dựa trên góc nghiêng Roll và gia tốc ngang Ay
-            if (pt.getRoll() < 0 || ay < -0.2) {
-                leftImpulse += Math.abs(ay) + Math.abs(ax);
-            } else {
-                rightImpulse += Math.abs(ay) + Math.abs(ax);
-            }
-
             sumPitch += pt.getPitch();
             sumRoll += pt.getRoll();
         }
@@ -64,23 +55,7 @@ public class BiomechanicalFeatureExtractor {
         int landingSoftnessScore = (int) Math.round(100.0 - Math.min(55.0, Math.max(0.0, (peakImpactG - 1.8) * 22.0)));
         landingSoftnessScore = Math.max(45, Math.min(96, landingSoftnessScore));
 
-        // 2. Tính toán độ đối xứng chịu lực giữa hai chân (Bilateral Symmetry)
-        double totalImpulse = leftImpulse + rightImpulse;
-        int symmetryPct;
-        String dominantSide = "BALANCED";
-
-        if (totalImpulse > 0.001) {
-            double leftRatio = leftImpulse / totalImpulse;
-            double diff = Math.abs(leftRatio - 0.5);
-            symmetryPct = (int) Math.round(100.0 - (diff * 60.0));
-            if (leftRatio > 0.54) dominantSide = "LEFT";
-            else if (leftRatio < 0.46) dominantSide = "RIGHT";
-        } else {
-            symmetryPct = 94;
-        }
-        symmetryPct = Math.max(70, Math.min(98, symmetryPct));
-
-        // 3. Tính độ vững thân trên (Trunk Stability) từ phương sai góc Pitch & Roll
+        // 2. Tính độ vững thân trên (Trunk Stability) từ phương sai góc Pitch & Roll
         double meanPitch = sumPitch / n;
         double meanRoll = sumRoll / n;
         double varPitch = 0.0;
@@ -125,8 +100,8 @@ public class BiomechanicalFeatureExtractor {
         return new BiomechanicalMetricsDTO(
                 landingSoftnessScore,
                 peakImpactG,
-                symmetryPct,
-                dominantSide,
+                0,
+                "BALANCED",
                 cadence,
                 88, // Rhythm consistency
                 trunkStability,
@@ -200,7 +175,7 @@ public class BiomechanicalFeatureExtractor {
         return new BiomechanicalMetricsDTO(
                 isRunning ? 82 : 78,
                 isRunning ? 2.4 : 3.1,
-                94,
+                0,
                 "BALANCED",
                 isRunning ? 168 : 132,
                 91,

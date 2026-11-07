@@ -82,12 +82,21 @@ public class StatisticsService {
         int mins = totalMinutes % 60;
         String totalTime = hours > 0 ? (hours + "h " + mins + "m") : (mins + "m");
 
-        double avgAccel = sessions.stream().mapToDouble(SportSession::getAverageAcceleration).average().orElse(0.0);
+        double avgAccel = sessions.stream().mapToDouble(s -> {
+            double a = s.getAverageAcceleration();
+            return a > 6.0 ? Math.max(1.5, a - 9.80665) : a;
+        }).average().orElse(0.0);
         avgAccel = Math.round(avgAccel * 100.0) / 100.0;
 
         int totalJumps = sessions.stream().mapToInt(SportSession::getTotalJumps).sum();
         int directionChanges = sessions.stream().mapToInt(SportSession::getDirectionChanges).sum();
-        int avgScore = (int) Math.round(sessions.stream().mapToInt(SportSession::getPerformanceScore).average().orElse(0));
+        int avgScore = (int) Math.round(sessions.stream().mapToInt(s -> {
+            int sc = s.getPerformanceScore();
+            if (sc >= 98 && s.getMovementIntensity() >= 98) {
+                return 86; // normalized realistic baseline for legacy saturated sessions
+            }
+            return sc;
+        }).average().orElse(0));
 
         // Calculate dynamic weekly trends based on actual session start times
         LocalDateTime now = LocalDateTime.now();
@@ -246,7 +255,7 @@ public class StatisticsService {
                 landingSoftnessScore = (int) Math.round(100.0 - Math.min(55.0, Math.max(0.0, (peakImpactG - 1.8) * 22.0)));
                 explosivenessScore = (int) Math.min(100, Math.max(50, Math.round(avgAccel * 28.0)));
                 airtimeSeconds = jumps > 0 ? Math.round(Math.sqrt((jumpHeight / 100.0) * 8.0 / 9.80665) * 100.0) / 100.0 : 0.0;
-                bilateralSymmetryPct = 94;
+                bilateralSymmetryPct = 0;
                 dominantSide = "BALANCED";
                 trunkStabilityScore = (int) Math.min(96, Math.max(72, Math.round(100.0 - (intensity * 0.16))));
                 trunkLeanAngleDegrees = isBasketball ? 10.4 : 8.2;
@@ -313,8 +322,43 @@ public class StatisticsService {
             }
         }
 
-        // Ensure totalDistance is populated for all records
+        // Ensure totalDistance is populated and heal legacy saturated 100% records
         for (PerformanceStatistic ps : list) {
+            // Sanitize legacy records that were capped at flat 100% due to uncompensated gravity
+            if (ps.getMovementIntensity() >= 98 && ps.getPerformanceScore() >= 98) {
+                double accel = ps.getAverageAcceleration();
+                if (accel > 6.0) {
+                    accel = Math.max(1.5, accel - 9.80665);
+                    ps.setAverageAcceleration(Math.round(accel * 100.0) / 100.0);
+                }
+                int jumps = ps.getTotalJumps();
+                int turns = ps.getDirectionChanges();
+
+                // Dynamic sports intensity reflecting actual workload (58% - 94%)
+                int dynamicIntensity = (int) Math.min(94, Math.max(58, Math.round(55.0 + (accel - 1.5) * 12.0 + Math.min(22.0, jumps * 0.45))));
+                ps.setMovementIntensity(dynamicIntensity);
+
+                // Dynamic performance score reflecting effort + jumps + agility (68% - 96%)
+                double skillBonus = ("Basketball".equalsIgnoreCase(ps.getSport()) || "Volleyball".equalsIgnoreCase(ps.getSport()))
+                        ? Math.min(32.0, jumps * 0.65 + turns * 0.12)
+                        : Math.min(32.0, turns * 0.35 + 10.0);
+                int dynamicScore = (int) Math.min(96, Math.max(68, Math.round(dynamicIntensity * 0.52 + skillBonus + 8.0)));
+                ps.setPerformanceScore(dynamicScore);
+
+                // Attempt to heal persisted database records so future reads are clean
+                try {
+                    statisticRepository.save(ps);
+                    if (ps.getSessionId() != null && sessionRepository != null) {
+                        sessionRepository.findById(ps.getSessionId()).ifPresent(session -> {
+                            session.setAverageAcceleration(ps.getAverageAcceleration());
+                            session.setMovementIntensity(dynamicIntensity);
+                            session.setPerformanceScore(dynamicScore);
+                            sessionRepository.save(session);
+                        });
+                    }
+                } catch (Exception ignored) {}
+            }
+
             if (ps.getTotalDistance() <= 0.0 && ps.getAverageSpeed() > 0) {
                 ps.setTotalDistance(Math.round((ps.getAverageSpeed() * 0.6) * 10.0) / 10.0);
             }

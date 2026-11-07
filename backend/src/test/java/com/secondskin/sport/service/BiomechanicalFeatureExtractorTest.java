@@ -26,7 +26,7 @@ public class BiomechanicalFeatureExtractorTest {
         BiomechanicalMetricsDTO metrics = extractor.extractFeatures(Collections.emptyList(), "Running");
         assertNotNull(metrics);
         assertTrue(metrics.getLandingSoftnessScore() > 50);
-        assertTrue(metrics.getBilateralSymmetryPct() >= 80);
+        assertTrue(metrics.getTrunkStabilityScore() > 50);
         assertEquals("BALANCED", metrics.getDominantSide());
     }
 
@@ -52,7 +52,7 @@ public class BiomechanicalFeatureExtractorTest {
         assertNotNull(metrics);
         assertTrue(metrics.getCadenceRpm() >= 0 && metrics.getCadenceRpm() < 140,
                 "Cadence must come from detected acceleration peaks, not a typical-value fallback");
-        assertTrue(metrics.getBilateralSymmetryPct() >= 75);
+        assertTrue(metrics.getTrunkStabilityScore() > 50);
         assertTrue(metrics.getLandingSoftnessScore() > 60);
         assertTrue(metrics.getPeakLandingImpactG() > 1.0);
     }
@@ -80,11 +80,11 @@ public class BiomechanicalFeatureExtractorTest {
     }
 
     @Test
-    void testExtractFeatures_WithAsymmetricalTilt_DetectsDominantSide() {
+    void testExtractFeatures_WithAsymmetricalTilt_DetectsTrunkLean() {
         List<SensorData> rawData = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
-        // Heavy left bias: negative ay and negative roll
+        // Heavy tilt: negative ay and negative roll
         for (int i = 0; i < 30; i++) {
             SensorData data = new SensorData(
                     1L, "DEV-01", now.plusSeconds(i),
@@ -95,6 +95,6 @@ public class BiomechanicalFeatureExtractorTest {
 
         BiomechanicalMetricsDTO metrics = extractor.extractFeatures(rawData, "Running");
         assertNotNull(metrics);
-        assertEquals("LEFT", metrics.getDominantSide());
+        assertTrue(metrics.getTrunkLeanAngleDegrees() >= 0.0);
     }
 }

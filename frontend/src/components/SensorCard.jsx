@@ -36,8 +36,8 @@ export default function SensorCard({ sensorStatus }) {
             <Cpu size={20} />
           </div>
           <div>
-            <h2 className="card-title">Dữ Liệu Đo Cảm Biến Trực Tiếp</h2>
-            <p className="card-subtitle">Bộ đo quán tính đa trục (IMU 6-DOF)</p>
+            <h2 className="card-title">Dữ Liệu Vận Động Trực Tiếp</h2>
+            <p className="card-subtitle">Theo dõi tư thế, độ xoay và lực tác động theo thời gian thực</p>
           </div>
         </div>
 
@@ -46,7 +46,7 @@ export default function SensorCard({ sensorStatus }) {
           <span className="status-caption">Trạng thái cảm biến:</span>
           <div className={`status-pill ${isConnected ? 'status-online' : 'status-offline'}`}>
             <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`} />
-            <span>{isConnected ? 'Đã kết nối' : 'Đã ngắt kết nối'}</span>
+            <span>{isConnected ? 'Đang kết nối' : 'Đã ngắt kết nối'}</span>
           </div>
         </div>
       </div>
@@ -55,7 +55,7 @@ export default function SensorCard({ sensorStatus }) {
         {/* Subcard 1: Accelerometer */}
         <div className="sensor-subcard">
           <div className="subcard-header">
-            <span className="subcard-name">CẢM BIẾN GIA TỐC</span>
+            <span className="subcard-name">LỰC TÁC ĐỘNG (GIA TỐC)</span>
             <span className="subcard-unit">{unitLabels.accel}</span>
           </div>
           <div className="axis-readings">
@@ -73,14 +73,14 @@ export default function SensorCard({ sensorStatus }) {
             </div>
           </div>
           <div className="subcard-footer">
-            <span>Gia tốc hợp lực: {resultantG} G-force</span>
+            <span>Lực tác động tổng hợp: {resultantG} G</span>
           </div>
         </div>
 
         {/* Subcard 2: Gyroscope */}
         <div className="sensor-subcard">
           <div className="subcard-header">
-            <span className="subcard-name">CON QUAY HỒI CHUYỂN</span>
+            <span className="subcard-name">TỐC ĐỘ XOAY NGƯỜI</span>
             <span className="subcard-unit">°/s</span>
           </div>
           <div className="axis-readings">
@@ -98,7 +98,7 @@ export default function SensorCard({ sensorStatus }) {
             </div>
           </div>
           <div className="subcard-footer">
-            <span>Vận tốc góc xoay</span>
+            <span>Tốc độ xoay đổi hướng</span>
           </div>
         </div>
 
@@ -123,19 +123,19 @@ export default function SensorCard({ sensorStatus }) {
             </div>
           </div>
           <div className="subcard-footer">
-            <span>Định hướng không gian</span>
+            <span>Góc tư thế cơ thể</span>
           </div>
         </div>
 
         {/* Subcard 4: Motion & Kinematics */}
         <div className="sensor-subcard">
           <div className="subcard-header">
-            <span className="subcard-name">CHUYỂN ĐỘNG & ĐỘNG HỌC</span>
+            <span className="subcard-name">CHUYỂN ĐỘNG & CƯỜNG ĐỘ</span>
             <span className="subcard-unit">Trực tiếp</span>
           </div>
           <div className="axis-readings">
             <div className="axis-item">
-              <span className="axis-tag dynamic"><Zap size={10} /> Tải động</span>
+              <span className="axis-tag dynamic"><Zap size={10} /> Lực vận động</span>
               <span className="axis-num highlight-neon">{convertAccel(dynamicAccel).toFixed(2)} <small>{unitLabels.accel}</small></span>
             </div>
             <div className="axis-item">
@@ -146,10 +146,10 @@ export default function SensorCard({ sensorStatus }) {
           <div className="subcard-footer">
             <span>
               {current.movementIntensity > 70
-                ? 'Vận động xung lực mạnh'
+                ? 'Vận động cường độ cao'
                 : current.movementIntensity > 25
-                ? 'Vận động tích cực'
-                : 'Nghỉ ngơi / Cơ bản'}
+                ? 'Vận động vừa sức'
+                : 'Nghỉ ngơi / Nhẹ nhàng'}
             </span>
           </div>
         </div>
@@ -157,8 +157,8 @@ export default function SensorCard({ sensorStatus }) {
         {/* Subcard 5: Biomechanics DSP Live */}
         <div className="sensor-subcard">
           <div className="subcard-header">
-            <span className="subcard-name">CƠ SINH HỌC</span>
-            <span className="subcard-unit">Xử lý trực tiếp</span>
+            <span className="subcard-name">ĐÁNH GIÁ CHUYỂN ĐỘNG</span>
+            <span className="subcard-unit">Đo trực tiếp</span>
           </div>
           <div className="axis-readings">
             <div className="axis-item">
@@ -171,7 +171,7 @@ export default function SensorCard({ sensorStatus }) {
             </div>
           </div>
           <div className="subcard-footer">
-            <span>{Number(resultantG) <= 2.4 ? `Tiếp đất êm (${resultantG}G)` : `Va chạm: ${resultantG}G`}</span>
+            <span>{Number(resultantG) <= 2.4 ? `Tiếp đất êm ái (${resultantG}G)` : `Lực va chạm: ${resultantG}G`}</span>
           </div>
         </div>
       </div>

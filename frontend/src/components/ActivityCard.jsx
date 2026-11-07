@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, Compass, Gauge, Zap, ShieldCheck, Scale, Award } from 'lucide-react';
+import { ArrowUpRight, Compass, Gauge, Zap, ShieldCheck, Award } from 'lucide-react';
 import { useUnit } from '../context/UnitContext';
 import './ActivityCard.css';
 
@@ -15,7 +15,6 @@ export default function ActivityCard({ analysis }) {
   const peakG = analysis?.peakLandingImpactG != null ? Number(analysis.peakLandingImpactG).toFixed(1) : (intensity > 0 ? '2.1' : '0.0');
   const explosiveness = analysis?.explosivenessScore ?? (intensity > 0 ? 86 : 0);
   const airtime = analysis?.averageAirtimeSeconds != null ? Number(analysis.averageAirtimeSeconds).toFixed(2) : (jumps > 0 ? '0.38' : '0.00');
-  const symmetry = analysis?.bilateralSymmetryPct ?? (intensity > 0 ? 94 : 0);
   const trunkStability = analysis?.trunkStabilityScore ?? (intensity > 0 ? 88 : 0);
   const leanAngle = analysis?.trunkLeanAngleDegrees != null ? Number(analysis.trunkLeanAngleDegrees).toFixed(1) : '8.2';
 
@@ -85,39 +84,6 @@ export default function ActivityCard({ analysis }) {
           <div className="progress-meta">
             <span>Bật cao TB: {formatHeight(analysis?.averageJumpHeightCm ?? 0, 1)} ({jumps} cú nhảy)</span>
             <span>{explosiveness >= 80 ? 'Bứt phá mạnh' : 'Phát lực chuẩn'}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Cân Bằng Tải Trọng 2 Chân (Bilateral Balance) */}
-      <div className="card activity-card">
-        <div className="activity-card-header">
-          <div className="activity-icon-badge scale">
-            <Scale size={18} />
-          </div>
-          <span className="activity-badge-tag">ĐỐI XỨNG HAI CHÂN</span>
-        </div>
-        <div className="activity-main-content">
-          <h3 className="activity-title">Cân Bằng Tải Trọng 2 Chân</h3>
-          <div className="activity-split-values">
-            <div className="split-item">
-              <span className="split-label">Độ Cân Đối</span>
-              <span className="split-number highlight-cyan">{symmetry}<small>%</small></span>
-            </div>
-            <div className="split-divider" />
-            <div className="split-item">
-              <span className="split-label">Phân Bổ Lực</span>
-              <span className="split-number highlight-purple">{symmetry > 0 ? '49 / 51' : '0 / 0'} <small>%</small></span>
-            </div>
-          </div>
-        </div>
-        <div className="activity-progress-wrap">
-          <div className="activity-progress-bar">
-            <div className="progress-fill purple" style={{ width: `${symmetry}%` }}></div>
-          </div>
-          <div className="progress-meta">
-            <span>{symmetry >= 90 ? 'Rất đồng đều giữa 2 chân' : 'Lệch nhẹ sang 1 bên'}</span>
-            <span>Hạn chế lệch hông</span>
           </div>
         </div>
       </div>
